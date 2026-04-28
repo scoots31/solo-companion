@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Overlay Test</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0F1729; --blue: #2563EB; --text: #EDE8E0;
+  --glass: rgba(255,255,255,0.05); --border: rgba(255,255,255,0.07);
+  --muted: rgba(255,255,255,0.35); --mono: 'SF Mono','Fira Code',monospace;
+}
+body { background: var(--bg); color: var(--text); font-family: -apple-system, sans-serif; padding: 40px; }
+.test-btn {
+  background: #2563EB; color: #fff; border: none; padding: 12px 24px;
+  border-radius: 8px; cursor: pointer; font-size: 14px; margin: 8px;
+}
+.overlay-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.6); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.overlay-backdrop.open { display: flex; }
+.overlay-panel {
+  background: #1A2540; border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px; width: 520px; max-height: 80vh;
+  overflow-y: auto; padding: 28px; position: relative;
+}
+.overlay-close {
+  position: absolute; top: 16px; right: 16px; width: 28px; height: 28px;
+  border-radius: 50%; background: rgba(255,255,255,0.08); border: none;
+  color: rgba(255,255,255,0.5); font-size: 14px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.overlay-type {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--muted); margin-bottom: 6px;
+}
+.overlay-title { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 20px; }
+.overlay-project { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+.overlay-project-dot { width: 8px; height: 8px; border-radius: 50%; }
+.overlay-project-name { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.attr-grid { display: flex; flex-direction: column; gap: 12px; }
+.attr-row { display: flex; gap: 12px; }
+.attr-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px;
+  color: rgba(255,255,255,0.25); width: 110px; flex-shrink: 0; padding-top: 1px;
+}
+.attr-value { font-size: 13px; color: rgba(255,255,255,0.8); flex: 1; }
+.open-browser-btn {
+  display: block; margin-top: 20px; padding: 10px 16px; background: rgba(37,99,235,0.15);
+  border: 1px solid rgba(37,99,235,0.3); border-radius: 8px; color: #93C5FD;
+  text-decoration: none; font-size: 13px; text-align: center;
+}
+</style>
+</head>
+<body>
+<h2 style="color:#fff;margin-bottom:20px;">Overlay Test</h2>
+<button class="test-btn" onclick="testPhase()">Test Phase Overlay</button>
+<button class="test-btn" onclick="testSlice()">Test Slice Overlay</button>
+<button class="test-btn" onclick="testDeliverable()">Test Deliverable Overlay</button>
+<div id="console-out" style="margin-top:20px;font-family:monospace;font-size:12px;color:#93C5FD;"></div>
+
+<div class="overlay-backdrop" id="overlay" onclick="closeOverlay(event)">
+  <div class="overlay-panel" id="overlay-panel">
+    <button class="overlay-close" onclick="document.getElementById('overlay').classList.remove('open')">✕</button>
+    <div id="overlay-content"></div>
+  </div>
+</div>
+
+<script>
+function log(msg) {
+  document.getElementById('console-out').innerHTML += '<div>' + msg + '</div>';
+  console.log(msg);
+}
+
+function attr(label, value) {
+  return '<div class="attr-row"><span class="attr-label">' + label + '</span><span class="attr-value">' + (value || '&mdash;') + '</span></div>';
+}
+
+function openOverlay(type, data) {
+  log('openOverlay called: type=' + type + ' data=' + JSON.stringify(data).substring(0, 80));
+  var el = document.getElementById('overlay-content');
+  log('el = ' + (el ? 'FOUND' : 'NULL'));
+  var html = '';
+  if (!data) { log('NO DATA - return'); return; }
+  var projectTag = data.project_name
+    ? '<div class="overlay-project"><div class="overlay-project-dot" style="background:' + (data.project_color || '#555') + '"></div><span class="overlay-project-name">' + data.project_name + '</span></div>'
+    : '';
+  var projectLink = data.project_name
+    ? '<a href="/project/' + encodeURIComponent(data.project_name) + '" class="open-browser-btn" style="margin-top:20px;">View ' + data.project_name + ' &rarr;</a>'
+    : '';
+  if (type === 'slice') {
+    html += '<div class="overlay-type">Unit of work ' + (data.slice_id || '') + '</div>';
+    html += '<div class="overlay-title">' + (data.name || '') + '</div>';
+    html += projectTag;
+    html += '<div class="attr-grid">';
+    html += attr('Status', data.status);
+    html += attr('Phase', data.phase_name);
+    html += attr('Deliverable', data.deliverable_name || null);
+    html += attr('Blocked', data.is_blocked ? 'Yes' : 'No');
+    if (data.review_url) { html += attr('Review', '<a href="' + data.review_url + '" target="_blank" style="color:#93C5FD">Open &rarr;</a>'); }
+    html += '</div>';
+    html += projectLink;
+  } else if (type === 'deliverable') {
+    html += '<div class="overlay-type">Deliverable</div>';
+    html += '<div class="overlay-title">' + (data.name || '') + '</div>';
+    html += projectTag;
+    html += '<div class="attr-grid">';
+    html += attr('Status', data.status);
+    html += attr('Phase', data.phase_name);
+    html += attr('Type', data.type);
+    html += attr('Slices', data.slice_count != null ? String(data.slice_count) : null);
+    html += '</div>';
+    html += projectLink;
+  } else if (type === 'phase') {
+    html += '<div class="overlay-type">Phase</div>';
+    html += '<div class="overlay-title">' + (data.name || '') + '</div>';
+    html += projectTag;
+    html += '<div class="attr-grid">';
+    html += attr('Status', data.status);
+    html += attr('Progress', data.progress_pct != null ? data.progress_pct + '%' : null);
+    html += attr('Gate', data.gate_status || 'Not yet cleared');
+    html += '</div>';
+    html += projectLink;
+  } else {
+    log('UNKNOWN TYPE: ' + type);
+  }
+  log('html length: ' + html.length);
+  el.innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+  log('overlay opened');
+}
+
+function closeOverlay(e) {
+  if (e.target === document.getElementById('overlay')) {
+    document.getElementById('overlay').classList.remove('open');
+  }
+}
+
+function testPhase() {
+  openOverlay('phase', {name: 'Phase 1 — Foundation', progress_pct: 100, project_color: '#DB2777', project_id: 2, project_name: 'solo-companion', status: 'Done'});
+}
+function testSlice() {
+  openOverlay('slice', {deliverable_name: 'Core UI', is_blocked: 0, is_flagged: 0, name: 'Team weekly target & slot target allocation', phase_name: 'Phase 1', project_color: '#7C3AED', project_id: 1, project_name: 'player-evaluation', slice_id: 'SL-P3', status: 'In Review'});
+}
+function testDeliverable() {
+  openOverlay('deliverable', {name: 'Dashboard Shell', phase_name: 'Phase 2', project_color: '#DB2777', project_id: 2, project_name: 'solo-companion', slice_count: 3, status: 'Done', type: 'feature'});
+}
+</script>
+</body>
+</html>

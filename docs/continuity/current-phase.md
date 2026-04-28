@@ -1,6 +1,6 @@
 # Current Phase
 
-**Phase:** Design Review
+**Phase:** Phase 4 — Review Flow (build in progress)
 **Since:** 2026-04-28
-**Previous:** Design Sprint (completed 2026-04-28)
-**Next expected:** PRD to Plan / Backlog
+**Previous:** Phase 3 — Project Detail (completed)
+**Next expected:** SL-023, SL-024 build once overlay debug is resolved

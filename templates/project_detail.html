@@ -265,7 +265,7 @@ body {
         </div>
         {% if detail.blocked %}
           {% for item in detail.blocked %}
-          <div class="action-item" data-otype="slice" data-odata='{{item | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
+          <div class="action-item" data-otype="slice" data-odata='{{item | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
             <div class="action-dot blocked"></div>
             <div class="action-body">
               <div class="action-text">{{ item.name }}</div>
@@ -335,7 +335,7 @@ body {
       {% if detail.phases %}
         {% set current = detail.phases | selectattr('status', 'ne', 'Done') | list | first %}
         {% if current %}
-        <div class="phase-summary" data-otype="phase" data-odata='{{current | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
+        <div class="phase-summary" data-otype="phase" data-odata='{{current | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
           <div>
             <div class="phase-summary-label">Current phase</div>
             <div class="phase-summary-value">{{ current.name }}</div>
@@ -361,12 +361,12 @@ body {
 
       {% for d in detail.deliverables %}
       <div class="deliv-block">
-        <div class="deliv-block-header" data-otype="deliverable" data-odata='{{d | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
+        <div class="deliv-block-header" data-otype="deliverable" data-odata='{{d | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
           <span class="deliv-block-name">{{ d.name }}</span>
           <span class="deliv-block-meta">{{ d.slice_count }} slice{{ 's' if d.slice_count != 1 else '' }} · {{ d.status }}</span>
         </div>
         {% for s in detail.slices if s.deliverable_name in d.name or d.name in s.deliverable_name %}
-        <div class="slice-mini" data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
+        <div class="slice-mini" data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
           <span class="slice-mini-id">{{ s.slice_id }}</span>
           <span class="slice-mini-name">{{ s.name }}</span>
           <span class="slice-status status-{{ s.status.lower().replace(' ', '-') }}">{{ s.status }}</span>
@@ -388,7 +388,7 @@ body {
           <div class="backlog-phase-header">{{ s.phase_name or 'Unphased' }}</div>
           {{ phases_seen.append(s.phase_name) or '' }}
         {% endif %}
-        <div class="backlog-row" data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
+        <div class="backlog-row" data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
           <span class="backlog-id">{{ s.slice_id }}</span>
           <span class="backlog-name">{{ s.name }}</span>
           <span class="backlog-deliv">{{ s.deliverable_name or '' }}</span>
@@ -404,7 +404,7 @@ body {
     <div id="tab-materials" class="tab-panel">
       {% if detail.materials %}
         {% for m in detail.materials %}
-        <div class="material-item" data-odata='{{m | tojson}}' onclick="openMaterial(JSON.parse(this.dataset.odata))"
+        <div class="material-item" data-odata='{{m | tojson}}' onclick="openMaterial(JSON.parse(this.dataset.odata))">
           <div class="material-icon">
             {% if m.type == 'screen' %}🖥{% elif m.type == 'process' %}⟳{% else %}📄{% endif %}
           </div>
@@ -469,14 +469,15 @@ function openOverlay(type, data) {
   data = data || {};
 
   if (type === 'slice') {
+    const blocked = data.is_blocked ? '<span style="color:#FCA5A5;font-size:11px;font-weight:700;margin-left:6px;">● Blocked</span>' : '';
+    const flagged = data.is_flagged ? '<span style="color:#FCD34D;font-size:11px;font-weight:700;margin-left:6px;">⚑ Flagged</span>' : '';
     html = `<div class="overlay-type">Unit of work ${data.slice_id || ''}</div>
-      <div class="overlay-title">${data.name || ''}</div>
+      <div class="overlay-title">${data.name || ''}${blocked}${flagged}</div>
       <div class="attr-grid">
         <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status || '—'}</span></div>
         <div class="attr-row"><span class="attr-label">Phase</span><span class="attr-value">${data.phase_name || '—'}</span></div>
         <div class="attr-row"><span class="attr-label">Deliverable</span><span class="attr-value">${data.deliverable_name || '—'}</span></div>
-        ${data.is_blocked ? '<div class="attr-row"><span class="attr-label">Blocked</span><span class="attr-value" style="color:#FCA5A5">Yes</span></div>' : ''}
-        ${data.is_flagged ? '<div class="attr-row"><span class="attr-label">Flagged</span><span class="attr-value" style="color:#FCD34D">Yes</span></div>' : ''}
+        <div class="attr-row"><span class="attr-label">Flagged</span><span class="attr-value">${data.is_flagged ? '<span style="color:#FCD34D">Yes' + (data.flagged_reason ? ' — ' + data.flagged_reason : '') + '</span>' : 'No'}</span></div>
         ${data.review_url ? `<div class="attr-row"><span class="attr-label">Review</span><span class="attr-value"><a href="${data.review_url}" target="_blank" style="color:#93C5FD">Open review ↗</a></span></div>` : ''}
       </div>`;
   } else if (type === 'deliverable') {
@@ -486,15 +487,16 @@ function openOverlay(type, data) {
         <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status || '—'}</span></div>
         <div class="attr-row"><span class="attr-label">Phase</span><span class="attr-value">${data.phase_name || '—'}</span></div>
         <div class="attr-row"><span class="attr-label">Type</span><span class="attr-value">${data.type || '—'}</span></div>
-        <div class="attr-row"><span class="attr-label">Slices</span><span class="attr-value">${data.slice_count || 0}</span></div>
+        <div class="attr-row"><span class="attr-label">Slices</span><span class="attr-value">${data.slice_count != null ? data.slice_count : '—'}</span></div>
       </div>`;
   } else if (type === 'phase') {
     html = `<div class="overlay-type">Phase</div>
       <div class="overlay-title">${data.name || ''}</div>
       <div class="attr-grid">
         <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status || '—'}</span></div>
-        <div class="attr-row"><span class="attr-label">Progress</span><span class="attr-value">${data.progress_pct || 0}%</span></div>
-        ${data.gate_status ? `<div class="attr-row"><span class="attr-label">Gate</span><span class="attr-value">${data.gate_status}</span></div>` : ''}
+        <div class="attr-row"><span class="attr-label">Progress</span><span class="attr-value">${data.progress_pct != null ? data.progress_pct + '%' : '—'}</span></div>
+        <div class="attr-row"><span class="attr-label">Gate</span><span class="attr-value">${data.gate_status || 'Not yet cleared'}</span></div>
+        <div class="attr-row"><span class="attr-label">Started</span><span class="attr-value">${data.started_date || '—'}</span></div>
       </div>`;
   }
 

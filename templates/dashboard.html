@@ -261,6 +261,13 @@ body {
 .filter-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
 .filter-btn.active { color: #fff; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
 
+/* Project tag — colored pill shown on every row */
+.row-project-tag {
+  font-size: 10px; font-weight: 700; font-family: var(--mono);
+  padding: 2px 8px; border-radius: 4px; white-space: nowrap;
+  flex-shrink: 0; letter-spacing: 0.3px;
+}
+
 /* Phase rows */
 .phase-row {
   display: flex;
@@ -275,7 +282,7 @@ body {
 .phase-row:hover { background: rgba(255,255,255,0.03); }
 .phase-project-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
 .phase-name { flex: 1; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.8); }
-.phase-project { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.phase-project { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.75); font-family: var(--mono); background: rgba(255,255,255,0.08); padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
 .phase-status {
   font-size: 11px;
   font-weight: 600;
@@ -300,7 +307,7 @@ body {
 .deliv-row:last-child { border-bottom: none; }
 .deliv-row:hover { background: rgba(255,255,255,0.03); }
 .deliv-name { flex: 1; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.8); }
-.deliv-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.deliv-meta { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.75); font-family: var(--mono); background: rgba(255,255,255,0.08); padding: 2px 7px; border-radius: 4px; white-space: nowrap; }
 .deliv-type {
   font-size: 10px;
   font-weight: 600;
@@ -476,7 +483,7 @@ body {
         </div>
         {% if data.blocked %}
           {% for item in data.blocked %}
-          <div class="attention-item" data-otype="slice" data-odata='{{item | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
+          <div class="attention-item" data-otype="slice" data-odata='{{item | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
             <div class="item-dot" style="background:{{ item.project_color }}"></div>
             <div class="item-body">
               <div class="item-name">{{ item.name }}</div>
@@ -522,13 +529,10 @@ body {
         </div>
         {% if data.phases %}
           {% for ph in data.phases %}
-          <div class="phase-row" data-otype="phase" data-odata='{{ph | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
-            <div class="phase-project-dot" style="background:{{ ph.project_color }}"></div>
+          <div class="phase-row" data-otype="phase" data-odata='{{ph | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
+            <span class="row-project-tag" style="background:{{ ph.project_color }}22; color:{{ ph.project_color }}; border:1px solid {{ ph.project_color }}55;">{{ ph.project_name }}</span>
             <span class="phase-name">{{ ph.name }}</span>
-            <span class="phase-project">{{ ph.project_name }}</span>
-            <span class="phase-status {% if ph.status == 'Active' %}active-phase{% elif ph.status == 'Done' %}done-phase{% endif %}">
-              {{ ph.status }}
-            </span>
+            <span class="phase-status {% if ph.status == 'Active' %}active-phase{% elif ph.status == 'Done' %}done-phase{% endif %}">{{ ph.status }}</span>
           </div>
           {% endfor %}
         {% else %}
@@ -553,10 +557,9 @@ body {
         {% if data.deliverables %}
           {% for d in data.deliverables %}
           <div class="deliv-row" data-project="{{ d.project_name }}"
-               data-otype="deliverable" data-odata='{{d | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
-            <div class="phase-project-dot" style="background:{{ d.project_color }}"></div>
+               data-otype="deliverable" data-odata='{{d | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
+            <span class="row-project-tag" style="background:{{ d.project_color }}22; color:{{ d.project_color }}; border:1px solid {{ d.project_color }}55;">{{ d.project_name }}</span>
             <span class="deliv-name">{{ d.name }}</span>
-            <span class="deliv-meta">{{ d.project_name }}</span>
             <span class="deliv-type">{{ d.type or '' }}</span>
           </div>
           {% endfor %}
@@ -581,9 +584,9 @@ body {
         {% if data.slices %}
           {% for s in data.slices %}
           <div class="slice-row" data-project="{{ s.project_name }}"
-               data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
+               data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))">
+            <span class="row-project-tag" style="background:{{ s.project_color }}22; color:{{ s.project_color }}; border:1px solid {{ s.project_color }}55;">{{ s.project_name }}</span>
             <span class="slice-id">{{ s.slice_id }}</span>
-            <div class="phase-project-dot" style="background:{{ s.project_color }}"></div>
             <span class="slice-name">{{ s.name }}</span>
             <span class="slice-status status-{{ s.status.lower().replace(' ', '-') }}">{{ s.status }}</span>
           </div>
@@ -606,6 +609,10 @@ body {
 </div>
 
 <script>
+window.onerror = function(msg, src, line, col, err) {
+  console.error('JS ERROR:', msg, 'line:', line, 'col:', col);
+};
+
 function filterBucket(type, project, btn) {
   const containerId = type === 'deliv' ? 'deliverables-bucket' : 'slices-bucket';
   const filterId    = type === 'deliv' ? 'deliv-filter' : 'slice-filter';
@@ -619,55 +626,73 @@ function filterBucket(type, project, btn) {
   });
 }
 
+function attr(label, value) {
+  return '<div class="attr-row"><span class="attr-label">' + label + '</span><span class="attr-value">' + (value || '&mdash;') + '</span></div>';
+}
+
 function openOverlay(type, data) {
-  const el = document.getElementById('overlay-content');
-  let html = '';
+  try {
+  var el = document.getElementById('overlay-content');
+  var html = '';
+
+  if (!data) { return; }
+
+  var projectTag = data.project_name
+    ? '<div class="overlay-project"><div class="overlay-project-dot" style="background:' + (data.project_color || '#555') + '"></div><span class="overlay-project-name">' + data.project_name + '</span></div>'
+    : '';
+  var projectLink = data.project_name
+    ? '<a href="/project/' + encodeURIComponent(data.project_name) + '" class="open-browser-btn" style="margin-top:20px;">View ' + data.project_name + ' &rarr;</a>'
+    : '';
 
   if (type === 'slice') {
-    html = `
-      <div class="overlay-type">Unit of work ${data.slice_id || ''}</div>
-      <div class="overlay-title">${data.name}</div>
-      <div class="overlay-project">
-        <div class="overlay-project-dot" style="background:${data.project_color}"></div>
-        <span class="overlay-project-name">${data.project_name}</span>
-      </div>
-      <div class="attr-grid">
-        <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status}</span></div>
-        <div class="attr-row"><span class="attr-label">Phase</span><span class="attr-value">${data.phase_name || '—'}</span></div>
-        <div class="attr-row"><span class="attr-label">Deliverable</span><span class="attr-value">${data.deliverable_name || '—'}</span></div>
-        ${data.is_blocked ? '<div class="attr-row"><span class="attr-label">Blocked</span><span class="attr-value" style="color:#FCA5A5">Yes</span></div>' : ''}
-        ${data.is_flagged ? '<div class="attr-row"><span class="attr-label">Flagged</span><span class="attr-value" style="color:#FCD34D">Yes</span></div>' : ''}
-      </div>`;
+    html += '<div class="overlay-type">Unit of work ' + (data.slice_id || '') + '</div>';
+    html += '<div class="overlay-title">' + (data.name || '') + '</div>';
+    html += projectTag;
+    html += '<div class="attr-grid">';
+    html += attr('Status',      data.status);
+    html += attr('Phase',       data.phase_name);
+    html += attr('Deliverable', data.deliverable_name || null);
+    html += attr('Blocked',     data.is_blocked ? 'Yes' : 'No');
+    html += attr('Flagged',     data.is_flagged ? (data.flagged_reason || 'Yes') : 'No');
+    html += attr('Review',      data.review_url
+      ? '<a href="' + data.review_url + '" target="_blank" style="color:#93C5FD">Open &rarr;</a>'
+      : null);
+    html += '</div>';
+    html += projectLink;
+
   } else if (type === 'deliverable') {
-    html = `
-      <div class="overlay-type">Deliverable</div>
-      <div class="overlay-title">${data.name}</div>
-      <div class="overlay-project">
-        <div class="overlay-project-dot" style="background:${data.project_color}"></div>
-        <span class="overlay-project-name">${data.project_name}</span>
-      </div>
-      <div class="attr-grid">
-        <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status}</span></div>
-        <div class="attr-row"><span class="attr-label">Phase</span><span class="attr-value">${data.phase_name || '—'}</span></div>
-        <div class="attr-row"><span class="attr-label">Type</span><span class="attr-value">${data.type || '—'}</span></div>
-        <div class="attr-row"><span class="attr-label">Slices</span><span class="attr-value">${data.slice_count}</span></div>
-      </div>`;
+    html += '<div class="overlay-type">Deliverable</div>';
+    html += '<div class="overlay-title">' + (data.name || '') + '</div>';
+    html += projectTag;
+    html += '<div class="attr-grid">';
+    html += attr('Status',      data.status);
+    html += attr('Phase',       data.phase_name);
+    html += attr('Type',        data.type);
+    html += attr('Slices',      data.slice_count != null ? data.slice_count + ' total' : null);
+    html += '</div>';
+    html += projectLink;
+
   } else if (type === 'phase') {
-    html = `
-      <div class="overlay-type">Phase</div>
-      <div class="overlay-title">${data.name}</div>
-      <div class="overlay-project">
-        <div class="overlay-project-dot" style="background:${data.project_color}"></div>
-        <span class="overlay-project-name">${data.project_name}</span>
-      </div>
-      <div class="attr-grid">
-        <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status}</span></div>
-        <div class="attr-row"><span class="attr-label">Progress</span><span class="attr-value">${data.progress_pct}%</span></div>
-      </div>`;
+    html += '<div class="overlay-type">Phase</div>';
+    html += '<div class="overlay-title">' + (data.name || '') + '</div>';
+    html += projectTag;
+    html += '<div class="attr-grid">';
+    html += attr('Status',       data.status);
+    html += attr('Progress',     data.progress_pct != null ? data.progress_pct + '%' : null);
+    html += attr('Gate',         data.gate_status || 'Not yet cleared');
+    html += attr('Slices',       data.total_slices != null ? data.done_slices + ' of ' + data.total_slices + ' done' : null);
+    html += attr('Deliverables', data.total_deliverables != null ? String(data.total_deliverables) : null);
+    if (data.started_date) { html += attr('Started', data.started_date); }
+    html += '</div>';
+    html += projectLink;
   }
 
   el.innerHTML = html;
   document.getElementById('overlay').classList.add('open');
+  } catch(err) {
+    console.error('openOverlay FAILED:', err.message, err.stack);
+    alert('Overlay error: ' + err.message);
+  }
 }
 
 function closeOverlay(e) {

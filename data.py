@@ -113,9 +113,16 @@ def get_dashboard_data():
     """)
     flagged = [dict(r) for r in c.fetchall()]
 
-    # Phases across all active projects
+    # Phases across all active projects — subqueries avoid JOIN Cartesian product
     c.execute("""
-        SELECT ph.name, ph.status, ph.progress_pct,
+        SELECT ph.name, ph.status, ph.progress_pct, ph.gate_status, ph.started_date,
+               (SELECT COUNT(*) FROM slices s
+                WHERE s.project_id = ph.project_id AND s.phase_name = ph.name)            as total_slices,
+               (SELECT COUNT(*) FROM slices s
+                WHERE s.project_id = ph.project_id AND s.phase_name = ph.name
+                  AND s.status = 'Done')                                                   as done_slices,
+               (SELECT COUNT(*) FROM deliverables d
+                WHERE d.project_id = ph.project_id AND d.phase_name = ph.name)            as total_deliverables,
                p.id as project_id, p.name as project_name, p.color as project_color
         FROM phases ph
         JOIN projects p ON p.id = ph.project_id
@@ -135,13 +142,18 @@ def get_dashboard_data():
     """)
     deliverables = [dict(r) for r in c.fetchall()]
 
-    # Slices — In Build, In QA, Done excluded (show active work)
+    # Slices — Done excluded (show active work)
+    # Resolve deliverable short-ref (e.g. "D-09") to full name via LEFT JOIN
     c.execute("""
-        SELECT s.slice_id, s.name, s.status, s.phase_name, s.deliverable_name,
-               s.is_blocked, s.is_flagged,
+        SELECT s.slice_id, s.name, s.status, s.phase_name,
+               COALESCE(dv.name, s.deliverable_name) as deliverable_name,
+               s.is_blocked, s.is_flagged, s.flagged_reason, s.review_url,
                p.id as project_id, p.name as project_name, p.color as project_color
         FROM slices s
         JOIN projects p ON p.id = s.project_id
+        LEFT JOIN deliverables dv
+               ON dv.project_id = s.project_id
+              AND dv.name LIKE s.deliverable_name || ' %'
         WHERE p.is_active = 1
           AND s.status NOT IN ('Done')
         ORDER BY p.name, s.slice_id

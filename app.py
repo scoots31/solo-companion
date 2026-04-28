@@ -3,7 +3,7 @@ Solo Companion — local read-only companion app for the Solo Builder Framework.
 Runs as a LaunchAgent on port 8710. Serves project state derived from framework files.
 """
 
-from flask import Flask, render_template, render_template_string, jsonify, abort
+from flask import Flask, render_template, render_template_string, jsonify, abort, Response
 import os
 from db import init_db
 from sync import run_sync
@@ -13,7 +13,17 @@ PORT = 8710
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 init_db()  # idempotent — creates tables if they don't exist
+
+
+@app.after_request
+def no_cache(response):
+    """Prevent browser from caching any page — this is a local dev tool."""
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 
 @app.route("/")
@@ -46,6 +56,19 @@ def project_detail(name):
 @app.route("/feed")
 def activity_feed():
     return render_template_string(PROJECT_SHELL, project_name="Activity Feed — coming in Phase 2.")
+
+
+@app.route("/overlay-test")
+def overlay_test():
+    """Isolated overlay test page — debug use only."""
+    return render_template("overlay_test.html")
+
+
+@app.route("/favicon.ico")
+def favicon():
+    # Inline SVG favicon — no file needed
+    svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="#2563EB"/><text x="16" y="22" font-size="18" text-anchor="middle" fill="#fff" font-family="sans-serif">S</text></svg>'
+    return Response(svg, mimetype='image/svg+xml')
 
 
 @app.route("/health")

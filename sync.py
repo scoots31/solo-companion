@@ -105,17 +105,102 @@ def _section_text(text, header):
     return text[start:end].strip()
 
 
-def _parse_backlog(conn, project_id, backlog_path):
-    """Parse docs/backlog.md — extract phases, deliverables, slices."""
-    if not os.path.exists(backlog_path):
-        return
+def _normalize_status(raw):
+    """Normalise emoji-prefixed or plain status strings to clean labels."""
+    raw = raw.strip()
+    # Strip leading emoji / symbols
+    raw = re.sub(r"^[\U00010000-\U0010ffff✓✅🔄🔬⏸🔨⚠️·\s]+", "", raw).strip()
+    # Map common variants
+    mapping = {
+        "done":       "Done",
+        "in review":  "In Review",
+        "in build":   "In Build",
+        "deferred":   "Deferred",
+        "blocked":    "Blocked",
+        "ready":      "Ready",
+        "planning":   "Planning",
+        "accepted":   "Accepted",
+        "defined":    "Defined",
+        "active":     "Active",
+    }
+    return mapping.get(raw.lower(), raw)
 
-    with open(backlog_path, "r") as f:
-        text = f.read()
 
+def _build_phase_map(conn, project_id):
+    """Return {phase_number_str: full_phase_name} for a project's phases."""
+    c = conn.cursor()
+    c.execute("SELECT name FROM phases WHERE project_id = ?", (project_id,))
+    phase_map = {}
+    for row in c.fetchall():
+        m = re.match(r"Phase (\d+)", row["name"])
+        if m:
+            phase_map[m.group(1)] = row["name"]
+    return phase_map
+
+
+def _recompute_progress(conn, project_id):
+    """
+    After all slices are inserted, compute per-phase progress_pct and
+    per-deliverable slice_count, then write them back.
+    """
     c = conn.cursor()
 
-    # ── Phases (### Phase N · Name) ────────────────────────────────────────────
+    # Phase progress — percentage of slices marked Done
+    c.execute("""
+        SELECT phase_name,
+               COUNT(*) AS total,
+               SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) AS done
+        FROM slices WHERE project_id = ?
+        GROUP BY phase_name
+    """, (project_id,))
+    for row in c.fetchall():
+        pct = int(100 * row["done"] / row["total"]) if row["total"] > 0 else 0
+        c.execute("""
+            UPDATE phases SET progress_pct = ?
+            WHERE project_id = ? AND (
+                name = ?
+                OR name LIKE 'Phase ' || ? || ' %'
+                OR name LIKE 'Phase ' || ? || ' —%'
+            )
+        """, (pct, project_id, row["phase_name"],
+              row["phase_name"].lstrip("Phase ").split()[0] if row["phase_name"].startswith("Phase ") else row["phase_name"],
+              row["phase_name"].lstrip("Phase ").split()[0] if row["phase_name"].startswith("Phase ") else row["phase_name"]))
+
+    # Deliverable slice_count — actual count of associated slices
+    c.execute("""
+        SELECT deliverable_name, COUNT(*) AS cnt
+        FROM slices WHERE project_id = ?
+        GROUP BY deliverable_name
+    """, (project_id,))
+    for row in c.fetchall():
+        # Match deliverables whose name starts with the deliverable_name prefix
+        c.execute("""
+            UPDATE deliverables SET slice_count = ?
+            WHERE project_id = ? AND (
+                name = ?
+                OR name LIKE ? || ' %'
+                OR name LIKE ? || ' —%'
+            )
+        """, (row["cnt"], project_id,
+              row["deliverable_name"],
+              row["deliverable_name"],
+              row["deliverable_name"]))
+
+    conn.commit()
+
+
+# ── Section-header backlog parser (### Phase N, ### D-NN, ### SL-NNN) ──────────
+
+def _parse_backlog_sections(conn, project_id, text):
+    """
+    Parse section-header style backlog.md:
+      ### Phase N · Name
+      ### D-NN · Name
+      ### SL-NNN · Name
+    """
+    c = conn.cursor()
+
+    # Phases
     phase_blocks = re.split(r"(?=^### Phase \d+)", text, flags=re.MULTILINE)
     for block in phase_blocks:
         m = re.match(r"^### Phase (\d+)\s*[·•]\s*(.+)", block, re.MULTILINE)
@@ -123,13 +208,17 @@ def _parse_backlog(conn, project_id, backlog_path):
             continue
         phase_name = f"Phase {m.group(1)} — {m.group(2).strip()}"
         status_m = re.search(r"^Status:\s*(.+)", block, re.MULTILINE)
-        status = status_m.group(1).strip() if status_m else "Planning"
+        status = _normalize_status(status_m.group(1)) if status_m else "Planning"
         c.execute("""
             INSERT INTO phases (project_id, name, status)
             VALUES (?, ?, ?)
         """, (project_id, phase_name, status))
 
-    # ── Deliverables (### D-NN · Name) ─────────────────────────────────────────
+    # Build phase number→full-name map after phases are inserted
+    conn.commit()
+    phase_map = _build_phase_map(conn, project_id)
+
+    # Deliverables
     deliv_blocks = re.split(r"(?=^### D-\d+)", text, flags=re.MULTILINE)
     for block in deliv_blocks:
         m = re.match(r"^### (D-\d+)\s*[·•]\s*(.+)", block, re.MULTILINE)
@@ -138,9 +227,11 @@ def _parse_backlog(conn, project_id, backlog_path):
         deliv_id = m.group(1)
         deliv_name = f"{deliv_id} — {m.group(2).strip()}"
         status_m = re.search(r"^Status:\s*(.+)", block, re.MULTILINE)
-        status = status_m.group(1).strip() if status_m else "Defined"
+        status = _normalize_status(status_m.group(1)) if status_m else "Defined"
         phase_m = re.search(r"^Phase:\s*(.+)", block, re.MULTILINE)
-        phase_name = phase_m.group(1).strip() if phase_m else ""
+        raw_phase = phase_m.group(1).strip() if phase_m else ""
+        # Map bare number to full phase name
+        phase_name = phase_map.get(raw_phase, raw_phase)
         type_m = re.search(r"^Type:\s*(.+)", block, re.MULTILINE)
         dtype = type_m.group(1).strip() if type_m else ""
         slices_m = re.search(r"^Slices:\s*(.+)", block, re.MULTILINE)
@@ -150,7 +241,7 @@ def _parse_backlog(conn, project_id, backlog_path):
             VALUES (?, ?, ?, ?, ?, ?)
         """, (project_id, phase_name, deliv_name, status, dtype, slice_count))
 
-    # ── Slices (### SL-NNN · Name) ─────────────────────────────────────────────
+    # Slices
     slice_blocks = re.split(r"(?=^### SL-\d+)", text, flags=re.MULTILINE)
     for block in slice_blocks:
         m = re.match(r"^### (SL-\d+)\s*[·•]\s*(.+)", block, re.MULTILINE)
@@ -159,16 +250,17 @@ def _parse_backlog(conn, project_id, backlog_path):
         slice_id = m.group(1)
         slice_name = m.group(2).strip()
 
-        status_m   = re.search(r"^Status:\s*(.+)", block, re.MULTILINE)
-        phase_m    = re.search(r"^Phase:\s*(.+)", block, re.MULTILINE)
-        deliv_m    = re.search(r"^Deliverable:\s*(.+)", block, re.MULTILINE)
-        url_m      = re.search(r"^review_url:\s*(.+)", block, re.MULTILINE)
+        status_m = re.search(r"^Status:\s*(.+)", block, re.MULTILINE)
+        phase_m  = re.search(r"^Phase:\s*(.+)", block, re.MULTILINE)
+        deliv_m  = re.search(r"^Deliverable:\s*(.+)", block, re.MULTILINE)
+        url_m    = re.search(r"^review_url:\s*(.+)", block, re.MULTILINE)
 
-        status       = status_m.group(1).strip() if status_m else "Ready"
-        phase_name   = phase_m.group(1).strip() if phase_m else ""
-        deliv_name   = deliv_m.group(1).strip() if deliv_m else ""
-        review_url   = url_m.group(1).strip() if url_m else None
-        is_blocked   = 1 if status == "Blocked" else 0
+        status     = _normalize_status(status_m.group(1)) if status_m else "Ready"
+        raw_phase  = phase_m.group(1).strip() if phase_m else ""
+        phase_name = phase_map.get(raw_phase, raw_phase)
+        deliv_name = deliv_m.group(1).strip() if deliv_m else ""
+        review_url = url_m.group(1).strip() if url_m else None
+        is_blocked = 1 if status == "Blocked" else 0
 
         c.execute("""
             INSERT INTO slices
@@ -179,6 +271,121 @@ def _parse_backlog(conn, project_id, backlog_path):
               status, review_url, is_blocked))
 
     conn.commit()
+
+
+# ── Table-based backlog parser (markdown table rows) ───────────────────────────
+
+def _parse_backlog_table(conn, project_id, text):
+    """
+    Parse table-style backlog.md where slices are rows in a markdown table.
+    Handles flexible column orders; detects ID, Name, Phase, Status columns.
+    """
+    c = conn.cursor()
+    phases_inserted = set()
+
+    # Find the backlog table — look for a header row with at least ID/Name/Status
+    table_section = _section_text(text, "Backlog")
+    if not table_section:
+        # Fall back: scan whole file for a markdown table with slice-like IDs
+        table_section = text
+
+    lines = table_section.splitlines()
+
+    # Detect header row and column positions
+    header_idx = None
+    col_map = {}
+    for i, line in enumerate(lines):
+        if not line.strip().startswith("|"):
+            continue
+        cols = [c.strip().lower() for c in line.strip("|").split("|")]
+        # Require at least ID and Name columns
+        if any(c in ("id", "slice", "slice id") for c in cols) and "name" in cols:
+            header_idx = i
+            for j, col in enumerate(cols):
+                if col in ("id", "slice", "slice id"):
+                    col_map["id"] = j
+                elif col == "name":
+                    col_map["name"] = j
+                elif col == "phase":
+                    col_map["phase"] = j
+                elif col == "status":
+                    col_map["status"] = j
+                elif col in ("depends on", "depends"):
+                    col_map["depends"] = j
+            break
+
+    if header_idx is None or "id" not in col_map or "name" not in col_map:
+        return  # Can't find a parseable table
+
+    # Parse data rows (skip separator line)
+    for line in lines[header_idx + 1:]:
+        line = line.strip()
+        if not line.startswith("|"):
+            continue
+        parts = [p.strip() for p in line.strip("|").split("|")]
+        if len(parts) <= max(col_map.values()):
+            continue
+
+        slice_id = parts[col_map["id"]]
+        # Skip separator rows and non-slice rows
+        if not slice_id or slice_id.startswith("-") or not re.match(r"SL-", slice_id):
+            continue
+
+        slice_name = parts[col_map["name"]] if "name" in col_map else ""
+        raw_phase  = parts[col_map["phase"]].strip() if "phase" in col_map else ""
+        raw_status = parts[col_map["status"]].strip() if "status" in col_map else "Ready"
+
+        status = _normalize_status(raw_status)
+        # Skip empty/header-like rows
+        if not slice_name or slice_name.lower() in ("name", ""):
+            continue
+
+        # Derive a phase name from the raw_phase value
+        phase_name = f"Phase {raw_phase}" if raw_phase.isdigit() else raw_phase
+
+        # Ensure phase exists in phases table
+        if phase_name and phase_name not in phases_inserted:
+            # Infer phase status from its slices later via _recompute_progress;
+            # for now insert as Planning unless we can determine otherwise
+            c.execute("""
+                INSERT OR IGNORE INTO phases (project_id, name, status)
+                VALUES (?, ?, 'Planning')
+            """, (project_id, phase_name))
+            phases_inserted.add(phase_name)
+
+        is_blocked = 1 if status == "Blocked" else 0
+        c.execute("""
+            INSERT INTO slices
+              (project_id, phase_name, deliverable_name, slice_id, name,
+               status, review_url, is_blocked)
+            VALUES (?, ?, '', ?, ?, ?, NULL, ?)
+        """, (project_id, phase_name, slice_id, slice_name, status, is_blocked))
+
+    conn.commit()
+
+
+# ── Unified backlog entry point ────────────────────────────────────────────────
+
+def _parse_backlog(conn, project_id, backlog_path):
+    """Detect backlog format and delegate to the appropriate parser."""
+    if not os.path.exists(backlog_path):
+        return
+
+    with open(backlog_path, "r") as f:
+        text = f.read()
+
+    # Use section-header parser if we see ### Phase or ### SL- headers;
+    # otherwise fall back to table-based parser.
+    has_sections = bool(
+        re.search(r"^### (?:Phase \d+|D-\d+|SL-\d+)", text, re.MULTILINE)
+    )
+    if has_sections:
+        _parse_backlog_sections(conn, project_id, text)
+    else:
+        _parse_backlog_table(conn, project_id, text)
+
+    # Recompute derived counts after slices are in
+    _recompute_progress(conn, project_id)
 
 
 def _parse_handoff(conn, project_id, handoff_path):
