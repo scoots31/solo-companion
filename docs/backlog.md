@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-014, SL-015 |
+| **Next up (Ready, not started)** | SL-023, SL-024 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -110,7 +110,7 @@ Notes: None.
 
 ### Phase 3 · Project Detail
 
-Status: Planning
+Status: Done
 
 Plain language description:
 The solo can navigate to any project and see everything about it across five tabs — what needs action, full progress with all slices and deliverables, the complete backlog across all phases, every framework document, and the full decision and change history. The companion replaces every orientation question the solo would otherwise ask the framework.
@@ -299,7 +299,7 @@ Notes: "Take me to this project" routes to a 404 until Phase 3. This is expected
 
 ### D-04 · Project Detail — Action Tab
 
-Status: Defined
+Status: Accepted
 Type: Screen
 Phase: 3
 
@@ -335,7 +335,7 @@ Notes: None.
 
 ### D-05 · Project Detail — Progress Tab
 
-Status: Defined
+Status: Accepted
 Type: Screen
 Phase: 3
 
@@ -371,7 +371,7 @@ Notes: Review button is rendered but not fully wired until Phase 4. Acceptable f
 
 ### D-06 · Project Detail — Backlog Tab
 
-Status: Defined
+Status: Accepted
 Type: Screen
 Phase: 3
 
@@ -407,7 +407,7 @@ Notes: Single-slice deliverable. Acceptance is straightforward — the tab eithe
 
 ### D-07 · Project Detail — Materials Tab
 
-Status: Defined
+Status: Accepted
 Type: Screen
 Phase: 3
 
@@ -443,7 +443,7 @@ Notes: D-07 depends on D-04 (project shell), not D-06 (Backlog tab). Materials t
 
 ### D-08 · Project Detail — Decisions & Changes Tab
 
-Status: Defined
+Status: Accepted
 Type: Screen
 Phase: 3
 
@@ -1034,7 +1034,7 @@ Notes: None.
 
 ### SL-014 · Project Detail — Routing and Breadcrumb
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-04
 
@@ -1069,7 +1069,7 @@ Notes: None.
 
 ### SL-015 · Project Detail — Action Tab
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-04
 
@@ -1105,7 +1105,7 @@ Notes: None.
 
 ### SL-016 · Progress Tab — Phase Summary Card
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-05
 
@@ -1138,7 +1138,7 @@ Notes: None.
 
 ### SL-017 · Progress Tab — Deliverables Section
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-05
 
@@ -1170,7 +1170,7 @@ Notes: None.
 
 ### SL-018 · Progress Tab — Slice List
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-05
 
@@ -1206,7 +1206,7 @@ Notes: Port check for "is the app running" is a synchronous GET to the app's por
 
 ### SL-019 · Backlog Tab
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-06
 
@@ -1241,7 +1241,7 @@ Notes: None.
 
 ### SL-020 · Materials Tab — Inline Document Rendering
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-07
 
@@ -1290,7 +1290,7 @@ Notes: Stdlib-only regex rendering approach (resolved Round 2). Pattern order ma
 
 ### SL-021 · Materials Tab — HTML Screen Overlay
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-07
 
@@ -1323,7 +1323,7 @@ Notes: File creation date used as "created" date — this may show the sync date
 
 ### SL-022 · Decisions & Changes Tab
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-08
 
