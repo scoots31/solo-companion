@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · Phase 1–3 build scrapped, rebuild from SL-001
+**Last updated:** 2026-04-28 · SL-001 done — rebuild underway
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 24 |
+| ✅ Ready | 23 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 0 |
+| ✓ Done | 1 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-001 (rebuild start) |
+| **Next up (Ready, not started)** | SL-002 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -521,7 +521,7 @@ Notes: SL-023 builds as soon as Phase 3 is accepted. SL-024 waits on the framewo
 
 ### SL-001 · App Startup and Server
 
-Status: Ready
+Status: Done
 Phase: 1
 Deliverable: D-01
 
@@ -550,7 +550,13 @@ Self-verification checklist:
   - Confirm /project/<name> route returns HTTP 200 for a known project name
 
 Builder confirmation:
-Pending build
+  ✓ LaunchAgent reloaded — process listening on 127.0.0.1:8710 (verified via lsof)
+  ✓ http://localhost:8710/ returns HTTP 200 (525 bytes, placeholder dashboard)
+  ✓ http://localhost:8710/project/test returns HTTP 200 (529 bytes, name-aware placeholder)
+  ✓ companion.log shows clean Flask startup — no errors, both routes hit successfully
+  ✓ Stack: Python stdlib + Flask only — no external packages added
+  ✓ app.py minimal — single docstring, no dead code, no premature abstraction
+  ✓ Solo browser sign-off — confirmed 2026-04-28 (both routes render correctly)
 
 Depends on: none
 Notes: Port 8710 confirmed free before build. Flask runs from ~/Apps/.venv/bin/python3 (venv carries Flask; system python3 does not). Plist copied to ~/Library/LaunchAgents/ and loaded.
