@@ -619,25 +619,53 @@ After discovering which projects exist, the companion reads each project's frame
 
 Technical description:
 For each active project path, read and parse the following files:
-  - docs/backlog.md → phases, deliverables, slices (status, IDs, names, review_url field)
-  - docs/continuity/handoff.md → current phase, open right now items (flagged source), outstanding questions
+  - docs/backlog.md → phases, deliverables, slices — every field per records-spec.md
+  - docs/continuity/handoff.md → current phase context, "Open right now" items (flag source), "Outstanding questions" section (questions table)
   - docs/continuity/current-phase.md → current phase name and status
-  - docs/continuity/decisions.md → decision and change log entries
+  - docs/continuity/decisions.md → decision log entries (full structure: decision, why, alternatives, tradeoffs)
+  - docs/continuity/changes.md → change log entries (when present)
+  - docs/continuity/questions.md → outstanding questions (when present)
   - docs/process/to-be-*.md → existence check only (surfaces in Materials)
   - docs/process/as-is-*.md → existence check only
   - docs/discovery-brief.md → existence check only
   - docs/design/sprint-*.html → existence check only (surfaces in Materials)
 
-SQLite schema:
-  projects(id, name, path, color, last_synced, is_active)
-  phases(id, project_id, name, status, started_date, gate_status, progress_pct)
-  deliverables(id, project_id, phase_name, name, status, type, slice_count)
-  slices(id, project_id, phase_name, deliverable_name, slice_id, name, status, review_url, last_modified, is_blocked, is_flagged, flagged_reason)
+Parsing approach: section-header anchored at the document level (`## Phase Records`, `## Deliverable Records`, `## Slice Detail`, `## Decisions and Change Log`); within each record block, field-anchored extraction — every labeled field defined in records-spec.md is captured, no matter its position. List-typed fields (References, Done criteria, Acceptance criteria, Self-verification checklist, Builder confirmation, Screens) preserved as ordered lists, stored as JSON-encoded TEXT. Missing optional fields stored as NULL.
+
+Format compatibility: projects whose backlog.md does not match records-spec.md (e.g., legacy table-only backlogs without per-record sections) are marked inactive in the projects table at parse time and skipped for content sync. The companion does not interpret legacy formats — onboarding to the new schema is a separate workstream.
+
+SQLite schema (canonical fields per records-spec.md; 17 spec fields per slice):
+  projects(id, name, path, last_synced, is_active)
+
+  phases(id, project_id, name, status,
+         plain_description, technical_description,
+         question_answered, deliverables_list, process_steps_completed,
+         proves_de_risks, out_of_scope, blocked_by, definition_of_done,
+         acceptance_criteria, self_verification, builder_confirmation, notes)
+
+  deliverables(id, project_id, deliverable_id, name, status, type, phase,
+               plain_description, technical_description, screens,
+               acceptance_criteria, self_verification, builder_confirmation,
+               slices_list, references, depends_on, notes)
+
+  slices(id, project_id, slice_id, name, status, phase, deliverable_ref,
+         plain_description, technical_description,
+         design_anchor, data_anchor, process_anchor,
+         references, done_criteria, self_verification, builder_confirmation,
+         depends_on, notes, distribution_note,
+         is_blocked, is_flagged, flagged_reason, review_url, last_modified)
+
   materials(id, project_id, phase_name, name, type, file_path)
-  decisions(id, project_id, title, phase, date, body, why)
-  changes(id, project_id, title, date, was_value, became_value)
-  questions(id, project_id, text, source, who_can_answer, open_days)
+  decisions(id, project_id, title, phase, date, body, why, alternatives, tradeoffs, status)
+  changes(id, project_id, title, phase, date, was_value, became_value, why, affects)
+  questions(id, project_id, text, surfaced_during, blocking, who_can_answer, status, answer)
   flags(id, project_id, text, object_type, object_id, flagged_reason)
+
+Note: list-typed columns (references, done_criteria, acceptance_criteria,
+self_verification, builder_confirmation, screens, slices_list, deliverables_list,
+process_steps_completed) stored as JSON-encoded TEXT. Empty lists → '[]'.
+Project color is computed at render time from the project name (deterministic
+hash, SL-004) — not persisted in the projects table.
 
 Flagged item derivation rules (applied at parse time):
   1. Any slice with status In Progress whose file last-modified is more than 3 days ago → flagged, reason: "stale progress"
@@ -651,8 +679,9 @@ Data anchor: N/A — this slice writes the data layer; nothing reads from SQLite
 Process anchor: Dashboard loads — syncs from framework files → C (main path) · infrastructure
 
 References:
-  - ~/Developer/engineering-playbook/docs/records-spec.md — canonical backlog record format being parsed
-  - docs/design/deferred-decisions.md — flagging derivation decisions
+  - ~/Developer/engineering-playbook/docs/records-spec.md — canonical backlog record format. Every field defined here is captured for every record. No omissions.
+  - docs/design/deferred-decisions.md — flagging derivation rules; line 25 confirms overlays render full detail (drives the schema completeness requirement)
+  - docs/design/sprint-01-dashboard.html — overlay design specifies sectioned full-detail layout per record type, which the schema must support
 
 Done criteria:
   - All slices from backlog.md appear in SQLite with correct status after sync
@@ -1481,4 +1510,15 @@ Confirmed by: Solo
 Decision: Four-phase tracer-bullet build plan locked: Phase 1 Foundation (SL-001–003), Phase 2 Dashboard (SL-004–013), Phase 3 Project Detail (SL-014–022), Phase 4 Review Flow (SL-023–024).
 Reason: Tracer-bullet sequencing — each phase answers one question and proves one assumption before the next begins. Foundation first because nothing else runs without reliable parsing. Dashboard second because it proves the data model in real UI. Project Detail third as the deepest read surface. Review Flow fourth as it depends on framework format changes not yet made.
 Impact: All 24 slice records updated with phase and deliverable assignments.
+Confirmed by: Solo
+
+### 2026-04-28 — SL-003 schema corrected to records-spec.md (full field capture)
+Decision: SL-003's SQLite schema rewritten to capture every field defined in `~/Developer/engineering-playbook/docs/records-spec.md` for phases, deliverables, and slices — including all descriptions, anchors, criteria lists, references, builder confirmation, and notes. Slice records carry all 17 spec fields (16 standard + optional distribution_note); phases and deliverables carry all 15 each. List-typed fields stored as JSON-encoded TEXT.
+Reason: The original SL-003 schema captured only structural metadata (IDs, names, status, derived flags) and was the root cause of the failed Phase 1–3 build. Sync truncated 80%+ of framework content; overlays in SL-011/012/013 — which the design contract (`sprint-01-dashboard.html`) and `deferred-decisions.md` line 25 explicitly call out as "full detail" — had no data to render. A multi-hour overlay debug session in the prior session was patches trying to add fields the schema never held. Aligning the schema with the canonical records-spec.md eliminates the failure mode structurally rather than adding fields field-by-field.
+Impact:
+- SL-003 spec — schema section rewritten; technical description specifies field-anchored extraction; references updated to call out records-spec.md, deferred-decisions.md line 25, and sprint-01-dashboard.html as the design contract.
+- SL-011, SL-012, SL-013 specs — unchanged; they already call for full-detail overlays. The corrected schema makes them buildable as written.
+- D-01 (Sync Layer) acceptance — unchanged ("data populates SQLite correctly"); the corrected schema delivers that literally instead of partially.
+- Phase 1 boundary — unchanged.
+- Format compatibility rule added: projects whose backlog.md does not match records-spec.md are marked inactive at parse time. Player-evaluation falls in this category until onboarded.
 Confirmed by: Solo
