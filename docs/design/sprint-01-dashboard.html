@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo Companion — Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:        #0F1729;
+    --navy-mid:    #1E3A5F;
+    --blue:        #2563EB;
+    --blue-light:  #DBEAFE;
+    --teal:        #0D9488;
+    --teal-light:  #CCFBF1;
+    --green:       #15803D;
+    --green-light: #DCFCE7;
+    --rose:        #BE123C;
+    --rose-light:  #FFE4E6;
+    --amber:       #B45309;
+    --amber-light: #FEF3C7;
+    --purple:      #7C3AED;
+    --purple-light:#EDE9FE;
+    --gray-50:     #F8FAFC;
+    --gray-100:    #F1F5F9;
+    --gray-200:    #E2E8F0;
+    --gray-300:    #CBD5E1;
+    --gray-500:    #64748B;
+    --gray-700:    #334155;
+    --gray-900:    #0F172A;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.3);
+    border-right: 1px solid rgba(255,255,255,0.07);
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    z-index: 10;
+  }
+
+  .sidebar-header {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    margin-bottom: 20px;
+  }
+  .sidebar-logo {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 6px;
+  }
+  .sidebar-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .nav-section {
+    margin-bottom: 24px;
+  }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.25);
+    padding: 0 20px 8px;
+    display: block;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .nav-item:hover {
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.05);
+  }
+  .nav-item.active {
+    color: #fff;
+    border-left-color: var(--blue);
+    background: rgba(37,99,235,0.12);
+  }
+  .nav-icon {
+    width: 16px;
+    text-align: center;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .project-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .project-entry:hover {
+    color: rgba(255,255,255,0.8);
+    background: rgba(255,255,255,0.04);
+  }
+  .project-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .project-recency {
+    font-size: 10px;
+    color: rgba(255,255,255,0.2);
+  }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: 240px;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 40px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .top-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .page-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .project-count {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.07);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .sync-area {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .sync-time {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .refresh-btn:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+
+  .content {
+    padding: 32px 40px;
+    flex: 1;
+  }
+
+  /* ── ATTENTION SECTION ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.3);
+  }
+  .section-count {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .attention-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 36px;
+  }
+
+  .attention-card {
+    border-radius: 10px;
+    padding: 16px 18px;
+    border: 1px solid;
+  }
+  .attention-card.blocked {
+    background: rgba(190,18,60,0.08);
+    border-color: rgba(190,18,60,0.25);
+  }
+  .attention-card.flagged {
+    background: rgba(180,83,9,0.08);
+    border-color: rgba(180,83,9,0.2);
+  }
+
+  .attention-tier-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .tier-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .tier-badge.blocked {
+    background: rgba(190,18,60,0.25);
+    color: #FDA4AF;
+  }
+  .tier-badge.flagged {
+    background: rgba(180,83,9,0.25);
+    color: #FCD34D;
+  }
+  .tier-desc {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+  }
+
+  .attention-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin: 0 -6px;
+  }
+  .attention-item:last-child { border-bottom: none; }
+  .attention-item:hover { background: rgba(255,255,255,0.05); }
+  .attention-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    margin-top: 5px;
+    flex-shrink: 0;
+  }
+  .attention-dot.blocked { background: #FDA4AF; }
+  .attention-dot.flagged { background: #FCD34D; }
+  .attention-body { flex: 1; min-width: 0; }
+  .attention-text {
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    line-height: 1.4;
+    margin-bottom: 3px;
+  }
+  .attention-project {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* ── WORK BUCKETS ── */
+  .buckets-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .bucket {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .bucket-header {
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .bucket-title {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.4);
+  }
+  .bucket-badge {
+    font-size: 10px;
+    font-weight: 700;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.4);
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .bucket-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .filter-btn {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.45);
+    padding: 3px 9px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  }
+  .filter-btn:hover {
+    background: rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.8);
+  }
+  .filter-btn.active {
+    background: rgba(37,99,235,0.2);
+    border-color: rgba(37,99,235,0.4);
+    color: #93C5FD;
+  }
+
+  /* filter dropdown */
+  .bucket-wrapper { position: relative; }
+  .filter-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 18px;
+    background: #1E2D4A;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 6px 0;
+    z-index: 20;
+    min-width: 160px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  }
+  .filter-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.6);
+    cursor: pointer;
+    transition: background 0.1s;
+  }
+  .filter-option:hover {
+    background: rgba(255,255,255,0.06);
+    color: #fff;
+  }
+  .filter-option.selected {
+    color: #fff;
+  }
+  .filter-option .fo-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .filter-check {
+    margin-left: auto;
+    font-size: 11px;
+    color: #60A5FA;
+  }
+
+  .bucket-item {
+    padding: 12px 18px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .bucket-item:last-child { border-bottom: none; }
+  .bucket-item:hover { background: rgba(255,255,255,0.04); }
+
+  .bucket-item-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .bucket-item-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .bucket-item-status {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .status-active {
+    background: rgba(13,148,136,0.2);
+    color: #5EEAD4;
+  }
+  .status-in-progress {
+    background: rgba(37,99,235,0.2);
+    color: #93C5FD;
+  }
+  .status-in-test {
+    background: rgba(124,58,237,0.2);
+    color: #C4B5FD;
+  }
+  .bucket-item-project {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  .bucket-item-progress {
+    margin-top: 8px;
+  }
+  .progress-bar-track {
+    height: 3px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 4px;
+  }
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--blue);
+    border-radius: 2px;
+  }
+  .progress-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.25);
+  }
+
+  .bucket-empty {
+    padding: 24px 18px;
+    text-align: center;
+    font-size: 12px;
+    color: rgba(255,255,255,0.2);
+  }
+
+  /* ── OVERLAY ── */
+  .overlay-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay-panel {
+    background: #152035;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    width: 520px;
+    max-width: 90vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    overflow: hidden;
+  }
+  .overlay-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .overlay-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .overlay-type-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background: rgba(37,99,235,0.2);
+    color: #93C5FD;
+  }
+  .overlay-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .overlay-close {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+  .overlay-close:hover {
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+  }
+
+  .overlay-body {
+    padding: 24px;
+  }
+  .overlay-project-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .overlay-project-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+  }
+  .overlay-project-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.5);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .overlay-status-pill {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+
+  .overlay-section {
+    margin-bottom: 18px;
+  }
+  .overlay-section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: rgba(255,255,255,0.25);
+    margin-bottom: 8px;
+  }
+  .overlay-field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .overlay-field {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .overlay-field-label {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+  }
+  .overlay-field-value {
+    font-size: 12px;
+    color: rgba(255,255,255,0.8);
+    font-weight: 500;
+    line-height: 1.4;
+  }
+  .overlay-field-value.mono {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 11px;
+  }
+
+  .anchor-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .anchor-chip {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .anchor-chip.set {
+    background: rgba(13,148,136,0.15);
+    color: #5EEAD4;
+    border: 1px solid rgba(13,148,136,0.25);
+  }
+  .anchor-chip.missing {
+    background: rgba(255,255,255,0.04);
+    color: rgba(255,255,255,0.3);
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+
+  .overlay-footer {
+    padding: 16px 24px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .overlay-meta {
+    font-size: 11px;
+    color: rgba(255,255,255,0.25);
+  }
+  .go-to-project-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--blue);
+    color: #fff;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .go-to-project-btn:hover {
+    background: #1D4ED8;
+  }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Solo Builder</div>
+    <div class="sidebar-title">Companion</div>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-label">Views</span>
+    <a class="nav-item active">
+      <span class="nav-icon">▦</span> Dashboard
+    </a>
+    <a class="nav-item">
+      <span class="nav-icon">◎</span> Activity Feed
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-label">Projects</span>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#2563EB"></div>
+        solo-companion
+      </div>
+      <span class="project-recency">today</span>
+    </div>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#0D9488"></div>
+        player-evaluation
+      </div>
+      <span class="project-recency">2d</span>
+    </div>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#7C3AED"></div>
+        ctl-product
+      </div>
+      <span class="project-recency">4d</span>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <span class="page-title">Dashboard</span>
+      <span class="project-count">3 projects</span>
+    </div>
+    <div class="sync-area">
+      <span class="sync-time">Last synced 4 min ago</span>
+      <button class="refresh-btn">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ATTENTION SECTION -->
+    <div class="section-header">
+      <span class="section-label">Needs Attention</span>
+      <span class="section-count" style="background:rgba(190,18,60,0.2);color:#FDA4AF;">2 blocked</span>
+      <span class="section-count" style="background:rgba(180,83,9,0.15);color:#FCD34D;">3 flagged</span>
+    </div>
+
+    <div class="attention-grid">
+
+      <!-- BLOCKED -->
+      <div class="attention-card blocked">
+        <div class="attention-tier-label">
+          <span class="tier-badge blocked">Blocked</span>
+          <span class="tier-desc">Hard stop — work cannot proceed</span>
+        </div>
+        <div class="attention-item" data-overlay-type="slice">
+          <div class="attention-dot blocked"></div>
+          <div class="attention-body">
+            <div class="attention-text">Awaiting stakeholder answer on data retention policy before SL-007 can proceed</div>
+            <div class="attention-project">player-evaluation · Slice</div>
+          </div>
+        </div>
+        <div class="attention-item" data-overlay-type="slice">
+          <div class="attention-dot blocked"></div>
+          <div class="attention-body">
+            <div class="attention-text">MFL API rate limit behavior unconfirmed — blocks SL-012 integration slice</div>
+            <div class="attention-project">player-evaluation · Slice</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- FLAGGED -->
+      <div class="attention-card flagged">
+        <div class="attention-tier-label">
+          <span class="tier-badge flagged">Flagged</span>
+          <span class="tier-desc">Soft signal — worth attention</span>
+        </div>
+        <div class="attention-item" data-overlay-type="slice">
+          <div class="attention-dot flagged"></div>
+          <div class="attention-body">
+            <div class="attention-text">SL-004 has been In Progress for 5 days without a status update</div>
+            <div class="attention-project">ctl-product · Slice</div>
+          </div>
+        </div>
+        <div class="attention-item" data-overlay-type="deliverable">
+          <div class="attention-dot flagged"></div>
+          <div class="attention-body">
+            <div class="attention-text">Design sprint screen for trip detail view has not been annotated with slice reference</div>
+            <div class="attention-project">ctl-product · Deliverable</div>
+          </div>
+        </div>
+        <div class="attention-item" data-overlay-type="slice">
+          <div class="attention-dot flagged"></div>
+          <div class="attention-body">
+            <div class="attention-text">Code review confirmation missing from SL-009 before QA sign-off</div>
+            <div class="attention-project">player-evaluation · Slice</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- WORK BUCKETS -->
+    <div class="section-header">
+      <span class="section-label">Active Work</span>
+    </div>
+
+    <div class="buckets-grid">
+
+      <!-- PHASES -->
+      <div class="bucket">
+        <div class="bucket-header">
+          <span class="bucket-title">Phases</span>
+          <span class="bucket-badge">3</span>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">solo-companion</span>
+            <span class="bucket-item-status status-active">Active</span>
+          </div>
+          <div class="bucket-item-project">Discover</div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">player-evaluation</span>
+            <span class="bucket-item-status status-active">Active</span>
+          </div>
+          <div class="bucket-item-project">Build — Phase 1</div>
+          <div class="bucket-item-progress">
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width:58%"></div>
+            </div>
+            <span class="progress-label">7 of 12 slices Done</span>
+          </div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">ctl-product</span>
+            <span class="bucket-item-status status-active">Active</span>
+          </div>
+          <div class="bucket-item-project">Build — Phase 2</div>
+          <div class="bucket-item-progress">
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" style="width:30%"></div>
+            </div>
+            <span class="progress-label">3 of 10 slices Done</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- DELIVERABLES -->
+      <div class="bucket bucket-wrapper">
+        <div class="bucket-header">
+          <span class="bucket-title">Deliverables</span>
+          <div class="bucket-header-right">
+            <span class="bucket-badge">4</span>
+            <button class="filter-btn">⌥ Filter</button>
+          </div>
+        </div>
+        <!-- dropdown shown open for design reference -->
+        <div class="filter-dropdown">
+          <div class="filter-option selected">
+            <div class="fo-dot" style="background:rgba(255,255,255,0.3)"></div>
+            All projects
+            <span class="filter-check">✓</span>
+          </div>
+          <div class="filter-option">
+            <div class="fo-dot" style="background:#2563EB"></div>
+            solo-companion
+          </div>
+          <div class="filter-option">
+            <div class="fo-dot" style="background:#0D9488"></div>
+            player-evaluation
+          </div>
+          <div class="filter-option">
+            <div class="fo-dot" style="background:#7C3AED"></div>
+            ctl-product
+          </div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">Player Search Screen</span>
+            <span class="bucket-item-status status-in-test">In Test</span>
+          </div>
+          <div class="bucket-item-project">player-evaluation</div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">Consistency Score Engine</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+          <div class="bucket-item-project">player-evaluation</div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">Trip Planner v2</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+          <div class="bucket-item-project">ctl-product</div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">Location Detail View</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+          <div class="bucket-item-project">ctl-product</div>
+        </div>
+      </div>
+
+      <!-- SLICES -->
+      <div class="bucket bucket-wrapper">
+        <div class="bucket-header">
+          <span class="bucket-title">Slices</span>
+          <div class="bucket-header-right">
+            <span class="bucket-badge">5</span>
+            <button class="filter-btn">⌥ Filter</button>
+          </div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">SL-009 · API integration</span>
+            <span class="bucket-item-status status-in-test">In Test</span>
+          </div>
+          <div class="bucket-item-project">player-evaluation</div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">SL-010 · Score display</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+          <div class="bucket-item-project">player-evaluation</div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">SL-004 · Route editing</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+          <div class="bucket-item-project">ctl-product</div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">SL-005 · Map pins</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+          <div class="bucket-item-project">ctl-product</div>
+        </div>
+        <div class="bucket-item">
+          <div class="bucket-item-top">
+            <span class="bucket-item-name">SL-001 · Project structure</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+          <div class="bucket-item-project">solo-companion</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- OVERLAY BACKDROP -->
+<div id="overlay-backdrop" class="overlay-backdrop" style="display:none;" onclick="closeOverlay(event)">
+
+  <!-- ── SLICE OVERLAY ── -->
+  <div id="overlay-slice" class="overlay-panel" style="width:600px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden;">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge">Slice</span>
+        <span class="overlay-title">SL-010 · Score display</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body" style="overflow-y:auto;flex:1;">
+
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">player-evaluation</span>
+        <span class="overlay-status-pill status-in-progress">In Progress</span>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field">
+            <div class="overlay-field-label">Deliverable</div>
+            <div class="overlay-field-value">Consistency Score Engine</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Phase</div>
+            <div class="overlay-field-value">Build — Phase 1</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Slice position</div>
+            <div class="overlay-field-value">10 of 12 in Phase 1</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Last updated</div>
+            <div class="overlay-field-value mono">2026-04-27</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">Renders a player's consistency score on the evaluation screen. Shows a numeric value and visual indicator. For rookies with limited game history, shows a partial indicator instead of a full score.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">Reads ConsistencyScore model from the score engine. Renders score_value as a formatted float, drives the indicator bar width from a 0–100 normalized value, and sets partial_flag display state. Handles null score_value gracefully.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Acceptance criteria</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">Score value renders correctly for all player types across test fixtures. Partial indicator displays for game_count &lt; 6. Null score_value does not throw — renders an empty state. Design matches sprint-03-score-display.html approved screen.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Four Anchors</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field">
+            <div class="overlay-field-label">Design anchor</div>
+            <div class="overlay-field-value mono">sprint-03-score-display.html</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Data anchor</div>
+            <div class="overlay-field-value mono">ConsistencyScore model · score_value, game_count, partial_flag</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Process anchor</div>
+            <div class="overlay-field-value mono">to-be Step 4 · score display · main path, after player lookup</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Done anchor</div>
+            <div class="overlay-field-value">Score renders for all player types. Rookies &lt;6 games show partial indicator, not error.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Quality Gates</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field">
+            <div class="overlay-field-label">Code review</div>
+            <div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Not confirmed</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">QA sign-off</div>
+            <div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Pending</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Review link</div>
+            <div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Available when Done</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Builder confirmation</div>
+            <div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Pending</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">Slice · player-evaluation</span>
+      <button class="go-to-project-btn">Take me to this project →</button>
+    </div>
+  </div>
+
+  <!-- ── DELIVERABLE OVERLAY ── -->
+  <div id="overlay-deliverable" class="overlay-panel" style="width:600px;max-height:88vh;display:none;flex-direction:column;overflow:hidden;">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge" style="background:rgba(13,148,136,0.2);color:#5EEAD4;">Deliverable</span>
+        <span class="overlay-title">Consistency Score Engine</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body" style="overflow-y:auto;flex:1;">
+
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">player-evaluation</span>
+        <span class="overlay-status-pill status-in-progress">In Progress</span>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field">
+            <div class="overlay-field-label">Type</div>
+            <div class="overlay-field-value">Logic</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Phase</div>
+            <div class="overlay-field-value">Build — Phase 1</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">Calculates a player's consistency score from historical game data and returns a value the score display screen can render. Handles edge cases for rookies and players with limited game history.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">Python service that queries MFL API game log endpoint, aggregates per-game scoring deltas, computes a weighted rolling average, and returns a ConsistencyScore model. Partial flag set when game_count &lt; 6.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Acceptance criteria</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">Score is accurate within ±0.1 for all test fixtures. Partial flag renders correctly. API timeout handled gracefully — returns cached value, not error.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Slices</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;">
+            <span style="font-size:12px;color:rgba(255,255,255,0.7);font-family:'SF Mono','Fira Code',monospace;">SL-009 · API integration</span>
+            <span class="bucket-item-status status-in-test">In Test</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;">
+            <span style="font-size:12px;color:rgba(255,255,255,0.7);font-family:'SF Mono','Fira Code',monospace;">SL-010 · Score display</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Builder confirmation</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Pending — all slices must reach Done before confirmation</div>
+        </div>
+      </div>
+
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">Deliverable · player-evaluation</span>
+      <button class="go-to-project-btn">Take me to this project →</button>
+    </div>
+  </div>
+
+  <!-- ── PHASE OVERLAY ── -->
+  <div id="overlay-phase" class="overlay-panel" style="width:600px;max-height:88vh;display:none;flex-direction:column;overflow:hidden;">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge" style="background:rgba(124,58,237,0.2);color:#C4B5FD;">Phase</span>
+        <span class="overlay-title">Build — Phase 1</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body" style="overflow-y:auto;flex:1;">
+
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">player-evaluation</span>
+        <span class="overlay-status-pill status-active">Active</span>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field">
+            <div class="overlay-field-label">Started</div>
+            <div class="overlay-field-value mono">2026-04-10</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Previous phase</div>
+            <div class="overlay-field-value">Design Review</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Next phase</div>
+            <div class="overlay-field-value">QA</div>
+          </div>
+          <div class="overlay-field">
+            <div class="overlay-field-label">Gate status</div>
+            <div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Not yet cleared</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">Build phase delivering the player search screen, consistency score engine, and MFL data integration. When this phase gates, a solo can look up any player, see their consistency score, and understand how reliable they are across a season.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">Implements three deliverables: player search UI with MFL API lookup, consistency score calculation service with weighted rolling average logic, and the integration layer connecting the two. All slices must reach Done and pass code review before gate opens.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Acceptance criteria</div>
+        <div class="overlay-field">
+          <div class="overlay-field-value">All 12 slices at Done. All deliverables builder-confirmed. No open qa-triage items. Phase test walks every path in the to-be process map and passes. Gate opens only after phase test completion record is written to the backlog.</div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Slice progress</div>
+        <div class="overlay-field">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <span style="font-size:12px;color:rgba(255,255,255,0.6);">7 of 12 Done</span>
+            <span style="font-size:12px;color:rgba(255,255,255,0.3);">58%</span>
+          </div>
+          <div class="progress-bar-track" style="height:5px;margin-bottom:12px;">
+            <div class="progress-bar-fill" style="width:58%"></div>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:6px;">
+            <div style="text-align:center;padding:6px;background:rgba(13,148,136,0.12);border:1px solid rgba(13,148,136,0.2);border-radius:6px;">
+              <div style="font-size:16px;font-weight:700;color:#5EEAD4;">7</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.8px;">Done</div>
+            </div>
+            <div style="text-align:center;padding:6px;background:rgba(37,99,235,0.1);border:1px solid rgba(37,99,235,0.2);border-radius:6px;">
+              <div style="font-size:16px;font-weight:700;color:#93C5FD;">2</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.8px;">In Progress</div>
+            </div>
+            <div style="text-align:center;padding:6px;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);border-radius:6px;">
+              <div style="font-size:16px;font-weight:700;color:#C4B5FD;">1</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.8px;">In Test</div>
+            </div>
+            <div style="text-align:center;padding:6px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:6px;">
+              <div style="font-size:16px;font-weight:700;color:rgba(255,255,255,0.4);">2</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.8px;">Ready</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay-section">
+        <div class="overlay-section-label">Deliverables</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;">
+            <span style="font-size:12px;color:rgba(255,255,255,0.7);">Player Search Screen</span>
+            <span class="bucket-item-status status-in-test">In Test</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;">
+            <span style="font-size:12px;color:rgba(255,255,255,0.7);">Consistency Score Engine</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);border-radius:7px;">
+            <span style="font-size:12px;color:rgba(255,255,255,0.7);">MFL Data Integration</span>
+            <span class="bucket-item-status status-in-progress">In Progress</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">Phase · player-evaluation</span>
+      <button class="go-to-project-btn">Take me to this project →</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function openOverlay(type) {
+    document.getElementById('overlay-backdrop').style.display = 'flex';
+    document.getElementById('overlay-slice').style.display = 'none';
+    document.getElementById('overlay-deliverable').style.display = 'none';
+    document.getElementById('overlay-phase').style.display = 'none';
+    document.getElementById('overlay-' + type).style.display = 'flex';
+  }
+
+  function closeOverlay(e) {
+    if (!e || e.target === document.getElementById('overlay-backdrop')) {
+      document.getElementById('overlay-backdrop').style.display = 'none';
+    }
+  }
+
+  // Wire up bucket items
+  document.querySelectorAll('.bucket-item').forEach(function(item) {
+    item.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var bucket = item.closest('.bucket');
+      var title = bucket.querySelector('.bucket-title').textContent.trim();
+      if (title === 'Phases') openOverlay('phase');
+      else if (title === 'Deliverables') openOverlay('deliverable');
+      else openOverlay('slice');
+    });
+  });
+
+  // Wire up attention items — each references a specific object type
+  document.querySelectorAll('.attention-item').forEach(function(item) {
+    item.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var type = item.dataset.overlayType || 'slice';
+      openOverlay(type);
+    });
+  });
+
+  // Show slice overlay by default for design review
+  openOverlay('slice');
+</script>
+
+</body>
+</html>

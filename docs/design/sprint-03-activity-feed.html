@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo Companion — Activity Feed</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:     #0F1729;
+    --blue:     #2563EB;
+    --teal:     #0D9488;
+    --rose:     #BE123C;
+    --amber:    #B45309;
+    --green:    #15803D;
+    --purple:   #7C3AED;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px; flex-shrink: 0;
+    background: rgba(0,0,0,0.3);
+    border-right: 1px solid rgba(255,255,255,0.07);
+    position: fixed; top: 0; left: 0; bottom: 0;
+    overflow-y: auto; padding: 24px 0 40px; z-index: 10;
+  }
+  .sidebar-header { padding: 0 20px 20px; border-bottom: 1px solid rgba(255,255,255,0.07); margin-bottom: 20px; }
+  .sidebar-logo { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 2px; color: rgba(255,255,255,0.3); margin-bottom: 6px; }
+  .sidebar-title { font-size: 15px; font-weight: 800; color: #fff; letter-spacing: -0.3px; }
+  .nav-section { margin-bottom: 24px; }
+  .nav-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: rgba(255,255,255,0.25); padding: 0 20px 8px; display: block; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 20px; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.5); border-left: 2px solid transparent; cursor: pointer; transition: all 0.15s; }
+  .nav-item:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.05); }
+  .nav-item.active { color: #fff; border-left-color: var(--blue); background: rgba(37,99,235,0.12); }
+  .nav-icon { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; }
+  .project-entry { display: flex; align-items: center; justify-content: space-between; padding: 7px 20px; font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.45); cursor: pointer; transition: all 0.15s; font-family: 'SF Mono','Fira Code',monospace; border-left: 2px solid transparent; }
+  .project-entry:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
+  .project-entry.active { color: #fff; border-left-color: #0D9488; background: rgba(13,148,136,0.1); }
+  .project-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .project-recency { font-size: 10px; color: rgba(255,255,255,0.2); }
+
+  /* ── MAIN ── */
+  .main { margin-left: 240px; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* ── TOP BAR ── */
+  .top-bar { display: flex; align-items: center; justify-content: space-between; padding: 18px 40px; border-bottom: 1px solid rgba(255,255,255,0.07); background: rgba(0,0,0,0.2); position: sticky; top: 0; z-index: 5; }
+  .top-bar-title { font-size: 17px; font-weight: 700; color: #fff; letter-spacing: -0.3px; }
+  .sync-area { display: flex; align-items: center; gap: 12px; }
+  .sync-time { font-size: 11px; color: rgba(255,255,255,0.3); font-family: 'SF Mono','Fira Code',monospace; }
+  .refresh-btn { display: flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s; }
+  .refresh-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+  /* ── FILTER BAR ── */
+  .filter-bar { display: flex; align-items: center; justify-content: space-between; padding: 12px 40px; border-bottom: 1px solid rgba(255,255,255,0.06); background: rgba(0,0,0,0.1); gap: 16px; }
+  .filter-left { display: flex; align-items: center; gap: 8px; }
+  .filter-right { display: flex; align-items: center; gap: 6px; }
+  .project-filter {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px;
+    padding: 6px 12px;
+    font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.7);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .project-filter:hover { background: rgba(255,255,255,0.09); }
+  .project-filter-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .type-chip {
+    font-size: 11px; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.4);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .type-chip:hover { color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.09); }
+  .type-chip.active { background: rgba(37,99,235,0.15); border-color: rgba(37,99,235,0.3); color: #93C5FD; }
+
+  /* ── FEED CONTENT ── */
+  .feed { padding: 28px 40px 60px; max-width: 820px; }
+
+  .day-group { margin-bottom: 32px; }
+  .day-label {
+    font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.2);
+    margin-bottom: 14px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .day-label::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+
+  /* ── EVENT ENTRY ── */
+  .event {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: rgba(255,255,255,0.03);
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  .event:hover { background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.1); }
+
+  /* Colored left accent by event type */
+  .event::before { content: ''; position: absolute; left: 0; top: 12px; bottom: 12px; width: 3px; border-radius: 0 3px 3px 0; }
+  .event.type-done::before { background: #5EEAD4; }
+  .event.type-review::before { background: #5EEAD4; }
+  .event.type-block-open::before { background: #FDA4AF; }
+  .event.type-block-resolved::before { background: #86EFAC; }
+  .event.type-flag::before { background: #FCD34D; }
+  .event.type-gate::before { background: #93C5FD; }
+  .event.type-deliverable::before { background: #C4B5FD; }
+  .event.type-progress::before { background: rgba(255,255,255,0.15); }
+
+  .event-time { font-size: 10px; color: rgba(255,255,255,0.2); font-family: 'SF Mono','Fira Code',monospace; width: 58px; flex-shrink: 0; padding-top: 2px; }
+  .event-project-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+  .event-body { flex: 1; min-width: 0; }
+  .event-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap; }
+  .event-badge {
+    font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+    padding: 2px 7px; border-radius: 4px; flex-shrink: 0;
+  }
+  .badge-done { background: rgba(13,148,136,0.2); color: #5EEAD4; }
+  .badge-review { background: rgba(13,148,136,0.2); color: #5EEAD4; }
+  .badge-block-open { background: rgba(190,18,60,0.2); color: #FDA4AF; }
+  .badge-block-resolved { background: rgba(21,128,61,0.2); color: #86EFAC; }
+  .badge-flag { background: rgba(180,83,9,0.2); color: #FCD34D; }
+  .badge-gate { background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .badge-deliverable { background: rgba(124,58,237,0.2); color: #C4B5FD; }
+  .badge-progress { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
+
+  .event-project-name { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'SF Mono','Fira Code',monospace; }
+  .event-desc { font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.5; }
+  .event-desc strong { color: #fff; font-weight: 600; }
+  .event-tag { display: inline-flex; align-items: center; font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'SF Mono','Fira Code',monospace; margin-top: 5px; }
+  .event-action { flex-shrink: 0; display: flex; align-items: center; }
+  .review-btn {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 11px; font-weight: 600;
+    padding: 5px 12px; border-radius: 6px;
+    border: 1px solid rgba(13,148,136,0.3);
+    color: #5EEAD4; background: rgba(13,148,136,0.1);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .review-btn:hover { background: rgba(13,148,136,0.2); }
+  .review-btn.stopped { border-color: rgba(180,83,9,0.3); color: #FCD34D; background: rgba(180,83,9,0.1); }
+  .review-btn.stopped:hover { background: rgba(180,83,9,0.2); }
+
+  /* ── OVERLAY ── */
+  .overlay-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index: 100; display: none; align-items: center; justify-content: center; }
+  .overlay-panel { background: #152035; border: 1px solid rgba(255,255,255,0.12); border-radius: 14px; width: 600px; max-width: 90vw; max-height: 88vh; display: none; flex-direction: column; overflow: hidden; box-shadow: 0 24px 64px rgba(0,0,0,0.6); }
+  .overlay-panel.visible { display: flex; }
+  .overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid rgba(255,255,255,0.08); flex-shrink: 0; }
+  .overlay-header-left { display: flex; align-items: center; gap: 10px; }
+  .overlay-type-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; padding: 3px 8px; border-radius: 4px; background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .overlay-title { font-size: 15px; font-weight: 700; color: #fff; }
+  .overlay-close { width: 28px; height: 28px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.1); background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.5); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .overlay-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .overlay-body { padding: 24px; overflow-y: auto; flex: 1; }
+  .overlay-project-row { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+  .overlay-project-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .overlay-project-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); font-family: 'SF Mono','Fira Code',monospace; }
+  .overlay-status-pill { margin-left: auto; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .overlay-section { margin-bottom: 18px; }
+  .overlay-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(255,255,255,0.25); margin-bottom: 8px; }
+  .overlay-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .overlay-field { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 10px 12px; }
+  .overlay-field-label { font-size: 10px; color: rgba(255,255,255,0.3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  .overlay-field-value { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; line-height: 1.4; }
+  .overlay-field-value.mono { font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; }
+  .anchor-chip { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 5px; display: flex; align-items: center; gap: 5px; }
+  .anchor-chip.set { background: rgba(13,148,136,0.15); color: #5EEAD4; border: 1px solid rgba(13,148,136,0.25); }
+  .anchor-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .overlay-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .overlay-meta { font-size: 11px; color: rgba(255,255,255,0.25); }
+  .go-to-project-btn { display: flex; align-items: center; gap: 8px; background: var(--blue); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .go-to-project-btn:hover { background: #1D4ED8; }
+  .status-done { background: rgba(13,148,136,0.2); color: #5EEAD4; }
+  .status-in-progress { background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .status-in-test { background: rgba(124,58,237,0.2); color: #C4B5FD; }
+  .status-ready { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.4); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Solo Builder</div>
+    <div class="sidebar-title">Companion</div>
+  </div>
+  <div class="nav-section">
+    <span class="nav-label">Views</span>
+    <a class="nav-item"><span class="nav-icon">▦</span> Dashboard</a>
+    <a class="nav-item active"><span class="nav-icon">◎</span> Activity Feed</a>
+  </div>
+  <div class="nav-section">
+    <span class="nav-label">Projects</span>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#2563EB"></div>solo-companion
+      </div>
+      <span class="project-recency">today</span>
+    </div>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#0D9488"></div>player-evaluation
+      </div>
+      <span class="project-recency">2d</span>
+    </div>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#7C3AED"></div>ctl-product
+      </div>
+      <span class="project-recency">4d</span>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-title">Activity Feed</div>
+    <div class="sync-area">
+      <span class="sync-time">Last synced 4 min ago</span>
+      <button class="refresh-btn">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <div class="filter-left">
+      <div class="project-filter">
+        <div class="project-filter-dot" style="background:rgba(255,255,255,0.3)"></div>
+        All projects ▾
+      </div>
+      <div class="project-filter">
+        <div class="project-filter-dot" style="background:#2563EB"></div>
+        solo-companion ▾
+      </div>
+      <div class="project-filter">
+        <div class="project-filter-dot" style="background:#0D9488"></div>
+        player-evaluation ▾
+      </div>
+    </div>
+    <div class="filter-right">
+      <span class="type-chip active">All</span>
+      <span class="type-chip">Slices</span>
+      <span class="type-chip">Phases</span>
+      <span class="type-chip">Blocks</span>
+      <span class="type-chip">Flags</span>
+      <span class="type-chip">Review</span>
+    </div>
+  </div>
+
+  <!-- FEED -->
+  <div class="feed">
+
+    <!-- TODAY -->
+    <div class="day-group">
+      <div class="day-label">Today — Apr 28</div>
+
+      <div class="event type-review" onclick="openOverlay('slice')">
+        <span class="event-time">2:14 pm</span>
+        <div class="event-project-dot" style="background:#0D9488"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-review">Review ready</span>
+            <span class="event-project-name">player-evaluation</span>
+          </div>
+          <div class="event-desc">Review link available for <strong>SL-005 · Player detail card</strong></div>
+          <div class="event-tag">SL-005 · Player Search Screen</div>
+        </div>
+        <div class="event-action">
+          <button class="review-btn" onclick="event.stopPropagation()">▶ Review</button>
+        </div>
+      </div>
+
+      <div class="event type-done" onclick="openOverlay('slice')">
+        <span class="event-time">2:12 pm</span>
+        <div class="event-project-dot" style="background:#0D9488"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-done">Done</span>
+            <span class="event-project-name">player-evaluation</span>
+          </div>
+          <div class="event-desc"><strong>SL-005 · Player detail card</strong> moved to Done</div>
+          <div class="event-tag">SL-005 · Player Search Screen</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+      <div class="event type-flag" onclick="openOverlay('slice')">
+        <span class="event-time">11:30 am</span>
+        <div class="event-project-dot" style="background:#0D9488"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-flag">Flagged</span>
+            <span class="event-project-name">player-evaluation</span>
+          </div>
+          <div class="event-desc"><strong>SL-010 · Score display</strong> flagged — 5 days In Progress without a status update</div>
+          <div class="event-tag">SL-010 · Consistency Score Engine</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+      <div class="event type-progress" onclick="openOverlay('slice')">
+        <span class="event-time">9:03 am</span>
+        <div class="event-project-dot" style="background:#2563EB"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-progress">In Progress</span>
+            <span class="event-project-name">solo-companion</span>
+          </div>
+          <div class="event-desc"><strong>SL-003 · Project detail screen</strong> moved to In Progress</div>
+          <div class="event-tag">SL-003 · Project Detail View</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+    </div>
+
+    <!-- YESTERDAY -->
+    <div class="day-group">
+      <div class="day-label">Yesterday — Apr 27</div>
+
+      <div class="event type-gate" onclick="openOverlay('phase')">
+        <span class="event-time">4:51 pm</span>
+        <div class="event-project-dot" style="background:#2563EB"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-gate">Gate cleared</span>
+            <span class="event-project-name">solo-companion</span>
+          </div>
+          <div class="event-desc">Design phase gate cleared — <strong>solo-companion</strong> advancing to Build</div>
+          <div class="event-tag">Design phase · 3 deliverables complete</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+      <div class="event type-done" onclick="openOverlay('slice')">
+        <span class="event-time">3:22 pm</span>
+        <div class="event-project-dot" style="background:#2563EB"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-done">Done</span>
+            <span class="event-project-name">solo-companion</span>
+          </div>
+          <div class="event-desc"><strong>SL-002 · Dashboard screen</strong> moved to Done</div>
+          <div class="event-tag">SL-002 · Design Screens</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+      <div class="event type-block-open" onclick="openOverlay('slice')">
+        <span class="event-time">1:15 pm</span>
+        <div class="event-project-dot" style="background:#0D9488"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-block-open">Block opened</span>
+            <span class="event-project-name">player-evaluation</span>
+          </div>
+          <div class="event-desc"><strong>SL-012 · Rate limit handling</strong> blocked — MFL API rate limit behavior unconfirmed</div>
+          <div class="event-tag">SL-012 · MFL Data Integration</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+      <div class="event type-done" onclick="openOverlay('slice')">
+        <span class="event-time">10:40 am</span>
+        <div class="event-project-dot" style="background:#0D9488"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-done">Done</span>
+            <span class="event-project-name">player-evaluation</span>
+          </div>
+          <div class="event-desc"><strong>SL-004 · Search results list</strong> moved to Done</div>
+          <div class="event-tag">SL-004 · Player Search Screen</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+    </div>
+
+    <!-- APR 26 -->
+    <div class="day-group">
+      <div class="day-label">Apr 26</div>
+
+      <div class="event type-deliverable" onclick="openOverlay('deliverable')">
+        <span class="event-time">5:02 pm</span>
+        <div class="event-project-dot" style="background:#0D9488"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-deliverable">Deliverable done</span>
+            <span class="event-project-name">player-evaluation</span>
+          </div>
+          <div class="event-desc"><strong>Player Search Screen</strong> deliverable complete — all 4 slices Done</div>
+          <div class="event-tag">Build Phase 1 · 3 of 3 deliverables in progress</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+      <div class="event type-done" onclick="openOverlay('slice')">
+        <span class="event-time">4:58 pm</span>
+        <div class="event-project-dot" style="background:#0D9488"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-done">Done</span>
+            <span class="event-project-name">player-evaluation</span>
+          </div>
+          <div class="event-desc"><strong>SL-003 · Player search input</strong> moved to Done</div>
+          <div class="event-tag">SL-003 · Player Search Screen</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+      <div class="event type-block-resolved" onclick="openOverlay('slice')">
+        <span class="event-time">2:30 pm</span>
+        <div class="event-project-dot" style="background:#0D9488"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-block-resolved">Block resolved</span>
+            <span class="event-project-name">player-evaluation</span>
+          </div>
+          <div class="event-desc"><strong>SL-007 · Data retention layer</strong> block resolved — data retention policy confirmed by Legal</div>
+          <div class="event-tag">SL-007 · MFL Data Integration</div>
+        </div>
+        <div class="event-action"></div>
+      </div>
+
+      <div class="event type-review" onclick="openOverlay('slice')">
+        <span class="event-time">11:08 am</span>
+        <div class="event-project-dot" style="background:#7C3AED"></div>
+        <div class="event-body">
+          <div class="event-top">
+            <span class="event-badge badge-review">Review ready</span>
+            <span class="event-project-name">ctl-product</span>
+          </div>
+          <div class="event-desc">Review link available for <strong>SL-011 · Trip summary card</strong></div>
+          <div class="event-tag">SL-011 · Trip Detail Screen</div>
+        </div>
+        <div class="event-action">
+          <button class="review-btn stopped" onclick="event.stopPropagation()">▶ Start &amp; Review</button>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- OVERLAY BACKDROP -->
+<div id="overlay-backdrop" class="overlay-backdrop" onclick="closeOverlay(event)">
+
+  <!-- SLICE OVERLAY -->
+  <div id="overlay-slice" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge">Slice</span>
+        <span class="overlay-title">SL-005 · Player detail card</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">player-evaluation</span>
+        <span class="overlay-status-pill status-done">Done</span>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Deliverable</div><div class="overlay-field-value">Player Search Screen</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Phase</div><div class="overlay-field-value">Build — Phase 1</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Completed</div><div class="overlay-field-value mono">2026-04-28</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Slice position</div><div class="overlay-field-value">5 of 12 in phase</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Renders a card showing a selected player's name, position, team, and key stats. Surfaces the consistency score and supporting game log summary. Adapts layout for players with limited game history.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Reads Player and ConsistencyScore models. Renders detail card template with score_value, game_count, and partial_flag display states. Linked from search results list. Pulls game log summary from MFL Data Integration layer.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Acceptance criteria</div>
+        <div class="overlay-field"><div class="overlay-field-value">Card renders for all player types. Partial indicator shown for game_count &lt; 6. Design matches sprint-01-player-search.html. Review link confirmed working.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Four Anchors</div>
+        <div class="anchor-row">
+          <span class="anchor-chip set">✓ Design</span>
+          <span class="anchor-chip set">✓ Data</span>
+          <span class="anchor-chip set">✓ Process</span>
+          <span class="anchor-chip set">✓ Done</span>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Quality Gates</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Code review</div><div class="overlay-field-value" style="color:#86EFAC;">Confirmed</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">QA sign-off</div><div class="overlay-field-value" style="color:#86EFAC;">Confirmed</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Review link</div><div class="overlay-field-value" style="color:#5EEAD4;">Available ▶</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Builder confirmation</div><div class="overlay-field-value" style="color:#86EFAC;">Confirmed</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">unit of work SL-005 · player-evaluation</span>
+      <button class="go-to-project-btn">Take me to this project →</button>
+    </div>
+  </div>
+
+  <!-- PHASE OVERLAY -->
+  <div id="overlay-phase" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge" style="background:rgba(13,148,136,0.2);color:#5EEAD4;">Phase</span>
+        <span class="overlay-title">Design phase — solo-companion</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#2563EB"></div>
+        <span class="overlay-project-name">solo-companion</span>
+        <span class="overlay-status-pill status-done">Gate cleared</span>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Started</div><div class="overlay-field-value mono">2026-04-22</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Gate cleared</div><div class="overlay-field-value mono">2026-04-27</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Previous phase</div><div class="overlay-field-value">Discover</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Next phase</div><div class="overlay-field-value">Build — Phase 1</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Produced all design screens for the Solo Companion app — dashboard, project detail, and activity feed. Walk-through conversation completed. Deferred decisions logged.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Slice progress</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+          <div class="overlay-field" style="text-align:center;"><div class="overlay-field-label">Done</div><div style="font-size:20px;font-weight:700;color:#5EEAD4;margin-top:4px;">3</div></div>
+          <div class="overlay-field" style="text-align:center;"><div class="overlay-field-label">In Progress</div><div style="font-size:20px;font-weight:700;color:#93C5FD;margin-top:4px;">0</div></div>
+          <div class="overlay-field" style="text-align:center;"><div class="overlay-field-label">In Test</div><div style="font-size:20px;font-weight:700;color:#C4B5FD;margin-top:4px;">0</div></div>
+          <div class="overlay-field" style="text-align:center;"><div class="overlay-field-label">Ready</div><div style="font-size:20px;font-weight:700;color:rgba(255,255,255,0.4);margin-top:4px;">0</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">Phase · solo-companion</span>
+      <button class="go-to-project-btn">Take me to this project →</button>
+    </div>
+  </div>
+
+  <!-- DELIVERABLE OVERLAY -->
+  <div id="overlay-deliverable" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge" style="background:rgba(124,58,237,0.2);color:#C4B5FD;">Deliverable</span>
+        <span class="overlay-title">Player Search Screen</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">player-evaluation</span>
+        <span class="overlay-status-pill status-done">Done</span>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Phase</div><div class="overlay-field-value">Build — Phase 1</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Slices</div><div class="overlay-field-value">4 of 4 Done</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Completed</div><div class="overlay-field-value mono">2026-04-26</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Gate status</div><div class="overlay-field-value" style="color:#5EEAD4;">Cleared</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field"><div class="overlay-field-value">The full player search interface — search input, results list, and detail card with consistency score. All four slices shipped and reviewed.</div></div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">Deliverable · player-evaluation</span>
+      <button class="go-to-project-btn">Take me to this project →</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function openOverlay(type) {
+    document.getElementById('overlay-backdrop').style.display = 'flex';
+    document.querySelectorAll('.overlay-panel').forEach(function(p) { p.classList.remove('visible'); });
+    var panel = document.getElementById('overlay-' + type);
+    if (panel) panel.classList.add('visible');
+  }
+
+  function closeOverlay(e) {
+    if (!e || e.target === document.getElementById('overlay-backdrop')) {
+      document.getElementById('overlay-backdrop').style.display = 'none';
+      document.querySelectorAll('.overlay-panel').forEach(function(p) { p.classList.remove('visible'); });
+    }
+  }
+
+  document.querySelectorAll('.type-chip').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      document.querySelectorAll('.type-chip').forEach(function(c) { c.classList.remove('active'); });
+      chip.classList.add('active');
+    });
+  });
+</script>
+
+</body>
+</html>

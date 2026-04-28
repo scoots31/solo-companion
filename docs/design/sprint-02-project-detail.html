@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo Companion — Project Detail</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:        #0F1729;
+    --navy-mid:    #1E3A5F;
+    --blue:        #2563EB;
+    --blue-light:  #DBEAFE;
+    --teal:        #0D9488;
+    --teal-light:  #CCFBF1;
+    --green:       #15803D;
+    --green-light: #DCFCE7;
+    --rose:        #BE123C;
+    --rose-light:  #FFE4E6;
+    --amber:       #B45309;
+    --amber-light: #FEF3C7;
+    --purple:      #7C3AED;
+    --purple-light:#EDE9FE;
+    --gray-50:     #F8FAFC;
+    --gray-500:    #64748B;
+    --gray-900:    #0F172A;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.3);
+    border-right: 1px solid rgba(255,255,255,0.07);
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    z-index: 10;
+  }
+  .sidebar-header {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    margin-bottom: 20px;
+  }
+  .sidebar-logo {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 6px;
+  }
+  .sidebar-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+  .nav-section { margin-bottom: 24px; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.25);
+    padding: 0 20px 8px;
+    display: block;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.05); }
+  .nav-item.active { color: #fff; border-left-color: var(--blue); background: rgba(37,99,235,0.12); }
+  .nav-icon { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; }
+  .project-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    border-left: 2px solid transparent;
+  }
+  .project-entry:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
+  .project-entry.active { color: #fff; border-left-color: #0D9488; background: rgba(13,148,136,0.1); }
+  .project-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .project-recency { font-size: 10px; color: rgba(255,255,255,0.2); }
+
+  /* ── MAIN ── */
+  .main { margin-left: 240px; flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 40px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: rgba(0,0,0,0.2);
+    position: sticky;
+    top: 0;
+    z-index: 5;
+  }
+  .top-bar-left { display: flex; align-items: center; gap: 12px; }
+  .breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+  }
+  .breadcrumb-home { color: rgba(255,255,255,0.35); cursor: pointer; }
+  .breadcrumb-home:hover { color: rgba(255,255,255,0.7); }
+  .breadcrumb-sep { color: rgba(255,255,255,0.2); }
+  .breadcrumb-current { color: #fff; font-weight: 600; }
+  .project-phase-pill {
+    font-size: 11px;
+    font-weight: 600;
+    background: rgba(13,148,136,0.15);
+    color: #5EEAD4;
+    border: 1px solid rgba(13,148,136,0.25);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .sync-area { display: flex; align-items: center; gap: 12px; }
+  .sync-time { font-size: 11px; color: rgba(255,255,255,0.3); font-family: 'SF Mono','Fira Code',monospace; }
+  .refresh-btn {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6);
+    padding: 6px 14px; border-radius: 6px;
+    font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.15s;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+  /* ── TABS ── */
+  .tab-bar {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 0 40px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: rgba(0,0,0,0.15);
+  }
+  .tab {
+    padding: 14px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.4);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .tab:hover { color: rgba(255,255,255,0.75); }
+  .tab.active { color: #fff; border-bottom-color: var(--blue); }
+  .tab-count {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.4);
+  }
+  .tab.active .tab-count { background: rgba(37,99,235,0.2); color: #93C5FD; }
+
+  /* ── CONTENT ── */
+  .content { padding: 32px 40px; flex: 1; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── SECTION HEADERS ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 14px;
+    margin-top: 28px;
+  }
+  .section-header:first-child { margin-top: 0; }
+  .section-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.3);
+  }
+  .section-count {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  /* ── ACTION ITEMS ── */
+  .action-card {
+    border-radius: 10px;
+    padding: 16px 18px;
+    border: 1px solid;
+    margin-bottom: 12px;
+  }
+  .action-card.blocked { background: rgba(190,18,60,0.08); border-color: rgba(190,18,60,0.25); }
+  .action-card.flagged { background: rgba(180,83,9,0.08); border-color: rgba(180,83,9,0.2); }
+  .action-card.question { background: rgba(37,99,235,0.06); border-color: rgba(37,99,235,0.18); }
+
+  .action-tier-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .tier-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .tier-badge.blocked { background: rgba(190,18,60,0.25); color: #FDA4AF; }
+  .tier-badge.flagged { background: rgba(180,83,9,0.25); color: #FCD34D; }
+  .tier-badge.question { background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .tier-desc { font-size: 11px; color: rgba(255,255,255,0.3); }
+
+  .action-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin: 0 -8px;
+  }
+  .action-item:last-child { border-bottom: none; }
+  .action-item:hover { background: rgba(255,255,255,0.05); }
+
+  .action-dot { width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .action-dot.blocked { background: #FDA4AF; }
+  .action-dot.flagged { background: #FCD34D; }
+  .action-dot.question { background: #93C5FD; }
+
+  .action-body { flex: 1; min-width: 0; }
+  .action-text { font-size: 13px; color: rgba(255,255,255,0.8); line-height: 1.5; margin-bottom: 4px; }
+  .action-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .action-tag {
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    font-family: 'SF Mono','Fira Code',monospace;
+  }
+  .action-who { font-size: 11px; color: rgba(255,255,255,0.25); }
+  .action-age { font-size: 11px; color: rgba(255,255,255,0.2); }
+
+  /* ── PROGRESS TAB ── */
+  .phase-summary {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 32px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .phase-summary:hover { background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.14); }
+  .phase-summary-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 4px;
+  }
+  .phase-summary-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #fff;
+  }
+  .phase-summary-sub {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    margin-top: 2px;
+  }
+  .phase-divider {
+    width: 1px;
+    height: 40px;
+    background: rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+  .phase-progress-wrap { flex: 1; }
+  .phase-progress-bar {
+    height: 6px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+  .phase-progress-fill { height: 100%; background: var(--blue); border-radius: 3px; }
+  .status-counts {
+    display: flex;
+    gap: 16px;
+  }
+  .status-count-item { display: flex; align-items: center; gap: 5px; }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .status-count-label { font-size: 11px; color: rgba(255,255,255,0.35); }
+  .status-count-num { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.6); }
+
+  /* ── DELIVERABLE ROWS ── */
+  .deliverable-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 6px;
+  }
+  .deliverable-row:hover { background: rgba(255,255,255,0.07); }
+  .deliverable-icon {
+    width: 28px; height: 28px;
+    border-radius: 7px;
+    background: rgba(37,99,235,0.12);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+  .deliverable-name { flex: 1; font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; }
+  .deliverable-slice-count { font-size: 11px; color: rgba(255,255,255,0.3); flex-shrink: 0; }
+  .deliverable-status {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+  }
+
+  /* ── SLICE LIST ── */
+  .slice-list { display: flex; flex-direction: column; gap: 6px; }
+  .slice-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .slice-row:hover { background: rgba(255,255,255,0.07); }
+  .slice-id {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.3);
+    font-family: 'SF Mono','Fira Code',monospace;
+    width: 50px;
+    flex-shrink: 0;
+  }
+  .slice-name { flex: 1; font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; }
+  .slice-deliverable { font-size: 11px; color: rgba(255,255,255,0.3); flex-shrink: 0; max-width: 180px; text-align: right; }
+  .slice-status {
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    width: 86px;
+    text-align: center;
+  }
+  .status-done { background: rgba(13,148,136,0.2); color: #5EEAD4; }
+  .status-in-progress { background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .status-in-test { background: rgba(124,58,237,0.2); color: #C4B5FD; }
+  .status-in-qa { background: rgba(180,83,9,0.15); color: #FCD34D; }
+  .status-ready { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.4); }
+  .status-complete { background: rgba(13,148,136,0.2); color: #5EEAD4; }
+  .status-active { background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .status-upcoming { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.4); }
+
+  .review-link {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 5px;
+    border: 1px solid rgba(13,148,136,0.3);
+    color: #5EEAD4;
+    background: rgba(13,148,136,0.1);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .review-link:hover { background: rgba(13,148,136,0.2); }
+  .review-link.stopped {
+    border-color: rgba(180,83,9,0.3);
+    color: #FCD34D;
+    background: rgba(180,83,9,0.1);
+  }
+  .review-link.stopped:hover { background: rgba(180,83,9,0.2); }
+
+  /* ── BACKLOG TAB ── */
+  .backlog-phase-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 9px;
+    cursor: pointer;
+    transition: background 0.15s;
+    margin-bottom: 6px;
+  }
+  .backlog-phase-row:hover { background: rgba(255,255,255,0.07); }
+  .backlog-phase-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    background: rgba(255,255,255,0.05);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; flex-shrink: 0;
+  }
+  .backlog-phase-name { flex: 1; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); }
+  .backlog-phase-meta { font-size: 11px; color: rgba(255,255,255,0.3); flex-shrink: 0; }
+  .backlog-phase-bar {
+    width: 80px; height: 4px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; flex-shrink: 0;
+  }
+  .backlog-phase-fill { height: 100%; background: var(--teal); border-radius: 2px; }
+
+  /* ── MATERIALS TAB ── */
+  .materials-phase { margin-bottom: 28px; }
+  .materials-phase-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    margin-bottom: 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .materials-phase-name {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.35);
+  }
+  .materials-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .material-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 9px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .material-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.14); }
+  .material-icon {
+    font-size: 16px;
+    width: 32px; height: 32px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.06);
+  }
+  .material-info { flex: 1; min-width: 0; }
+  .material-name { font-size: 12px; font-weight: 600; color: #fff; margin-bottom: 2px; }
+  .material-type { font-size: 10px; color: rgba(255,255,255,0.3); text-transform: uppercase; letter-spacing: 0.8px; }
+
+  /* ── DECISIONS TAB ── */
+  .decision-entry {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 10px;
+  }
+  .decision-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+    gap: 12px;
+  }
+  .decision-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .decision-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+  .decision-phase { font-size: 10px; color: rgba(255,255,255,0.3); font-family: 'SF Mono','Fira Code',monospace; }
+  .decision-date { font-size: 10px; color: rgba(255,255,255,0.2); }
+  .decision-body { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.6; margin-bottom: 10px; }
+  .decision-why {
+    font-size: 12px;
+    color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.03);
+    border-left: 2px solid rgba(255,255,255,0.1);
+    padding: 8px 12px;
+    border-radius: 0 6px 6px 0;
+    line-height: 1.5;
+  }
+  .decision-why strong { color: rgba(255,255,255,0.5); }
+
+  .change-entry {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(180,83,9,0.2);
+    border-radius: 10px;
+    padding: 18px 20px;
+    margin-bottom: 10px;
+  }
+  .change-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .change-title { font-size: 14px; font-weight: 600; color: #fff; }
+  .change-date { font-size: 10px; color: rgba(255,255,255,0.2); }
+  .change-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .change-field { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07); border-radius: 7px; padding: 10px 12px; }
+  .change-field-label { font-size: 10px; color: rgba(255,255,255,0.25); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  .change-field-value { font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.4; }
+
+  /* ── MATERIAL DOC OVERLAY ── */
+  .doc-content { font-size: 13px; color: rgba(255,255,255,0.75); line-height: 1.7; }
+  .doc-content h1 { font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px; margin-top: 20px; }
+  .doc-content h1:first-child { margin-top: 0; }
+  .doc-content h2 { font-size: 13px; font-weight: 700; color: rgba(255,255,255,0.85); margin-bottom: 6px; margin-top: 18px; text-transform: uppercase; letter-spacing: 0.8px; font-size: 11px; }
+  .doc-content p { margin-bottom: 12px; }
+  .doc-content ul { margin-left: 16px; margin-bottom: 12px; }
+  .doc-content li { margin-bottom: 5px; }
+  .doc-content strong { color: #fff; font-weight: 600; }
+  .doc-content hr { border: none; border-top: 1px solid rgba(255,255,255,0.08); margin: 18px 0; }
+  .doc-meta-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.07); }
+  .doc-meta-chip { font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 4px; background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4); }
+  .open-file-btn { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.7); border: 1px solid rgba(255,255,255,0.12); padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .open-file-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+  .open-browser-btn { display: flex; align-items: center; gap: 8px; background: var(--blue); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .open-browser-btn:hover { background: #1D4ED8; }
+  .screen-preview-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .screen-thumb { width: 100%; aspect-ratio: 16/9; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; display: flex; align-items: center; justify-content: center; margin-bottom: 20px; color: rgba(255,255,255,0.15); font-size: 13px; }
+
+  /* ── OVERLAY ── */
+  .overlay-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay-panel {
+    background: #152035;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    width: 600px;
+    max-width: 90vw;
+    max-height: 88vh;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  }
+  .overlay-panel.visible { display: flex; }
+  .overlay-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+  .overlay-header-left { display: flex; align-items: center; gap: 10px; }
+  .overlay-type-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; padding: 3px 8px; border-radius: 4px; background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .overlay-type-badge.deliverable { background: rgba(124,58,237,0.2); color: #C4B5FD; }
+  .overlay-type-badge.phase { background: rgba(13,148,136,0.2); color: #5EEAD4; }
+  .overlay-title { font-size: 15px; font-weight: 700; color: #fff; }
+  .overlay-close {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .overlay-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .overlay-body { padding: 24px; overflow-y: auto; flex: 1; }
+  .overlay-project-row { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+  .overlay-project-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .overlay-project-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); font-family: 'SF Mono','Fira Code',monospace; }
+  .overlay-status-pill { margin-left: auto; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .overlay-section { margin-bottom: 18px; }
+  .overlay-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(255,255,255,0.25); margin-bottom: 8px; }
+  .overlay-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .overlay-field { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 10px 12px; }
+  .overlay-field-label { font-size: 10px; color: rgba(255,255,255,0.3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  .overlay-field-value { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; line-height: 1.4; }
+  .overlay-field-value.mono { font-family: 'SF Mono','Fira Code',monospace; font-size: 11px; }
+  .anchor-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .anchor-chip { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 5px; display: flex; align-items: center; gap: 5px; }
+  .anchor-chip.set { background: rgba(13,148,136,0.15); color: #5EEAD4; border: 1px solid rgba(13,148,136,0.25); }
+  .anchor-chip.missing { background: rgba(255,255,255,0.04); color: rgba(255,255,255,0.3); border: 1px solid rgba(255,255,255,0.08); }
+  .overlay-list-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 10px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    font-size: 12px;
+  }
+  .overlay-list-item:last-child { border-bottom: none; }
+  .overlay-list-id { color: rgba(255,255,255,0.3); font-family: 'SF Mono','Fira Code',monospace; font-size: 10px; width: 44px; flex-shrink: 0; }
+  .overlay-list-name { flex: 1; color: rgba(255,255,255,0.75); }
+  .overlay-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .overlay-meta { font-size: 11px; color: rgba(255,255,255,0.25); }
+  .go-to-project-btn { display: flex; align-items: center; gap: 8px; background: var(--blue); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .go-to-project-btn:hover { background: #1D4ED8; }
+  .go-to-project-btn.disabled { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); cursor: default; }
+  .go-to-project-btn.disabled:hover { background: rgba(255,255,255,0.08); }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Solo Builder</div>
+    <div class="sidebar-title">Companion</div>
+  </div>
+  <div class="nav-section">
+    <span class="nav-label">Views</span>
+    <a class="nav-item"><span class="nav-icon">▦</span> Dashboard</a>
+    <a class="nav-item"><span class="nav-icon">◎</span> Activity Feed</a>
+  </div>
+  <div class="nav-section">
+    <span class="nav-label">Projects</span>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#2563EB"></div>solo-companion
+      </div>
+      <span class="project-recency">today</span>
+    </div>
+    <div class="project-entry active">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#0D9488"></div>player-evaluation
+      </div>
+      <span class="project-recency">2d</span>
+    </div>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#7C3AED"></div>ctl-product
+      </div>
+      <span class="project-recency">4d</span>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <div class="breadcrumb">
+        <span class="breadcrumb-home">Dashboard</span>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">player-evaluation</span>
+      </div>
+      <span class="project-phase-pill">Build — Phase 1</span>
+    </div>
+    <div class="sync-area">
+      <span class="sync-time">Last synced 4 min ago</span>
+      <button class="refresh-btn">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- TAB BAR -->
+  <div class="tab-bar">
+    <div class="tab active" onclick="switchTab('action', this)">
+      Action <span class="tab-count">5</span>
+    </div>
+    <div class="tab" onclick="switchTab('progress', this)">
+      Progress <span class="tab-count">12</span>
+    </div>
+    <div class="tab" onclick="switchTab('backlog', this)">
+      Backlog <span class="tab-count">28</span>
+    </div>
+    <div class="tab" onclick="switchTab('materials', this)">
+      Materials <span class="tab-count">8</span>
+    </div>
+    <div class="tab" onclick="switchTab('decisions', this)">
+      Decisions &amp; Changes <span class="tab-count">6</span>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── ACTION TAB ── -->
+    <div id="tab-action" class="tab-panel active">
+
+      <div class="action-card blocked">
+        <div class="action-tier-label">
+          <span class="tier-badge blocked">Blocked</span>
+          <span class="tier-desc">Hard stop — work cannot proceed</span>
+        </div>
+        <div class="action-item" onclick="openOverlay('slice')">
+          <div class="action-dot blocked"></div>
+          <div class="action-body">
+            <div class="action-text">Awaiting stakeholder answer on data retention policy before SL-007 can proceed</div>
+            <div class="action-meta">
+              <span class="action-tag">SL-007 · Slice</span>
+              <span class="action-who">Answer needed from: Legal team</span>
+              <span class="action-age">Open 6 days</span>
+            </div>
+          </div>
+        </div>
+        <div class="action-item" onclick="openOverlay('slice')">
+          <div class="action-dot blocked"></div>
+          <div class="action-body">
+            <div class="action-text">MFL API rate limit behavior unconfirmed — blocks SL-012 integration slice</div>
+            <div class="action-meta">
+              <span class="action-tag">SL-012 · Slice</span>
+              <span class="action-who">Answer needed from: MFL API docs / support</span>
+              <span class="action-age">Open 3 days</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-card flagged">
+        <div class="action-tier-label">
+          <span class="tier-badge flagged">Flagged</span>
+          <span class="tier-desc">Soft signal — worth attention</span>
+        </div>
+        <div class="action-item" onclick="openOverlay('slice')">
+          <div class="action-dot flagged"></div>
+          <div class="action-body">
+            <div class="action-text">SL-010 has been In Progress for 5 days without a status update</div>
+            <div class="action-meta">
+              <span class="action-tag">SL-010 · Slice</span>
+              <span class="action-age">5 days In Progress</span>
+            </div>
+          </div>
+        </div>
+        <div class="action-item" onclick="openOverlay('slice')">
+          <div class="action-dot flagged"></div>
+          <div class="action-body">
+            <div class="action-text">Code review confirmation missing from SL-009 before QA sign-off</div>
+            <div class="action-meta">
+              <span class="action-tag">SL-009 · Slice</span>
+              <span class="action-age">In Test without code review</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="action-card question">
+        <div class="action-tier-label">
+          <span class="tier-badge question">Outstanding Questions</span>
+          <span class="tier-desc">External input needed</span>
+        </div>
+        <div class="action-item" onclick="openOverlay('slice')">
+          <div class="action-dot question"></div>
+          <div class="action-body">
+            <div class="action-text">Should the consistency score account for playoff performance differently than regular season?</div>
+            <div class="action-meta">
+              <span class="action-tag">Discover phase</span>
+              <span class="action-who">Who can answer: Scott / product decision</span>
+              <span class="action-age">Open 12 days</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── PROGRESS TAB ── -->
+    <div id="tab-progress" class="tab-panel">
+
+      <!-- Phase summary — clickable, opens phase overlay -->
+      <div class="phase-summary" onclick="openOverlay('phase')">
+        <div>
+          <div class="phase-summary-label">Current phase</div>
+          <div class="phase-summary-value">Build — Phase 1</div>
+          <div class="phase-summary-sub">Started Apr 10</div>
+        </div>
+        <div class="phase-divider"></div>
+        <div>
+          <div class="phase-summary-label">Gate status</div>
+          <div class="phase-summary-value" style="font-size:14px;color:rgba(255,255,255,0.5);">Not yet cleared</div>
+          <div class="phase-summary-sub">All slices must reach Done</div>
+        </div>
+        <div class="phase-divider"></div>
+        <div class="phase-progress-wrap">
+          <div class="phase-summary-label" style="margin-bottom:8px;">Slice progress — 7 of 12 Done</div>
+          <div class="phase-progress-bar">
+            <div class="phase-progress-fill" style="width:58%"></div>
+          </div>
+          <div class="status-counts">
+            <div class="status-count-item">
+              <div class="status-dot" style="background:#5EEAD4"></div>
+              <span class="status-count-num">7</span>
+              <span class="status-count-label">Done</span>
+            </div>
+            <div class="status-count-item">
+              <div class="status-dot" style="background:#93C5FD"></div>
+              <span class="status-count-num">2</span>
+              <span class="status-count-label">In Progress</span>
+            </div>
+            <div class="status-count-item">
+              <div class="status-dot" style="background:#C4B5FD"></div>
+              <span class="status-count-num">1</span>
+              <span class="status-count-label">In Test</span>
+            </div>
+            <div class="status-count-item">
+              <div class="status-dot" style="background:rgba(255,255,255,0.3)"></div>
+              <span class="status-count-num">2</span>
+              <span class="status-count-label">Ready</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Deliverables -->
+      <div class="section-header" style="margin-top:0;">
+        <span class="section-label">Deliverables</span>
+        <span class="section-count" style="background:rgba(124,58,237,0.15);color:#C4B5FD;">3 in phase</span>
+      </div>
+
+      <div class="deliverable-row" onclick="openOverlay('deliverable')">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">Player Search Screen</span>
+        <span class="deliverable-slice-count">4 slices</span>
+        <span class="deliverable-status status-done">Done</span>
+      </div>
+      <div class="deliverable-row" onclick="openOverlay('deliverable')">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">MFL Data Integration</span>
+        <span class="deliverable-slice-count">4 slices</span>
+        <span class="deliverable-status status-in-progress">In Progress</span>
+      </div>
+      <div class="deliverable-row" onclick="openOverlay('deliverable')">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">Consistency Score Engine</span>
+        <span class="deliverable-slice-count">4 slices</span>
+        <span class="deliverable-status status-in-progress">In Progress</span>
+      </div>
+
+      <!-- Slices -->
+      <div class="section-header">
+        <span class="section-label">All Slices</span>
+        <span class="section-count" style="background:rgba(37,99,235,0.15);color:#93C5FD;">12 in phase</span>
+      </div>
+
+      <div class="slice-list">
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-001</span>
+          <span class="slice-name">Project scaffolding</span>
+          <span class="slice-deliverable">Player Search Screen</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-002</span>
+          <span class="slice-name">MFL auth flow</span>
+          <span class="slice-deliverable">MFL Data Integration</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-003</span>
+          <span class="slice-name">Player search input</span>
+          <span class="slice-deliverable">Player Search Screen</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-004</span>
+          <span class="slice-name">Search results list</span>
+          <span class="slice-deliverable">Player Search Screen</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-005</span>
+          <span class="slice-name">Player detail card</span>
+          <span class="slice-deliverable">Player Search Screen</span>
+          <span class="slice-status status-done">Done</span>
+          <span class="review-link">▶ Review</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-006</span>
+          <span class="slice-name">Game log fetch</span>
+          <span class="slice-deliverable">MFL Data Integration</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-007</span>
+          <span class="slice-name">Data retention layer</span>
+          <span class="slice-deliverable">MFL Data Integration</span>
+          <span class="slice-status status-ready">Ready</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-008</span>
+          <span class="slice-name">Score algorithm core</span>
+          <span class="slice-deliverable">Consistency Score Engine</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-009</span>
+          <span class="slice-name">API integration</span>
+          <span class="slice-deliverable">Consistency Score Engine</span>
+          <span class="slice-status status-in-test">In Test</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-010</span>
+          <span class="slice-name">Score display</span>
+          <span class="slice-deliverable">Consistency Score Engine</span>
+          <span class="slice-status status-in-progress">In Progress</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-011</span>
+          <span class="slice-name">Edge case handling</span>
+          <span class="slice-deliverable">Consistency Score Engine</span>
+          <span class="slice-status status-in-progress">In Progress</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-012</span>
+          <span class="slice-name">Rate limit handling</span>
+          <span class="slice-deliverable">MFL Data Integration</span>
+          <span class="slice-status status-ready">Ready</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── BACKLOG TAB ── -->
+    <div id="tab-backlog" class="tab-panel">
+
+      <!-- Phases -->
+      <div class="section-header" style="margin-top:0;">
+        <span class="section-label">Phases</span>
+        <span class="section-count" style="background:rgba(13,148,136,0.15);color:#5EEAD4;">2 total</span>
+      </div>
+
+      <div class="backlog-phase-row" onclick="openOverlay('phase')">
+        <div class="backlog-phase-icon">▶</div>
+        <span class="backlog-phase-name">Phase 1</span>
+        <span class="backlog-phase-meta">7 of 12 Done · Started Apr 10</span>
+        <div class="backlog-phase-bar"><div class="backlog-phase-fill" style="width:58%"></div></div>
+        <span class="slice-status status-active" style="width:80px;text-align:center;">Active</span>
+      </div>
+      <div class="backlog-phase-row" onclick="openOverlay('phase')" style="opacity:0.5;">
+        <div class="backlog-phase-icon" style="opacity:0.35;">○</div>
+        <span class="backlog-phase-name" style="color:rgba(255,255,255,0.4);">Phase 2</span>
+        <span class="backlog-phase-meta">Not started · 5 slices planned</span>
+        <div class="backlog-phase-bar"><div class="backlog-phase-fill" style="width:0%"></div></div>
+        <span class="slice-status status-upcoming" style="width:80px;text-align:center;">Upcoming</span>
+      </div>
+
+      <!-- Deliverables -->
+      <div class="section-header">
+        <span class="section-label">Deliverables</span>
+        <span class="section-count" style="background:rgba(124,58,237,0.15);color:#C4B5FD;">7 total</span>
+      </div>
+
+      <div class="deliverable-row" onclick="openOverlay('deliverable')">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">Discovery Brief</span>
+        <span class="deliverable-slice-count" style="font-family:inherit">Discover</span>
+        <span class="deliverable-status status-complete">Complete</span>
+      </div>
+      <div class="deliverable-row" onclick="openOverlay('deliverable')">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">Design Screens</span>
+        <span class="deliverable-slice-count" style="font-family:inherit">Design</span>
+        <span class="deliverable-status status-complete">Complete</span>
+      </div>
+      <div class="deliverable-row" onclick="openOverlay('deliverable')">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">Player Search Screen</span>
+        <span class="deliverable-slice-count">Build P1 · 4 slices</span>
+        <span class="deliverable-status status-done">Done</span>
+      </div>
+      <div class="deliverable-row" onclick="openOverlay('deliverable')">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">MFL Data Integration</span>
+        <span class="deliverable-slice-count">Build P1 · 4 slices</span>
+        <span class="deliverable-status status-in-progress">In Progress</span>
+      </div>
+      <div class="deliverable-row" onclick="openOverlay('deliverable')">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">Consistency Score Engine</span>
+        <span class="deliverable-slice-count">Build P1 · 4 slices</span>
+        <span class="deliverable-status status-in-progress">In Progress</span>
+      </div>
+      <div class="deliverable-row" onclick="openOverlay('deliverable')" style="opacity:0.5;">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">Playoff Weighting</span>
+        <span class="deliverable-slice-count">Build P2</span>
+        <span class="deliverable-status status-upcoming">Upcoming</span>
+      </div>
+      <div class="deliverable-row" onclick="openOverlay('deliverable')" style="opacity:0.5;">
+        <div class="deliverable-icon">⊞</div>
+        <span class="deliverable-name">Comparison View</span>
+        <span class="deliverable-slice-count">Build P2</span>
+        <span class="deliverable-status status-upcoming">Upcoming</span>
+      </div>
+
+      <!-- Slices -->
+      <div class="section-header">
+        <span class="section-label">All Slices</span>
+        <span class="section-count" style="background:rgba(37,99,235,0.15);color:#93C5FD;">17 total</span>
+      </div>
+
+      <div class="slice-list">
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-001</span>
+          <span class="slice-name">Project scaffolding</span>
+          <span class="slice-deliverable">Player Search Screen</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-002</span>
+          <span class="slice-name">MFL auth flow</span>
+          <span class="slice-deliverable">MFL Data Integration</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-003</span>
+          <span class="slice-name">Player search input</span>
+          <span class="slice-deliverable">Player Search Screen</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-004</span>
+          <span class="slice-name">Search results list</span>
+          <span class="slice-deliverable">Player Search Screen</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-005</span>
+          <span class="slice-name">Player detail card</span>
+          <span class="slice-deliverable">Player Search Screen</span>
+          <span class="slice-status status-done">Done</span>
+          <span class="review-link">▶ Review</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-006</span>
+          <span class="slice-name">Game log fetch</span>
+          <span class="slice-deliverable">MFL Data Integration</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-007</span>
+          <span class="slice-name">Data retention layer</span>
+          <span class="slice-deliverable">MFL Data Integration</span>
+          <span class="slice-status status-ready">Ready</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-008</span>
+          <span class="slice-name">Score algorithm core</span>
+          <span class="slice-deliverable">Consistency Score Engine</span>
+          <span class="slice-status status-done">Done</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-009</span>
+          <span class="slice-name">API integration</span>
+          <span class="slice-deliverable">Consistency Score Engine</span>
+          <span class="slice-status status-in-test">In Test</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-010</span>
+          <span class="slice-name">Score display</span>
+          <span class="slice-deliverable">Consistency Score Engine</span>
+          <span class="slice-status status-in-progress">In Progress</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-011</span>
+          <span class="slice-name">Edge case handling</span>
+          <span class="slice-deliverable">Consistency Score Engine</span>
+          <span class="slice-status status-in-progress">In Progress</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')">
+          <span class="slice-id">SL-012</span>
+          <span class="slice-name">Rate limit handling</span>
+          <span class="slice-deliverable">MFL Data Integration</span>
+          <span class="slice-status status-ready">Ready</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')" style="opacity:0.5;">
+          <span class="slice-id">SL-013</span>
+          <span class="slice-name">Playoff weighting algorithm</span>
+          <span class="slice-deliverable">Playoff Weighting</span>
+          <span class="slice-status status-upcoming">Upcoming</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')" style="opacity:0.5;">
+          <span class="slice-id">SL-014</span>
+          <span class="slice-name">Playoff display flag</span>
+          <span class="slice-deliverable">Playoff Weighting</span>
+          <span class="slice-status status-upcoming">Upcoming</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')" style="opacity:0.5;">
+          <span class="slice-id">SL-015</span>
+          <span class="slice-name">Side-by-side player layout</span>
+          <span class="slice-deliverable">Comparison View</span>
+          <span class="slice-status status-upcoming">Upcoming</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')" style="opacity:0.5;">
+          <span class="slice-id">SL-016</span>
+          <span class="slice-name">Score delta calculation</span>
+          <span class="slice-deliverable">Comparison View</span>
+          <span class="slice-status status-upcoming">Upcoming</span>
+        </div>
+        <div class="slice-row" onclick="openOverlay('slice')" style="opacity:0.5;">
+          <span class="slice-id">SL-017</span>
+          <span class="slice-name">Share / export comparison</span>
+          <span class="slice-deliverable">Comparison View</span>
+          <span class="slice-status status-upcoming">Upcoming</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── MATERIALS TAB ── -->
+    <div id="tab-materials" class="tab-panel">
+
+      <div class="materials-phase">
+        <div class="materials-phase-header">
+          <span class="materials-phase-name">Discover</span>
+        </div>
+        <div class="materials-grid">
+          <div class="material-card" onclick="openOverlay('material-doc')">
+            <div class="material-icon">📋</div>
+            <div class="material-info">
+              <div class="material-name">Discovery Brief</div>
+              <div class="material-type">Markdown</div>
+            </div>
+          </div>
+          <div class="material-card" onclick="openOverlay('material-doc')">
+            <div class="material-icon">↔</div>
+            <div class="material-info">
+              <div class="material-name">As-Is Process Map</div>
+              <div class="material-type">Mermaid</div>
+            </div>
+          </div>
+          <div class="material-card" onclick="openOverlay('material-doc')">
+            <div class="material-icon">→</div>
+            <div class="material-info">
+              <div class="material-name">To-Be Process Map</div>
+              <div class="material-type">Mermaid</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="materials-phase">
+        <div class="materials-phase-header">
+          <span class="materials-phase-name">Design</span>
+        </div>
+        <div class="materials-grid">
+          <div class="material-card" onclick="openOverlay('material-screen')">
+            <div class="material-icon">🖥</div>
+            <div class="material-info">
+              <div class="material-name">Sprint — Player Search</div>
+              <div class="material-type">HTML Screen</div>
+            </div>
+          </div>
+          <div class="material-card" onclick="openOverlay('material-screen')">
+            <div class="material-icon">🖥</div>
+            <div class="material-info">
+              <div class="material-name">Sprint — Score Display</div>
+              <div class="material-type">HTML Screen</div>
+            </div>
+          </div>
+          <div class="material-card" onclick="openOverlay('material-doc')">
+            <div class="material-icon">⊘</div>
+            <div class="material-info">
+              <div class="material-name">Deferred Decisions</div>
+              <div class="material-type">Markdown</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="materials-phase">
+        <div class="materials-phase-header">
+          <span class="materials-phase-name">Build</span>
+        </div>
+        <div class="materials-grid">
+          <div class="material-card" onclick="openOverlay('material-doc')">
+            <div class="material-icon">⚙</div>
+            <div class="material-info">
+              <div class="material-name">Tech Context</div>
+              <div class="material-type">Markdown</div>
+            </div>
+          </div>
+          <div class="material-card" onclick="openOverlay('material-doc')">
+            <div class="material-icon">▤</div>
+            <div class="material-info">
+              <div class="material-name">Backlog</div>
+              <div class="material-type">Markdown</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="materials-phase">
+        <div class="materials-phase-header">
+          <span class="materials-phase-name">Continuity</span>
+        </div>
+        <div class="materials-grid">
+          <div class="material-card" onclick="openOverlay('material-doc')">
+            <div class="material-icon">↪</div>
+            <div class="material-info">
+              <div class="material-name">Handoff</div>
+              <div class="material-type">Markdown</div>
+            </div>
+          </div>
+          <div class="material-card" onclick="openOverlay('material-doc')">
+            <div class="material-icon">👤</div>
+            <div class="material-info">
+              <div class="material-name">Onboarding Doc</div>
+              <div class="material-type">Markdown</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── DECISIONS & CHANGES TAB ── -->
+    <div id="tab-decisions" class="tab-panel">
+
+      <div class="section-header" style="margin-top:0;">
+        <span class="section-label">Decisions</span>
+        <span class="section-count" style="background:rgba(37,99,235,0.15);color:#93C5FD;">4 active</span>
+      </div>
+
+      <div class="decision-entry">
+        <div class="decision-header">
+          <div class="decision-title">Consistency score uses weighted rolling average</div>
+          <div class="decision-meta">
+            <span class="decision-phase">Design Review</span>
+            <span class="decision-date">Apr 14</span>
+          </div>
+        </div>
+        <div class="decision-body">Scoring algorithm uses a 6-game weighted rolling average rather than a season-long mean. Recent games are weighted 2× relative to earlier games.</div>
+        <div class="decision-why"><strong>Why:</strong> Season-long means over-reward players who had a hot start but declined. Recent form is more predictive of next week's performance.</div>
+      </div>
+
+      <div class="decision-entry">
+        <div class="decision-header">
+          <div class="decision-title">Partial indicator for players with fewer than 6 games</div>
+          <div class="decision-meta">
+            <span class="decision-phase">Design Sprint</span>
+            <span class="decision-date">Apr 11</span>
+          </div>
+        </div>
+        <div class="decision-body">Rookies and players returning from injury with fewer than 6 games of data show a partial indicator rather than a full score or an error state.</div>
+        <div class="decision-why"><strong>Why:</strong> An error state implies the product is broken. A partial indicator communicates the data limitation honestly while still being useful.</div>
+      </div>
+
+      <div class="section-header">
+        <span class="section-label">Changes</span>
+        <span class="section-count" style="background:rgba(180,83,9,0.15);color:#FCD34D;">2 logged</span>
+      </div>
+
+      <div class="change-entry">
+        <div class="change-header">
+          <div class="change-title">Playoff weighting deferred to Phase 2</div>
+          <span class="change-date">Apr 16</span>
+        </div>
+        <div class="change-grid">
+          <div class="change-field">
+            <div class="change-field-label">Was</div>
+            <div class="change-field-value">Playoff performance weighted at 3× in Phase 1 score algorithm</div>
+          </div>
+          <div class="change-field">
+            <div class="change-field-label">Became</div>
+            <div class="change-field-value">Playoffs treated same as regular season in Phase 1. Separate weighting added to Phase 2 backlog.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+<!-- OVERLAY BACKDROP -->
+<div id="overlay-backdrop" class="overlay-backdrop" onclick="closeOverlay(event)">
+
+  <!-- SLICE OVERLAY -->
+  <div id="overlay-slice" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge">Slice</span>
+        <span class="overlay-title">SL-010 · Score display</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">player-evaluation</span>
+        <span class="overlay-status-pill status-in-progress">In Progress</span>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Deliverable</div><div class="overlay-field-value">Consistency Score Engine</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Phase</div><div class="overlay-field-value">Build — Phase 1</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Slice position</div><div class="overlay-field-value">10 of 12 in phase</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Last updated</div><div class="overlay-field-value mono">2026-04-27</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Renders a player's consistency score on the evaluation screen. Shows a numeric value and visual indicator. Rookies with limited game history show a partial indicator instead of a full score.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Reads ConsistencyScore model from the score engine. Renders score_value as a formatted float, drives the indicator bar from a 0–100 normalized value, sets partial_flag display state. Handles null score_value gracefully.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Acceptance criteria</div>
+        <div class="overlay-field"><div class="overlay-field-value">Score renders correctly for all player types. Partial indicator displays for game_count &lt; 6. Null score_value renders empty state, not error. Design matches sprint-03-score-display.html.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Four Anchors</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Design anchor</div><div class="overlay-field-value mono">sprint-03-score-display.html</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Data anchor</div><div class="overlay-field-value mono">ConsistencyScore · score_value, game_count, partial_flag</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Process anchor</div><div class="overlay-field-value mono">to-be Step 4 · score display · main path</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Done anchor</div><div class="overlay-field-value">Score renders for all player types. Rookies &lt;6 games show partial indicator.</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Quality Gates</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Code review</div><div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Not confirmed</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">QA sign-off</div><div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Pending</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Review link</div><div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Available when Done</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Builder confirmation</div><div class="overlay-field-value" style="color:rgba(255,255,255,0.3)">Pending</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">unit of work SL-010 · player-evaluation</span>
+      <button class="go-to-project-btn disabled">Already on this project</button>
+    </div>
+  </div>
+
+  <!-- DELIVERABLE OVERLAY -->
+  <div id="overlay-deliverable" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge deliverable">Deliverable</span>
+        <span class="overlay-title">Consistency Score Engine</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">player-evaluation</span>
+        <span class="overlay-status-pill status-in-progress">In Progress</span>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Type</div><div class="overlay-field-value">Feature</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Phase</div><div class="overlay-field-value">Build — Phase 1</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Slices</div><div class="overlay-field-value">4 total · 1 Done · 2 In Progress · 1 In Test</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Gate status</div><div class="overlay-field-value" style="color:rgba(255,255,255,0.5)">Not cleared</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Calculates and surfaces a consistency score for any player in the MFL database. The score uses a weighted rolling average of recent game performance to give dynasty managers a reliable signal on player reliability.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Pulls game log data from MFL Data Integration. Runs weighted rolling average calculation. Writes ConsistencyScore model to the data layer. Exposes score_value, game_count, and partial_flag for UI consumption.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Acceptance criteria</div>
+        <div class="overlay-field"><div class="overlay-field-value">Scores calculated correctly for players with 6+ games. Partial flag set correctly for players with fewer than 6 games. Score updates when new game log data is pulled. All slices reach Done and gate is cleared.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Slices</div>
+        <div class="overlay-field" style="padding:4px 0;background:none;border:none;">
+          <div class="overlay-list-item">
+            <span class="overlay-list-id">SL-008</span>
+            <span class="overlay-list-name">Score algorithm core</span>
+            <span class="slice-status status-done" style="width:auto;padding:2px 8px;">Done</span>
+          </div>
+          <div class="overlay-list-item">
+            <span class="overlay-list-id">SL-009</span>
+            <span class="overlay-list-name">API integration</span>
+            <span class="slice-status status-in-test" style="width:auto;padding:2px 8px;">In Test</span>
+          </div>
+          <div class="overlay-list-item">
+            <span class="overlay-list-id">SL-010</span>
+            <span class="overlay-list-name">Score display</span>
+            <span class="slice-status status-in-progress" style="width:auto;padding:2px 8px;">In Progress</span>
+          </div>
+          <div class="overlay-list-item">
+            <span class="overlay-list-id">SL-011</span>
+            <span class="overlay-list-name">Edge case handling</span>
+            <span class="slice-status status-in-progress" style="width:auto;padding:2px 8px;">In Progress</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">Deliverable · player-evaluation</span>
+      <button class="go-to-project-btn disabled">Already on this project</button>
+    </div>
+  </div>
+
+  <!-- PHASE OVERLAY -->
+  <div id="overlay-phase" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge phase">Phase</span>
+        <span class="overlay-title">Build — Phase 1</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">player-evaluation</span>
+        <span class="overlay-status-pill status-active">Active</span>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Started</div><div class="overlay-field-value mono">2026-04-10</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Gate status</div><div class="overlay-field-value" style="color:rgba(255,255,255,0.5)">Not yet cleared</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Previous phase</div><div class="overlay-field-value">Design · cleared Apr 9</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Next phase</div><div class="overlay-field-value">Build — Phase 2</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Builds the first set of working features: player search, MFL data connection, and the consistency score engine. When this phase clears, the app is functional and ready for the second phase of features.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Implements three deliverables: Player Search Screen (UI + search flow), MFL Data Integration (auth, game log fetch, data retention, rate limiting), and Consistency Score Engine (algorithm, API wiring, display, edge cases).</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Acceptance criteria</div>
+        <div class="overlay-field"><div class="overlay-field-value">All 12 slices reach Done. All three deliverables gate-cleared. No open blocked items. Builder confirms phase complete. Gate conversation with framework confirms advance to Phase 2.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Slice progress</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;">
+          <div class="overlay-field" style="text-align:center;">
+            <div class="overlay-field-label">Done</div>
+            <div style="font-size:22px;font-weight:700;color:#5EEAD4;margin-top:4px;">7</div>
+          </div>
+          <div class="overlay-field" style="text-align:center;">
+            <div class="overlay-field-label">In Progress</div>
+            <div style="font-size:22px;font-weight:700;color:#93C5FD;margin-top:4px;">2</div>
+          </div>
+          <div class="overlay-field" style="text-align:center;">
+            <div class="overlay-field-label">In Test</div>
+            <div style="font-size:22px;font-weight:700;color:#C4B5FD;margin-top:4px;">1</div>
+          </div>
+          <div class="overlay-field" style="text-align:center;">
+            <div class="overlay-field-label">Ready</div>
+            <div style="font-size:22px;font-weight:700;color:rgba(255,255,255,0.4);margin-top:4px;">2</div>
+          </div>
+        </div>
+        <div class="phase-progress-bar" style="margin-bottom:0;">
+          <div class="phase-progress-fill" style="width:58%"></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Deliverables</div>
+        <div class="overlay-field" style="padding:4px 0;background:none;border:none;">
+          <div class="overlay-list-item">
+            <span class="overlay-list-name">Player Search Screen</span>
+            <span class="slice-status status-done" style="width:auto;padding:2px 8px;">Done</span>
+          </div>
+          <div class="overlay-list-item">
+            <span class="overlay-list-name">MFL Data Integration</span>
+            <span class="slice-status status-in-progress" style="width:auto;padding:2px 8px;">In Progress</span>
+          </div>
+          <div class="overlay-list-item">
+            <span class="overlay-list-name">Consistency Score Engine</span>
+            <span class="slice-status status-in-progress" style="width:auto;padding:2px 8px;">In Progress</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">Phase · player-evaluation</span>
+      <button class="go-to-project-btn disabled">Already on this project</button>
+    </div>
+  </div>
+
+
+  <!-- MATERIAL DOC OVERLAY -->
+  <div id="overlay-material-doc" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge" style="background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);">Markdown</span>
+        <span class="overlay-title">Discovery Brief</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="doc-meta-row">
+        <span class="doc-meta-chip">Discover phase</span>
+        <span class="doc-meta-chip">Created Apr 5</span>
+        <span class="doc-meta-chip">docs/discovery-brief.md</span>
+      </div>
+      <div class="doc-content">
+        <h1>Discovery Brief — player-evaluation</h1>
+        <p><strong>Date:</strong> 2026-04-05 &nbsp;·&nbsp; <strong>Status:</strong> Complete</p>
+        <hr>
+        <h2>The Story</h2>
+        <p>The solo builder needs a fast, reliable signal on player consistency for dynasty fantasy football decisions. Today that means manually pulling game logs, running calculations in a spreadsheet, and making judgment calls without a standardized measure. The evaluation is slow, inconsistent, and impossible to scale across a roster.</p>
+        <p>The player evaluation tool removes that ceiling. It calculates a consistency score for any player in the MFL database using a weighted rolling average of recent game performance — giving dynasty managers a single reliable number they can act on immediately.</p>
+        <hr>
+        <h2>Key Moments</h2>
+        <ul>
+          <li><strong>Player lookup</strong> — Solo searches by name, selects the player, sees the consistency score and supporting game log data instantly.</li>
+          <li><strong>Roster scan</strong> — Solo evaluates multiple players in sequence to compare consistency across a position group before a trade.</li>
+          <li><strong>Rookie assessment</strong> — Player with fewer than 6 games shows a partial indicator rather than a full score, communicating data limitation honestly.</li>
+        </ul>
+        <hr>
+        <h2>Open Threads</h2>
+        <ul>
+          <li>Playoff weighting — deferred to Phase 2. Regular season and playoffs treated equally in Phase 1.</li>
+          <li>Export / share — not in scope for Phase 1.</li>
+        </ul>
+        <hr>
+        <h2>What We're Not Building Yet</h2>
+        <ul>
+          <li>Comparison view — side-by-side player scoring. Phase 2.</li>
+          <li>League-wide roster scan — requires additional MFL API work. Phase 2.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">docs/discovery-brief.md</span>
+      <button class="open-file-btn">↗ Open in editor</button>
+    </div>
+  </div>
+
+  <!-- MATERIAL SCREEN OVERLAY -->
+  <div id="overlay-material-screen" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge" style="background:rgba(37,99,235,0.2);color:#93C5FD;">HTML Screen</span>
+        <span class="overlay-title">Sprint — Player Search</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="screen-thumb">Screen preview not available — open in browser to view</div>
+      <div class="screen-preview-meta">
+        <div class="overlay-field"><div class="overlay-field-label">Phase</div><div class="overlay-field-value">Design</div></div>
+        <div class="overlay-field"><div class="overlay-field-label">Created</div><div class="overlay-field-value mono">2026-04-09</div></div>
+        <div class="overlay-field"><div class="overlay-field-label">Type</div><div class="overlay-field-value">Full-fidelity design screen</div></div>
+        <div class="overlay-field"><div class="overlay-field-label">File</div><div class="overlay-field-value mono">docs/design/sprint-01-player-search.html</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">What this screen covers</div>
+        <div class="overlay-field"><div class="overlay-field-value">Full-fidelity design for the player search interface. Shows the search input, results list, and player detail card. Includes the partial indicator state for players with fewer than 6 games. This screen is the design anchor for slices SL-003, SL-004, and SL-005.</div></div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">docs/design/sprint-01-player-search.html</span>
+      <button class="open-browser-btn">↗ Open in browser</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function switchTab(name, el) {
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    el.classList.add('active');
+    document.getElementById('tab-' + name).classList.add('active');
+  }
+
+  function openOverlay(type) {
+    document.getElementById('overlay-backdrop').style.display = 'flex';
+    document.querySelectorAll('.overlay-panel').forEach(function(p) { p.classList.remove('visible'); });
+    var panel = document.getElementById('overlay-' + type);
+    if (panel) panel.classList.add('visible');
+  }
+
+  function closeOverlay(e) {
+    if (!e || e.target === document.getElementById('overlay-backdrop')) {
+      document.getElementById('overlay-backdrop').style.display = 'none';
+      document.querySelectorAll('.overlay-panel').forEach(function(p) { p.classList.remove('visible'); });
+    }
+  }
+</script>
+
+</body>
+</html>
