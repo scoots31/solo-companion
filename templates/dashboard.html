@@ -476,7 +476,7 @@ body {
         </div>
         {% if data.blocked %}
           {% for item in data.blocked %}
-          <div class="attention-item" onclick="openOverlay('slice', {{ item | tojson }})">
+          <div class="attention-item" data-otype="slice" data-odata='{{item | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
             <div class="item-dot" style="background:{{ item.project_color }}"></div>
             <div class="item-body">
               <div class="item-name">{{ item.name }}</div>
@@ -522,7 +522,7 @@ body {
         </div>
         {% if data.phases %}
           {% for ph in data.phases %}
-          <div class="phase-row" onclick="openOverlay('phase', {{ ph | tojson }})">
+          <div class="phase-row" data-otype="phase" data-odata='{{ph | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
             <div class="phase-project-dot" style="background:{{ ph.project_color }}"></div>
             <span class="phase-name">{{ ph.name }}</span>
             <span class="phase-project">{{ ph.project_name }}</span>
@@ -553,7 +553,7 @@ body {
         {% if data.deliverables %}
           {% for d in data.deliverables %}
           <div class="deliv-row" data-project="{{ d.project_name }}"
-               onclick="openOverlay('deliverable', {{ d | tojson }})">
+               data-otype="deliverable" data-odata='{{d | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
             <div class="phase-project-dot" style="background:{{ d.project_color }}"></div>
             <span class="deliv-name">{{ d.name }}</span>
             <span class="deliv-meta">{{ d.project_name }}</span>
@@ -581,7 +581,7 @@ body {
         {% if data.slices %}
           {% for s in data.slices %}
           <div class="slice-row" data-project="{{ s.project_name }}"
-               onclick="openOverlay('slice', {{ s | tojson }})">
+               data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
             <span class="slice-id">{{ s.slice_id }}</span>
             <div class="phase-project-dot" style="background:{{ s.project_color }}"></div>
             <span class="slice-name">{{ s.name }}</span>

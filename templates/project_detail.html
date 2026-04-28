@@ -265,7 +265,7 @@ body {
         </div>
         {% if detail.blocked %}
           {% for item in detail.blocked %}
-          <div class="action-item" onclick="openOverlay('slice', {{ item | tojson }})">
+          <div class="action-item" data-otype="slice" data-odata='{{item | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
             <div class="action-dot blocked"></div>
             <div class="action-body">
               <div class="action-text">{{ item.name }}</div>
@@ -335,7 +335,7 @@ body {
       {% if detail.phases %}
         {% set current = detail.phases | selectattr('status', 'ne', 'Done') | list | first %}
         {% if current %}
-        <div class="phase-summary" onclick="openOverlay('phase', {{ current | tojson }})">
+        <div class="phase-summary" data-otype="phase" data-odata='{{current | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
           <div>
             <div class="phase-summary-label">Current phase</div>
             <div class="phase-summary-value">{{ current.name }}</div>
@@ -361,12 +361,12 @@ body {
 
       {% for d in detail.deliverables %}
       <div class="deliv-block">
-        <div class="deliv-block-header" onclick="openOverlay('deliverable', {{ d | tojson }})">
+        <div class="deliv-block-header" data-otype="deliverable" data-odata='{{d | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
           <span class="deliv-block-name">{{ d.name }}</span>
           <span class="deliv-block-meta">{{ d.slice_count }} slice{{ 's' if d.slice_count != 1 else '' }} · {{ d.status }}</span>
         </div>
         {% for s in detail.slices if s.deliverable_name in d.name or d.name in s.deliverable_name %}
-        <div class="slice-mini" onclick="openOverlay('slice', {{ s | tojson }})">
+        <div class="slice-mini" data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
           <span class="slice-mini-id">{{ s.slice_id }}</span>
           <span class="slice-mini-name">{{ s.name }}</span>
           <span class="slice-status status-{{ s.status.lower().replace(' ', '-') }}">{{ s.status }}</span>
@@ -388,7 +388,7 @@ body {
           <div class="backlog-phase-header">{{ s.phase_name or 'Unphased' }}</div>
           {{ phases_seen.append(s.phase_name) or '' }}
         {% endif %}
-        <div class="backlog-row" onclick="openOverlay('slice', {{ s | tojson }})">
+        <div class="backlog-row" data-otype="slice" data-odata='{{s | tojson}}' onclick="openOverlay(this.dataset.otype, JSON.parse(this.dataset.odata))"
           <span class="backlog-id">{{ s.slice_id }}</span>
           <span class="backlog-name">{{ s.name }}</span>
           <span class="backlog-deliv">{{ s.deliverable_name or '' }}</span>
@@ -404,7 +404,7 @@ body {
     <div id="tab-materials" class="tab-panel">
       {% if detail.materials %}
         {% for m in detail.materials %}
-        <div class="material-item" onclick="openMaterial({{ m | tojson }})">
+        <div class="material-item" data-odata='{{m | tojson}}' onclick="openMaterial(JSON.parse(this.dataset.odata))"
           <div class="material-icon">
             {% if m.type == 'screen' %}🖥{% elif m.type == 'process' %}⟳{% else %}📄{% endif %}
           </div>
