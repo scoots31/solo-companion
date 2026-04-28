@@ -1,53 +1,54 @@
 # Project Handoff — 2026-04-28
 
 **Current phase:** Phase 1 — Foundation (rebuild)
-**Overall status:** Phase 1–3 build scrapped. Code deleted, slice statuses reset, backlog clean. Ready to begin SL-001 from scratch.
+**Overall status:** SL-001, SL-002, SL-003 Done. Data foundation complete — SQLite fully populated from real framework files. Moving into Phase 2 dashboard UI with SL-004.
 
 ## Where we are
 
-A multi-hour debug session revealed that the prior build had two stacked structural failures: the sync layer dropped 80%+ of the framework's per-record fields, and the overlay JS rendered a hardcoded flat strip instead of the sectioned full-detail layout the design called for. Patches stacked on patches couldn't fix it because each patch added one field at a time to a system designed wrong at the schema level.
+Phase 1 Foundation slices are complete:
 
-Decision: scrap all Phase 1–3 code and rebuild slice by slice with strict adherence to the slice specs and design files. The slice plan, design files, decisions, and process maps were correct — only the implementation against them was wrong. Those artifacts are intact.
+- **SL-001** — Flask server on port 8710, LaunchAgent registered, routes confirmed
+- **SL-002** — Project discovery sync reading projects.md, projects table populated
+- **SL-003** — Full content sync: parsers.py + extended sync.py reading all 9 table types from framework files. All 17 slice fields, 15 deliverable fields, 15 phase fields captured per records-spec.md. Verified against live data: solo-companion → 4 phases / 9 deliverables / 24 slices / 12 materials / 7 decisions. player-evaluation correctly excluded (legacy format, is_active=0).
+
+The data foundation is correct. Phase 2 dashboard work begins with SL-004.
 
 ## What was just completed
 
-- Full audit of failed build — root causes identified (see `decisions.md` "Phase 1–3 build scrapped" entry)
-- Comprehensive review of every project doc to ground the rebuild
-- GitHub repo created at `scoots31/solo-companion` (private), main pushed
-- LaunchAgent unloaded, port 8710 freed
-- Code deleted: `app.py`, `db.py`, `data.py`, `sync.py`, all templates, `companion.db`, `companion.log`, `__pycache__/`
-- `.gitignore` tightened to cover `config.json`, `.venv/`, editor scratch files
-- `backlog.md` reset: SL-001–022 from Done to Ready (22 slices), Phases 1–3 from Done to Planning (3 phases), 10 builder confirmation blocks reset to "Pending build", traffic table next-up updated to SL-001
-- Decision log entries added for the scrap and for Phase 5 distribution scope
+SL-003 — Sync layer:
+- `parsers.py` written from scratch: section-anchored + field-anchored extraction, every labeled field captured, list-typed fields preserved as JSON
+- `db.py` schema: all 9 tables, all spec fields, JSON-encoded TEXT for list columns
+- `sync.py` extended with `sync_project_content()` — destructive per-project wipe + re-insert on every sync
+- `is_records_spec_format()` gates legacy projects out automatically
+- Verified: SL-001 full record in SQLite has all 17 fields populated including JSON arrays
 
 ## Open right now
 
-Nothing in flight. Clean slate at SL-001.
+Nothing blocked. SL-004 is next.
 
 ## Outstanding questions needing outside input
 
-None blocking. One open commitment: Phase 5 — Distribution (README, install script, plist templating, config.json setup) to be defined as a real phase before Phase 4 wraps.
+None blocking. One open commitment: Phase 5 — Distribution (README, install script, plist templating, config.json setup) to be defined before Phase 4 wraps.
 
 ## Next session picks up at
 
-**SL-001 — App Startup and Server.** First slice of the rebuild. Spec:
-- Flask server on port 8710
-- LaunchAgent registered (plist already in repo from prior build, still works for Scott)
-- Routes for `/` (dashboard) and `/project/<name>` — no real content yet, just confirmed responses
-- No external packages beyond Flask
-- Done criteria: server starts on login, http://localhost:8710 returns dashboard with no errors, server restart recovers cleanly
-
-After SL-001 ships and signs off, SL-002 (sync project discovery) and SL-003 (sync field parsing — full schema this time) follow.
+**SL-004 — Sidebar (Project List, Recency, Navigation).** First UI slice. Spec:
+- Persistent left sidebar at 200px
+- One row per active project: colored dot + project name + recency label
+- Color deterministic from project name hash (8-color palette)
+- Recency from projects.last_synced — format "synced Xm ago" / "synced Xh ago" / "synced today" / "never synced"
+- Click navigates to /project/<name>
+- Done criteria: sidebar visible, all active projects listed, color dots rendered, recency labels correct, click navigates correctly
 
 ## Key context to carry
 
-- **The framework's slice schema is the spec.** Each slice has 16+ structured fields. Each deliverable has 14+. Each phase has 15. Sync (SL-003) extracts every field. Overlay (SL-011/SL-012/SL-013) renders every field. No hardcoded subsets, no "add it later" — full detail or the slice isn't done.
-- **Design files are the visual contract.** `sprint-01-dashboard.html` overlay sections (Details grid, Plain language description, Technical description, Acceptance criteria, Four Anchors grid, Quality Gates grid) are what the build must deliver. `deferred-decisions.md` line 25 confirms: "overlays — full detail."
-- **Build cadence:** slice by slice, no batching. Each slice goes solo-build → code-review-and-quality → solo-qa with browser sign-off from Scott. No moving to the next slice until current is genuinely Done against its spec. Slice status updated in backlog.md immediately on sign-off.
-- **Player-evaluation is excluded from sync.** Its backlog uses the legacy table format; solo-companion's backlog is the new schema. Sync will skip projects whose backlog doesn't match the new format (mark inactive). Onboarding player-evaluation to the new schema is a future concern.
-- **Distribution is real and near-term.** Scott has a partner queued to install once Phase 4 ships. Phase 5 — Distribution is committed (README, install script, plist templating, config setup). Code in Phase 1–4 must avoid hardcoded paths to support this — config-driven framework path, gitignored user state.
-- **Repo is private on GitHub.** `scoots31/solo-companion`. Failed-state commits preserved on main for retrospective.
+- **The framework's slice schema is the spec.** 17 slice fields, 15 deliverable fields, 15 phase fields. All in SQLite. Overlays (SL-011/SL-012/SL-013) render every field — no subsets.
+- **Design files are the visual contract.** `sprint-01-dashboard.html` overlay sections (Details grid, Plain language description, Technical description, Acceptance criteria, Four Anchors grid, Quality Gates grid). `deferred-decisions.md` line 25: "overlays — full detail."
+- **Build cadence:** slice by slice. Solo-build → code-review-and-quality → solo-qa with browser sign-off. Slice status updated in backlog.md immediately on sign-off.
+- **Player-evaluation is excluded.** Legacy backlog format, marked is_active=0 in SQLite. Not a bug — by design.
+- **Distribution is real and near-term.** Partner queued to install after Phase 4. Phase 5 — Distribution committed. No hardcoded paths in any code — config-driven framework path, gitignored user state.
+- **Repo:** `scoots31/solo-companion` (private).
 
 ## Resume Prompt
 
-> "Resuming Solo Companion. Phase 1–3 build was scrapped on 2026-04-28 after a structural audit. Code deleted, backlog reset, repo on GitHub at scoots31/solo-companion. Begin SL-001 (App Startup and Server) — Flask + LaunchAgent + routes, no data yet. Slice-by-slice with browser sign-off at each solo-qa. Player-evaluation excluded from sync. Phase 5 — Distribution committed for after Phase 4."
+> "Resuming Solo Companion. Phase 1 Foundation complete: SL-001/002/003 Done. Data layer in SQLite verified correct. Begin SL-004 (Sidebar — Project List, Recency, Navigation) — first UI slice in Phase 2. Slice-by-slice with browser sign-off. Player-evaluation excluded (legacy format). Phase 5 — Distribution committed."

@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-002 done — projects table populating from projects.md
+**Last updated:** 2026-04-28 · SL-003 done — full content sync populating SQLite from framework files
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 22 |
+| ✅ Ready | 21 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 2 |
+| ✓ Done | 3 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-003 |
+| **Next up (Ready, not started)** | SL-004 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -610,7 +610,7 @@ Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This
 
 ### SL-003 · Sync — Parse Framework Files and Populate SQLite
 
-Status: Ready
+Status: Done
 Phase: 1
 Deliverable: D-01
 
@@ -696,7 +696,13 @@ Self-verification checklist:
   - Confirm materials populated for a project with all expected file types
 
 Builder confirmation:
-Pending build
+  ✓ parsers.py written with section-anchored, field-anchored extraction covering all 17 slice fields, 15 phase fields, 15 deliverable fields
+  ✓ sync.py extended with sync_project_content() — destructive per-project wipe + re-insert on every sync
+  ✓ db.py schema updated to full records-spec.md spec (9 tables, all spec fields, JSON-encoded list columns)
+  ✓ Verified via direct SQLite query: solo-companion → 4 phases / 9 deliverables / 24 slices / 12 materials / 7 decisions
+  ✓ SL-001 full record confirmed: all 17 fields populated including JSON lists for references, done_criteria, self_verification, builder_confirmation
+  ✓ player-evaluation correctly marked is_active=0 (legacy format, missing required section headers)
+  ✓ Dashboard placeholder shows per-project content counts as proof of population
 
 Depends on: SL-001, SL-002
 Notes: This is the most complex slice in the build. The markdown parsing must be robust to minor formatting variations in the framework files — the framework does not enforce rigid formatting. Use section-header anchoring (## Section Name) rather than line-number-based parsing. When a section is not found, treat as empty — not an error.
