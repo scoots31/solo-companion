@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-003 done — full content sync populating SQLite from framework files
+**Last updated:** 2026-04-28 · SL-004 done — sidebar with project list, color dots, recency, navigation
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 21 |
+| ✅ Ready | 20 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 3 |
+| ✓ Done | 4 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-004 |
+| **Next up (Ready, not started)** | SL-005 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -711,7 +711,7 @@ Notes: This is the most complex slice in the build. The markdown parsing must be
 
 ### SL-004 · Sidebar — Project List, Recency, and Navigation
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -741,7 +741,12 @@ Self-verification checklist:
   - Confirm clicking each project loads the correct project detail page
 
 Builder confirmation:
-Pending build
+  ✓ Persistent sidebar at 200px — Views section (Dashboard, Activity Feed) + Projects section
+  ✓ Color assigned via deterministic hash (sum of char codes mod 8, 8-color palette)
+  ✓ Recency derived from filesystem mtime scan of project directory
+  ✓ Active project highlighted with color-matched left border
+  ✓ /feed route added as placeholder
+  ✓ _sidebar_html() + _page() layout wrapper used by all three routes
 
 Depends on: SL-002, SL-003
 Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not build the feed — just a page that says it's coming. The sidebar nav item should still appear and be clickable so the sidebar is complete.
