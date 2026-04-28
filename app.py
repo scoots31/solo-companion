@@ -3,10 +3,11 @@ Solo Companion — local read-only companion app for the Solo Builder Framework.
 Runs as a LaunchAgent on port 8710. Serves project state derived from framework files.
 """
 
-from flask import Flask, render_template_string, jsonify, abort
+from flask import Flask, render_template, render_template_string, jsonify, abort
 import os
 from db import init_db
 from sync import run_sync
+from data import get_projects, get_last_synced, get_dashboard_data, get_project_by_name
 
 PORT = 8710
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -18,12 +19,22 @@ init_db()  # idempotent — creates tables if they don't exist
 @app.route("/")
 def dashboard():
     run_sync()
-    return render_template_string(DASHBOARD_SHELL)
+    return render_template(
+        "dashboard.html",
+        projects=get_projects(),
+        last_synced=get_last_synced(),
+        data=get_dashboard_data(),
+    )
 
 
 @app.route("/project/<name>")
 def project_detail(name):
     return render_template_string(PROJECT_SHELL, project_name=name)
+
+
+@app.route("/feed")
+def activity_feed():
+    return render_template_string(PROJECT_SHELL, project_name="Activity Feed — coming in Phase 2.")
 
 
 @app.route("/health")

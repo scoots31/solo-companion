@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Solo Companion</title>
+<style>
+/* ── Base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #0F1729;
+  --blue: #2563EB;
+  --text: #EDE8E0;
+  --glass: rgba(255,255,255,0.05);
+  --border: rgba(255,255,255,0.07);
+  --muted: rgba(255,255,255,0.35);
+  --mono: 'SF Mono','Fira Code',monospace;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-size: 14px;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar (SL-004) ── */
+.sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  background: rgba(0,0,0,0.3);
+  border-right: 1px solid var(--border);
+  position: fixed;
+  top: 0; left: 0; bottom: 0;
+  overflow-y: auto;
+  padding: 24px 0 40px;
+  z-index: 10;
+}
+.sidebar-header {
+  padding: 0 20px 20px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 20px;
+}
+.sidebar-logo {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  color: rgba(255,255,255,0.3);
+  margin-bottom: 6px;
+}
+.sidebar-title {
+  font-size: 15px;
+  font-weight: 800;
+  color: #fff;
+  letter-spacing: -0.3px;
+}
+.nav-section { margin-bottom: 24px; }
+.nav-label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.25);
+  padding: 0 20px 8px;
+  display: block;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 20px;
+  font-size: 13px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.nav-item:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.05); }
+.nav-item.active { color: #fff; border-left-color: var(--blue); background: rgba(37,99,235,0.12); }
+.nav-icon { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; }
+.project-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.45);
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: var(--mono);
+  text-decoration: none;
+}
+.project-entry:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
+.project-entry.active { color: #fff; }
+.project-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.project-left { display: flex; align-items: center; gap: 8px; }
+.project-recency { font-size: 10px; color: rgba(255,255,255,0.2); }
+
+/* ── Main ── */
+.main {
+  margin-left: 240px;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Top bar (SL-005) ── */
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 40px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.2);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.top-bar-left { display: flex; align-items: center; gap: 16px; }
+.page-title { font-size: 16px; font-weight: 700; color: #fff; }
+.project-count {
+  font-size: 12px;
+  color: var(--muted);
+  background: rgba(255,255,255,0.07);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+.sync-area { display: flex; align-items: center; gap: 12px; }
+.sync-time { font-size: 11px; color: rgba(255,255,255,0.3); font-family: var(--mono); }
+.refresh-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.5);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s;
+}
+.refresh-btn:hover { color: #fff; background: rgba(255,255,255,0.1); }
+
+/* ── Content ── */
+.content { padding: 32px 40px; }
+
+/* ── Needs Attention (SL-006, SL-007) ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.35);
+}
+.attention-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 40px;
+}
+.attention-card {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+}
+.card-label.blocked { color: #FDA4AF; }
+.card-label.flagged { color: #FCD34D; }
+.card-count {
+  font-size: 11px;
+  color: var(--muted);
+  font-family: var(--mono);
+}
+.attention-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.attention-item:hover { opacity: 0.75; }
+.attention-item:first-child { border-top: none; }
+.item-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+.item-body { flex: 1; min-width: 0; }
+.item-name { font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.85); margin-bottom: 2px; }
+.item-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.empty-state {
+  font-size: 12px;
+  color: rgba(255,255,255,0.2);
+  font-style: italic;
+  padding: 8px 0;
+}
+
+/* ── Bucket sections (SL-008, SL-009, SL-010) ── */
+.buckets { display: flex; flex-direction: column; gap: 32px; }
+.bucket {
+  background: var(--glass);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.bucket-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.bucket-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: rgba(255,255,255,0.35);
+}
+.project-filter {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.filter-btn {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.filter-btn:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
+.filter-btn.active { color: #fff; background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.2); }
+
+/* Phase rows */
+.phase-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.phase-row:last-child { border-bottom: none; }
+.phase-row:hover { background: rgba(255,255,255,0.03); }
+.phase-project-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.phase-name { flex: 1; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.8); }
+.phase-project { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.phase-status {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.07);
+  color: var(--muted);
+}
+.phase-status.active-phase { background: rgba(37,99,235,0.2); color: #93C5FD; }
+.phase-status.done-phase { background: rgba(16,185,129,0.15); color: #6EE7B7; }
+
+/* Deliverable rows */
+.deliv-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.deliv-row:last-child { border-bottom: none; }
+.deliv-row:hover { background: rgba(255,255,255,0.03); }
+.deliv-name { flex: 1; font-size: 13px; font-weight: 500; color: rgba(255,255,255,0.8); }
+.deliv-meta { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.deliv-type {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(255,255,255,0.25);
+}
+
+/* Slice rows */
+.slice-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.slice-row:last-child { border-bottom: none; }
+.slice-row:hover { background: rgba(255,255,255,0.03); }
+.slice-id { font-size: 11px; color: var(--muted); font-family: var(--mono); flex-shrink: 0; width: 52px; }
+.slice-name { flex: 1; font-size: 13px; color: rgba(255,255,255,0.8); }
+.slice-status {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.status-ready { background: rgba(255,255,255,0.07); color: rgba(255,255,255,0.4); }
+.status-in-build { background: rgba(37,99,235,0.2); color: #93C5FD; }
+.status-in-qa { background: rgba(139,92,246,0.2); color: #C4B5FD; }
+.status-done { background: rgba(16,185,129,0.15); color: #6EE7B7; }
+.status-blocked { background: rgba(239,68,68,0.2); color: #FCA5A5; }
+
+/* ── Overlay ── */
+.overlay-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+.overlay-backdrop.open { display: flex; }
+.overlay-panel {
+  background: #1A2540;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  width: 520px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 28px;
+  position: relative;
+}
+.overlay-close {
+  position: absolute;
+  top: 16px; right: 16px;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.08);
+  border: none;
+  color: rgba(255,255,255,0.5);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.overlay-close:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.overlay-type {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.overlay-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 20px;
+  line-height: 1.3;
+}
+.overlay-project {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.overlay-project-dot { width: 8px; height: 8px; border-radius: 50%; }
+.overlay-project-name { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+.attr-grid { display: flex; flex-direction: column; gap: 12px; }
+.attr-row { display: flex; gap: 12px; }
+.attr-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: rgba(255,255,255,0.25);
+  width: 110px;
+  flex-shrink: 0;
+  padding-top: 1px;
+}
+.attr-value { font-size: 13px; color: rgba(255,255,255,0.8); flex: 1; }
+.attr-divider { border: none; border-top: 1px solid var(--border); margin: 8px 0; }
+</style>
+</head>
+<body>
+
+<!-- ── Sidebar (SL-004) ── -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Solo Builder</div>
+    <div class="sidebar-title">Companion</div>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-label">Views</span>
+    <a href="/" class="nav-item active">
+      <span class="nav-icon">▦</span> Dashboard
+    </a>
+    <a href="/feed" class="nav-item">
+      <span class="nav-icon">◎</span> Activity Feed
+    </a>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-label">Projects</span>
+    {% for p in projects %}
+    <a href="/project/{{ p.name }}" class="project-entry">
+      <div class="project-left">
+        <div class="project-dot" style="background:{{ p.color }}"></div>
+        {{ p.name }}
+      </div>
+      <span class="project-recency">{{ p.recency }}</span>
+    </a>
+    {% else %}
+    <div style="padding:8px 20px;font-size:12px;color:rgba(255,255,255,0.2);">No projects found</div>
+    {% endfor %}
+  </div>
+</nav>
+
+<!-- ── Main ── -->
+<div class="main">
+
+  <!-- ── Top bar (SL-005) ── -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <span class="page-title">Dashboard</span>
+      <span class="project-count">{{ projects|length }} project{{ 's' if projects|length != 1 else '' }}</span>
+    </div>
+    <div class="sync-area">
+      <span class="sync-time">synced {{ last_synced }}</span>
+      <a href="/" class="refresh-btn">↻ Refresh</a>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── Needs Attention (SL-006 Blocked, SL-007 Flagged) ── -->
+    <div class="section-header">
+      <span class="section-title">Needs Attention</span>
+    </div>
+    <div class="attention-grid">
+
+      <!-- Blocked card (SL-006) -->
+      <div class="attention-card">
+        <div class="card-header">
+          <span class="card-label blocked">⊗ Blocked</span>
+          <span class="card-count">{{ data.blocked|length }}</span>
+        </div>
+        {% if data.blocked %}
+          {% for item in data.blocked %}
+          <div class="attention-item" onclick="openOverlay('slice', {{ item | tojson }})">
+            <div class="item-dot" style="background:{{ item.project_color }}"></div>
+            <div class="item-body">
+              <div class="item-name">{{ item.name }}</div>
+              <div class="item-meta">{{ item.slice_id }} · {{ item.project_name }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">No blocked items</div>
+        {% endif %}
+      </div>
+
+      <!-- Flagged card (SL-007) -->
+      <div class="attention-card">
+        <div class="card-header">
+          <span class="card-label flagged">⚑ Flagged</span>
+          <span class="card-count">{{ data.flagged|length }}</span>
+        </div>
+        {% if data.flagged %}
+          {% for item in data.flagged %}
+          <div class="attention-item">
+            <div class="item-dot" style="background:{{ item.project_color }}"></div>
+            <div class="item-body">
+              <div class="item-name">{{ item.text }}</div>
+              <div class="item-meta">{{ item.project_name }}</div>
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="empty-state">No flagged items</div>
+        {% endif %}
+      </div>
+
+    </div><!-- /attention-grid -->
+
+    <!-- ── Buckets ── -->
+    <div class="buckets">
+
+      <!-- Phases bucket (SL-008) -->
+      <div class="bucket" id="phases-bucket">
+        <div class="bucket-header">
+          <span class="bucket-title">Phases</span>
+        </div>
+        {% if data.phases %}
+          {% for ph in data.phases %}
+          <div class="phase-row" onclick="openOverlay('phase', {{ ph | tojson }})">
+            <div class="phase-project-dot" style="background:{{ ph.project_color }}"></div>
+            <span class="phase-name">{{ ph.name }}</span>
+            <span class="phase-project">{{ ph.project_name }}</span>
+            <span class="phase-status {% if ph.status == 'Active' %}active-phase{% elif ph.status == 'Done' %}done-phase{% endif %}">
+              {{ ph.status }}
+            </span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="padding:20px;font-size:13px;color:rgba(255,255,255,0.2);">No phases found</div>
+        {% endif %}
+      </div>
+
+      <!-- Deliverables bucket (SL-009) -->
+      <div class="bucket" id="deliverables-bucket">
+        <div class="bucket-header">
+          <span class="bucket-title">Deliverables</span>
+          <div class="project-filter" id="deliv-filter">
+            <button class="filter-btn active" data-project="all" onclick="filterBucket('deliv', 'all', this)">All</button>
+            {% for p in projects %}
+            <button class="filter-btn" data-project="{{ p.name }}" onclick="filterBucket('deliv', '{{ p.name }}', this)"
+                    style="--dot:{{ p.color }}">
+              {{ p.name }}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+        {% if data.deliverables %}
+          {% for d in data.deliverables %}
+          <div class="deliv-row" data-project="{{ d.project_name }}"
+               onclick="openOverlay('deliverable', {{ d | tojson }})">
+            <div class="phase-project-dot" style="background:{{ d.project_color }}"></div>
+            <span class="deliv-name">{{ d.name }}</span>
+            <span class="deliv-meta">{{ d.project_name }}</span>
+            <span class="deliv-type">{{ d.type or '' }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="padding:20px;font-size:13px;color:rgba(255,255,255,0.2);">No deliverables found</div>
+        {% endif %}
+      </div>
+
+      <!-- Slices bucket (SL-010) -->
+      <div class="bucket" id="slices-bucket">
+        <div class="bucket-header">
+          <span class="bucket-title">Slices</span>
+          <div class="project-filter" id="slice-filter">
+            <button class="filter-btn active" data-project="all" onclick="filterBucket('slice', 'all', this)">All</button>
+            {% for p in projects %}
+            <button class="filter-btn" data-project="{{ p.name }}" onclick="filterBucket('slice', '{{ p.name }}', this)">
+              {{ p.name }}
+            </button>
+            {% endfor %}
+          </div>
+        </div>
+        {% if data.slices %}
+          {% for s in data.slices %}
+          <div class="slice-row" data-project="{{ s.project_name }}"
+               onclick="openOverlay('slice', {{ s | tojson }})">
+            <span class="slice-id">{{ s.slice_id }}</span>
+            <div class="phase-project-dot" style="background:{{ s.project_color }}"></div>
+            <span class="slice-name">{{ s.name }}</span>
+            <span class="slice-status status-{{ s.status.lower().replace(' ', '-') }}">{{ s.status }}</span>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="padding:20px;font-size:13px;color:rgba(255,255,255,0.2);">No active slices</div>
+        {% endif %}
+      </div>
+
+    </div><!-- /buckets -->
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<!-- ── Overlay ── -->
+<div class="overlay-backdrop" id="overlay" onclick="closeOverlay(event)">
+  <div class="overlay-panel" id="overlay-panel">
+    <button class="overlay-close" onclick="document.getElementById('overlay').classList.remove('open')">✕</button>
+    <div id="overlay-content"></div>
+  </div>
+</div>
+
+<script>
+function filterBucket(type, project, btn) {
+  const containerId = type === 'deliv' ? 'deliverables-bucket' : 'slices-bucket';
+  const filterId    = type === 'deliv' ? 'deliv-filter' : 'slice-filter';
+  const rowClass    = type === 'deliv' ? 'deliv-row' : 'slice-row';
+
+  document.querySelectorAll('#' + filterId + ' .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+
+  document.querySelectorAll('#' + containerId + ' .' + rowClass).forEach(row => {
+    row.style.display = (project === 'all' || row.dataset.project === project) ? '' : 'none';
+  });
+}
+
+function openOverlay(type, data) {
+  const el = document.getElementById('overlay-content');
+  let html = '';
+
+  if (type === 'slice') {
+    html = `
+      <div class="overlay-type">Unit of work ${data.slice_id || ''}</div>
+      <div class="overlay-title">${data.name}</div>
+      <div class="overlay-project">
+        <div class="overlay-project-dot" style="background:${data.project_color}"></div>
+        <span class="overlay-project-name">${data.project_name}</span>
+      </div>
+      <div class="attr-grid">
+        <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status}</span></div>
+        <div class="attr-row"><span class="attr-label">Phase</span><span class="attr-value">${data.phase_name || '—'}</span></div>
+        <div class="attr-row"><span class="attr-label">Deliverable</span><span class="attr-value">${data.deliverable_name || '—'}</span></div>
+        ${data.is_blocked ? '<div class="attr-row"><span class="attr-label">Blocked</span><span class="attr-value" style="color:#FCA5A5">Yes</span></div>' : ''}
+        ${data.is_flagged ? '<div class="attr-row"><span class="attr-label">Flagged</span><span class="attr-value" style="color:#FCD34D">Yes</span></div>' : ''}
+      </div>`;
+  } else if (type === 'deliverable') {
+    html = `
+      <div class="overlay-type">Deliverable</div>
+      <div class="overlay-title">${data.name}</div>
+      <div class="overlay-project">
+        <div class="overlay-project-dot" style="background:${data.project_color}"></div>
+        <span class="overlay-project-name">${data.project_name}</span>
+      </div>
+      <div class="attr-grid">
+        <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status}</span></div>
+        <div class="attr-row"><span class="attr-label">Phase</span><span class="attr-value">${data.phase_name || '—'}</span></div>
+        <div class="attr-row"><span class="attr-label">Type</span><span class="attr-value">${data.type || '—'}</span></div>
+        <div class="attr-row"><span class="attr-label">Slices</span><span class="attr-value">${data.slice_count}</span></div>
+      </div>`;
+  } else if (type === 'phase') {
+    html = `
+      <div class="overlay-type">Phase</div>
+      <div class="overlay-title">${data.name}</div>
+      <div class="overlay-project">
+        <div class="overlay-project-dot" style="background:${data.project_color}"></div>
+        <span class="overlay-project-name">${data.project_name}</span>
+      </div>
+      <div class="attr-grid">
+        <div class="attr-row"><span class="attr-label">Status</span><span class="attr-value">${data.status}</span></div>
+        <div class="attr-row"><span class="attr-label">Progress</span><span class="attr-value">${data.progress_pct}%</span></div>
+      </div>`;
+  }
+
+  el.innerHTML = html;
+  document.getElementById('overlay').classList.add('open');
+}
+
+function closeOverlay(e) {
+  if (e.target === document.getElementById('overlay')) {
+    document.getElementById('overlay').classList.remove('open');
+  }
+}
+</script>
+</body>
+</html>
