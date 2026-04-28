@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-001, SL-002, SL-003 |
+| **Next up (Ready, not started)** | SL-004, SL-005, SL-006 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -34,7 +34,7 @@
 
 ### Phase 1 · Foundation
 
-Status: Planning
+Status: Done
 
 Plain language description:
 The companion app starts, runs, and reads real framework files from disk. When Phase 1 is complete, the sync layer reliably turns markdown files into structured data — every project, every phase, every deliverable, every slice, every flag, every decision is in SQLite and queryable. The app is running at localhost:8710 and serving data from real projects.
@@ -190,7 +190,7 @@ Notes: SL-023 (review link surfacing) can build as soon as Phase 3 is complete �
 
 ### D-01 · Sync Layer
 
-Status: Defined
+Status: Accepted
 Type: Logic
 Phase: 1
 
@@ -562,7 +562,7 @@ Distribution note: plist has Scott's username hardcoded in app path and python p
 
 ### SL-002 · Sync on Open — Project Discovery
 
-Status: In QA
+Status: Done
 Phase: 1
 Deliverable: D-01
 
@@ -602,7 +602,7 @@ Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This
 
 ### SL-003 · Sync — Parse Framework Files and Populate SQLite
 
-Status: In QA
+Status: Done
 Phase: 1
 Deliverable: D-01
 
