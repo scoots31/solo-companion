@@ -521,7 +521,7 @@ Notes: SL-023 builds as soon as Phase 3 is accepted. SL-024 waits on the framewo
 
 ### SL-001 · App Startup and Server
 
-Status: Ready
+Status: In QA
 Phase: 1
 Deliverable: D-01
 
@@ -532,7 +532,7 @@ Technical description:
 Flask server on a fixed port (8710 — next available in the ~/Apps suite). LaunchAgent plist registered at ~/Library/LaunchAgents/com.scotth.solocompanion.plist, same pattern as the existing app suite. Server entry point at app.py. Routes defined for: / (dashboard), /project/<name> (project detail). No external packages beyond Flask.
 
 Design anchor: sprint-01-dashboard.html — full app shell
-Data anchor: Pending data-scaffold
+Data anchor: N/A — infrastructure slice, no data consumed
 Process anchor: Open Solo Companion app → B (main path) · infrastructure
 
 References:
@@ -550,10 +550,12 @@ Self-verification checklist:
   - Confirm /project/<name> route returns HTTP 200 for a known project name
 
 Builder confirmation:
-Pending build
+  ✓ LaunchAgent plist registered — com.scotth.solocompanion listed in launchctl, server answers at port 8710
+  ✓ Dashboard route — http://localhost:8710/ returns HTTP 200
+  ✓ Project route — http://localhost:8710/project/test-project returns HTTP 200
 
 Depends on: none
-Notes: Port 8710 chosen as next available after the existing suite (8700–8765). Confirm no conflict before build starts.
+Notes: Port 8710 confirmed free before build. Flask runs from ~/Apps/.venv/bin/python3 (venv carries Flask; system python3 does not). Plist copied to ~/Library/LaunchAgents/ and loaded.
 
 ---
 
