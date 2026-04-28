@@ -1,6 +1,6 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · Round 2
-**Project status:** In Design Review
+**Last updated:** 2026-04-28 · Plan approved
+**Project status:** Ready for Build
 
 ---
 
@@ -23,10 +23,495 @@
 |---|---|
 | **Currently in build** | — |
 | **Next up (Ready, not started)** | SL-001, SL-002, SL-003 |
-| **Blocked — waiting on** | — |
+| **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
-*Phases and deliverables added when prd-to-plan runs.*
+---
+
+## Phase Records
+
+---
+
+### Phase 1 · Foundation
+
+Status: Planning
+
+Plain language description:
+The companion app starts, runs, and reads real framework files from disk. When Phase 1 is complete, the sync layer reliably turns markdown files into structured data — every project, every phase, every deliverable, every slice, every flag, every decision is in SQLite and queryable. The app is running at localhost:8710 and serving data from real projects.
+
+Technical description:
+Flask server registered as a LaunchAgent. Sync layer reads projects.md to discover project paths, then parses each project's framework files (backlog.md, handoff.md, current-phase.md, decisions.md, process maps, design files) into a normalized SQLite schema. Flagged item derivation runs at parse time. The markdown parser handles real-world formatting variations using section-header anchoring rather than line-number parsing. This phase produces no visible UI — it proves the data foundation.
+
+Question this phase answers: Can we reliably read framework files and serve a running app?
+Deliverables: D-01
+Process steps completed: Open Solo Companion app, Dashboard loads — syncs from framework files
+Proves / de-risks: Markdown parsing against real framework files works reliably. SQLite schema holds the full data model. LaunchAgent startup works.
+
+Explicitly out of scope:
+All UI. This phase produces a running server and a populated SQLite database — nothing the solo can see in a browser yet.
+
+Blocked by: none
+Definition of done: Server starts on login, http://localhost:8710 returns HTTP 200, SQLite populated with correct data from at least two real projects.
+
+Acceptance criteria:
+  1. All projects in projects.md appear in SQLite with correct paths and assigned colors after sync
+  2. All slices, deliverables, phases, flags, questions, materials, decisions, and changes from real backlog.md and handoff.md files appear in SQLite with correct values
+  3. Flagged items derived correctly — stale In Progress slices and handoff "Open right now" items both surface
+
+Self-verification checklist:
+  - Start the server and confirm http://localhost:8710 returns HTTP 200
+  - Open SQLite and confirm all three object types populated from at least two real projects
+  - Manually set a slice to In Progress with old last_modified, confirm it appears as flagged after sync
+
+Builder confirmation:
+Pending build
+
+Notes: If the markdown parser fails on any real framework file, stop and fix before proceeding to Phase 2. Phase 2 depends entirely on this layer being correct.
+
+---
+
+### Phase 2 · Dashboard
+
+Status: Planning
+
+Plain language description:
+The solo can open the companion app and see everything that matters across all their projects on one screen — what's blocked, what's flagged, what phases and deliverables and slices are active. Clicking any item shows its full details. This is the primary orientation tool — the reason the app exists.
+
+Technical description:
+Flask routes and Jinja2 templates for the dashboard view. Reads from SQLite (all tables). Sidebar renders project list with auto-assigned colors and file-based recency. Needs Attention section renders blocked and flagged items from SQLite. Three buckets render active phases, deliverables, and slices with project filters. All three overlay types (slice, deliverable, phase) rendered as shared components — opened via JavaScript, populated from server-rendered data attributes.
+
+Question this phase answers: Can the solo orient across all projects without asking the framework?
+Deliverables: D-02, D-03
+Process steps completed: See all active phases/deliverables/slices, See blocked items, See flagged items, See recency signals, Solo orients
+Proves / de-risks: The core value proposition. If the solo can orient in under a minute from this screen, the app delivers its primary benefit.
+
+Explicitly out of scope:
+Project detail — clicking "Take me to this project" in any overlay routes to a 404 until Phase 3.
+
+Blocked by: Phase 1
+Definition of done: Dashboard renders with real data from at least two projects. All three buckets populated. Needs Attention shows real blocks and flags. All three overlays open and display correct data.
+
+Acceptance criteria:
+  1. Dashboard loads with real data from all registered projects within 2 seconds of opening
+  2. Needs Attention section shows all real blocked and flagged items across all projects
+  3. All three bucket items are clickable and open correct overlays with complete, accurate data
+
+Self-verification checklist:
+  - Open the dashboard with two real projects synced and confirm all three buckets populate
+  - Confirm Needs Attention reflects real blocks and flags from current framework files
+  - Click every overlay type from every bucket and confirm data is correct and complete
+
+Builder confirmation:
+Pending build
+
+Notes: None.
+
+---
+
+### Phase 3 · Project Detail
+
+Status: Planning
+
+Plain language description:
+The solo can navigate to any project and see everything about it across five tabs — what needs action, full progress with all slices and deliverables, the complete backlog across all phases, every framework document, and the full decision and change history. The companion replaces every orientation question the solo would otherwise ask the framework.
+
+Technical description:
+Flask route /project/<name> with tab routing via query param. Five tab templates reading from SQLite for the selected project. Action tab queries blocked slices and flags tables. Progress and Backlog tabs query phases, deliverables, and slices tables. Materials tab reads the materials table and serves file content for inline rendering (markdown renderer from SL-020). Decisions & Changes tab reads decisions and changes tables. All shared overlay components carry over from Phase 2.
+
+Question this phase answers: Can the solo get complete project context in one place without asking the framework?
+Deliverables: D-04, D-05, D-06, D-07, D-08
+Process steps completed: See that project's Action tab, cross-project check zero context cost
+Proves / de-risks: The companion fully replaces orientation questions for any individual project. A solo can recall any design decision, see any process map, or check slice status without a Claude Code session.
+
+Explicitly out of scope:
+Review buttons on slice rows are rendered but non-functional until Phase 4 (review_url will be null until the framework curator change lands). Start & Review not built until Phase 4.
+
+Blocked by: Phase 2
+Definition of done: All five tabs load with real data for at least two projects. Materials tab renders markdown inline. Navigation between projects works from sidebar.
+
+Acceptance criteria:
+  1. All five tabs load with correct data for any registered project
+  2. Materials tab renders at least three document types correctly — markdown inline, HTML screen overlay, mermaid raw text
+  3. Clicking any project in the sidebar loads that project's detail at the Action tab
+
+Self-verification checklist:
+  - Navigate to two different projects and confirm all five tabs load with correct data for each
+  - Open three material types and confirm correct rendering per type
+  - Confirm sidebar navigation loads correct project on each click
+
+Builder confirmation:
+Pending build
+
+Notes: None.
+
+---
+
+### Phase 4 · Review Flow
+
+Status: Planning
+
+Plain language description:
+When a slice ships and the framework serves the built UI, a Review button appears on that slice in the companion app. The solo clicks it and sees the finished work in the browser. If the app is stopped, Start & Review starts it first. No terminal required.
+
+Technical description:
+SL-023: review_url field read from SQLite (populated at sync time from slice records in backlog.md). Review button rendered on Done slices with non-null review_url. SL-024: port check on page render, Start & Review button when port not responding, /start-and-review route executes start_command from tech-context.md via subprocess.Popen, polls port until responding, then redirects to review_url.
+
+Question this phase answers: Can the solo review completed work without touching the terminal?
+Deliverables: D-09
+Process steps completed: Review link appears in companion app, Click Review, Click Start and Review
+Proves / de-risks: The full solo build loop — build → companion shows review → solo reviews — works end-to-end without terminal.
+
+Explicitly out of scope:
+Activity Feed (Phase 2 of the product — separate build cycle).
+
+Blocked by: Phase 3 · Framework curator change (review_url field in backlog slice records + start_command field in tech-context.md)
+Definition of done: Review button appears on a real Done slice with a real review_url. Clicking it opens the running app. Start & Review successfully starts a stopped app and opens the review URL.
+
+Acceptance criteria:
+  1. Review button appears on Done slices with review_url populated — absent on all other slices
+  2. Clicking Review opens the correct URL in a new browser tab
+  3. Start & Review starts a stopped app within 10 seconds and opens the review URL
+
+Self-verification checklist:
+  - Add a real review_url to a Done slice record, sync, and confirm Review button appears
+  - With the app stopped, click Start & Review and confirm it starts and navigates to the URL
+  - Confirm Review button is absent on In Progress and Ready slices
+
+Builder confirmation:
+Pending build
+
+Notes: SL-023 (review link surfacing) can build as soon as Phase 3 is complete — it reads review_url from SQLite which is already parsed in SL-003. SL-024 (Start & Review) waits on the framework curator change for start_command. Build SL-023 first, then SL-024 after the curator pass.
+
+---
+
+## Deliverable Records
+
+---
+
+### D-01 · Sync Layer
+
+Status: Defined
+Type: Logic
+Phase: 1
+
+Plain language description:
+The companion app is running and knows about every project the solo has registered. It has read every framework file for every project and stored the data where the app can use it. The solo can't see any of this yet — but everything the dashboard and project detail screens will show is already in the database, correct and current.
+
+Technical description:
+Flask server on port 8710 registered via LaunchAgent. Three-slice sync pipeline: (1) discover projects from projects.md, (2) parse each project's framework files using section-header-anchored markdown parsing, (3) populate SQLite across 9 tables. Flagged item derivation runs at parse time. Sync triggers on every dashboard request and on manual refresh. No UI rendered in this deliverable.
+
+Screens:
+  - None (Logic deliverable — no UI output)
+
+Acceptance criteria:
+  1. Server starts on login and http://localhost:8710 returns HTTP 200 with no errors
+  2. All data from at least two real projects populates SQLite correctly after sync — verified by direct SQLite query
+  3. Flagged items (stale In Progress + handoff "Open right now") derive correctly for both projects
+
+Self-verification checklist:
+  - Start the server fresh, open SQLite, run SELECT * on each table and confirm data from real projects
+  - Confirm flagged derivation by querying flags table against known handoff.md content
+
+Builder confirmation:
+Pending build
+
+Slices: SL-001, SL-002, SL-003
+References:
+  - ~/Developer/engineering-playbook/projects.md — project registry being parsed
+  - ~/Developer/engineering-playbook/docs/records-spec.md — backlog format being parsed
+  - ~/Apps/CLAUDE.md — LaunchAgent pattern and port convention
+Depends on: none
+Notes: The markdown parser is the highest-risk element in the entire build. If real framework files expose parsing edge cases not anticipated in SL-003's design, fix them before Phase 2 begins.
+
+---
+
+### D-02 · Dashboard Core
+
+Status: Defined
+Type: Screen
+Phase: 2
+
+Plain language description:
+The solo opens the companion app and sees a dashboard with their full project landscape. The sidebar shows all active projects with colored dots and recency. The top section surfaces anything that needs attention — blocks in red, flags in amber. Below that, three buckets show what's actively in progress across all projects: phases, deliverables, and slices. The deliverable and slice buckets can be filtered to a single project.
+
+Technical description:
+/ route renders the dashboard template. Sidebar populated from projects table. Needs Attention section populated from slices (is_blocked) and flags tables. Three bucket sections populated from phases (status=In Progress), deliverables (status In Active/Defined), and slices (status In Progress/In QA/In Test). Project filter on deliverables and slices buckets implemented as a URL param that re-renders the bucket section. Top bar shows project count, last-synced timestamp, and refresh button (POST /sync → redirect to /).
+
+Screens:
+  - sprint-01-dashboard.html (primary)
+
+Acceptance criteria:
+  1. Dashboard loads with real data from all registered projects — sidebar, Needs Attention, and all three buckets populated
+  2. Needs Attention correctly shows real blocked slices and flagged items; both cards absent when nothing is blocked or flagged
+  3. Project filter on deliverables and slices correctly narrows each bucket independently
+
+Self-verification checklist:
+  - Load dashboard with two real projects and confirm all sections populated with correct project data
+  - Confirm Needs Attention Blocked card is absent when no blocked slices exist
+  - Filter deliverables to one project and confirm slices bucket is unaffected (independent filters)
+
+Builder confirmation:
+Pending build
+
+Slices: SL-004, SL-005, SL-006, SL-007, SL-008, SL-009, SL-010
+References:
+  - sprint-01-dashboard.html — design reference for all dashboard elements
+Depends on: D-01
+Notes: None.
+
+---
+
+### D-03 · Dashboard Overlays
+
+Status: Defined
+Type: Screen
+Phase: 2
+
+Plain language description:
+Every item on the dashboard is clickable. Clicking a slice, deliverable, or phase opens a panel over the dashboard showing everything about that object — its description, status, anchors, quality gates, and which project it belongs to. A button in the panel takes the solo to that project's detail page.
+
+Technical description:
+Three shared overlay components rendered via server-side data attributes on each clickable row. JavaScript reads data attributes and populates the overlay panel on click. Overlay content: slice panel includes all fields from the slice record (plain language description, technical description, acceptance criteria, four anchors, quality gates derived from status). Deliverable panel includes descriptions, phase, slice list with statuses. Phase panel includes descriptions, gate status, 4-bucket count grid, deliverable list. "Take me to this project" links to /project/<name>.
+
+Screens:
+  - sprint-01-dashboard.html (primary — all three overlay panels)
+
+Acceptance criteria:
+  1. Clicking any item in any bucket opens the correct overlay type with accurate data for that specific item
+  2. "Take me to this project" navigates to the correct project detail page
+  3. Backdrop click and ✕ button both dismiss the overlay cleanly
+
+Self-verification checklist:
+  - Click one item from each bucket type and confirm correct overlay type opens with correct data
+  - Click "Take me to this project" from a slice overlay and confirm correct project detail loads
+  - Confirm backdrop click dismisses without navigating
+
+Builder confirmation:
+Pending build
+
+Slices: SL-011, SL-012, SL-013
+References:
+  - sprint-01-dashboard.html — overlay panel designs
+Depends on: D-02
+Notes: "Take me to this project" routes to a 404 until Phase 3. This is expected — note it in the Phase 2 acceptance review.
+
+---
+
+### D-04 · Project Detail — Action Tab
+
+Status: Defined
+Type: Screen
+Phase: 3
+
+Plain language description:
+Clicking any project in the sidebar — or "Take me to this project" from any overlay — loads a dedicated page for that project. The first thing the solo sees is the Action tab: everything that needs attention for this project specifically. Blocked slices in red, flagged items in amber, outstanding questions below. Every item is clickable.
+
+Technical description:
+/project/<name> route with tab routing via ?tab= query param (default: action). Breadcrumb renders project name and links to /. Phase pill reads current phase from phases table. Action tab: three sections (Blocked from slices WHERE is_blocked=1, Flagged from flags table, Questions from questions table), each absent from DOM when empty. All item rows open slice overlay (SL-011). Overlay footer renders "Already on this project" disabled button rather than "Take me to this project."
+
+Screens:
+  - sprint-02-project-detail.html (primary — top bar, breadcrumb, tab bar, Action tab)
+
+Acceptance criteria:
+  1. /project/<name> loads for every registered project with correct breadcrumb and phase pill
+  2. Action tab correctly shows blocked, flagged, and question items — each section absent when empty
+  3. Clicking a blocked or flagged item opens the slice overlay with "Already on this project" footer
+
+Self-verification checklist:
+  - Navigate to two different projects and confirm breadcrumb and phase pill are correct for each
+  - Confirm a project with no action items shows a clean empty state, not empty containers
+  - Confirm slice overlay footer shows "Already on this project" (not "Take me to this project") on this page
+
+Builder confirmation:
+Pending build
+
+Slices: SL-014, SL-015
+References:
+  - sprint-02-project-detail.html — breadcrumb, tab bar, Action tab design
+Depends on: D-03
+Notes: None.
+
+---
+
+### D-05 · Project Detail — Progress Tab
+
+Status: Defined
+Type: Screen
+Phase: 3
+
+Plain language description:
+The Progress tab shows the solo exactly where the current build phase stands — a summary card for the phase at the top, then all deliverables in the phase with their status, then the full list of every slice in the phase with its ID, name, deliverable, and status. Everything is clickable. Done UI slices with a review URL show a Review button (non-functional until Phase 4).
+
+Technical description:
+Progress tab template reads from phases, deliverables, and slices tables for the selected project, filtered to current phase. Phase summary card is clickable (opens phase overlay). Deliverable rows clickable (opens deliverable overlay). Slice rows clickable (opens slice overlay). Review button rendered on Done slices with non-null review_url — button is present but links to # until Phase 4 wires the URL. App-running port check not performed in Phase 3 — defer to Phase 4 when SL-024 builds.
+
+Screens:
+  - sprint-02-project-detail.html (primary — Progress tab)
+
+Acceptance criteria:
+  1. Phase summary card shows correct phase name, gate status, and progress bar for the current phase
+  2. All deliverables and slices for the current phase render with correct names and statuses
+  3. Phase, deliverable, and slice overlays all open correctly from Progress tab rows
+
+Self-verification checklist:
+  - Confirm progress bar and status count grid match actual slice statuses in SQLite
+  - Click phase summary card, a deliverable row, and a slice row — confirm each opens the correct overlay
+  - Confirm Review button is absent on non-Done slices and on Done slices with null review_url
+
+Builder confirmation:
+Pending build
+
+Slices: SL-016, SL-017, SL-018
+References:
+  - sprint-02-project-detail.html — Progress tab design
+Depends on: D-04
+Notes: Review button is rendered but not fully wired until Phase 4. Acceptable for Phase 3 acceptance — note it explicitly in the review.
+
+---
+
+### D-06 · Project Detail — Backlog Tab
+
+Status: Defined
+Type: Screen
+Phase: 3
+
+Plain language description:
+The Backlog tab shows the complete picture of the project across all phases — every phase, every deliverable, every slice. Active work is clearly distinct from upcoming work. The solo can see where the entire project stands, not just the current phase.
+
+Technical description:
+Backlog tab template queries phases, deliverables, and slices tables for the selected project with no phase filter. All phases ordered by sequence. All deliverables ordered by phase then name. All slices ordered by slice_id. Items with Planning/Upcoming status rendered at 50% opacity. All rows clickable with correct overlay types.
+
+Screens:
+  - sprint-02-project-detail.html (primary — Backlog tab)
+
+Acceptance criteria:
+  1. All phases, deliverables, and slices for the project appear regardless of status or phase
+  2. Upcoming/planning items are visually dimmed relative to active items
+  3. All three overlay types open correctly from Backlog tab rows
+
+Self-verification checklist:
+  - Confirm slices from multiple phases all appear in Backlog tab
+  - Confirm upcoming items are rendered at reduced opacity
+  - Click one item of each type and confirm correct overlay opens
+
+Builder confirmation:
+Pending build
+
+Slices: SL-019
+References:
+  - sprint-02-project-detail.html — Backlog tab design
+Depends on: D-05
+Notes: Single-slice deliverable. Acceptance is straightforward — the tab either shows the complete backlog correctly or it does not.
+
+---
+
+### D-07 · Project Detail — Materials Tab
+
+Status: Defined
+Type: Screen
+Phase: 3
+
+Plain language description:
+The Materials tab shows every framework document for the project, organized by the phase it was produced in. Clicking a markdown document opens it inline — the solo reads the discovery brief, process maps, or handoff notes without leaving the app. Clicking a design screen shows its metadata and a button to open it in the browser.
+
+Technical description:
+Materials tab reads from materials table for the selected project, grouped by phase_name. Markdown documents open the material-doc overlay — file content read from disk, rendered via the stdlib regex markdown renderer (SL-020). HTML screen documents open the material-screen overlay — metadata only, "Open in browser" button calls subprocess.run(['open', file_path]).
+
+Screens:
+  - sprint-02-project-detail.html (primary — Materials tab, material-doc overlay, material-screen overlay)
+
+Acceptance criteria:
+  1. All discovered framework documents appear in correct phase sections
+  2. Clicking a markdown document renders its content correctly inline — headings, paragraphs, bold, lists, and horizontal rules
+  3. Clicking an HTML screen document opens the screen overlay and "Open in browser" opens the file in the default browser
+
+Self-verification checklist:
+  - Click the discovery brief and confirm formatted content renders correctly
+  - Click a process map and confirm mermaid content shows as readable raw text, not a broken render
+  - Click an HTML screen card and confirm "Open in browser" opens the file
+
+Builder confirmation:
+Pending build
+
+Slices: SL-020, SL-021
+References:
+  - sprint-02-project-detail.html — Materials tab design
+Depends on: D-04
+Notes: D-07 depends on D-04 (project shell), not D-06 (Backlog tab). Materials tab can be built in parallel with D-05 and D-06 once D-04 is accepted.
+
+---
+
+### D-08 · Project Detail — Decisions & Changes Tab
+
+Status: Defined
+Type: Screen
+Phase: 3
+
+Plain language description:
+The Decisions & Changes tab shows every design decision made during the project and every time something changed — with the reasoning recorded for each. The solo can recall why any decision was made, and what was changed from what it used to be.
+
+Technical description:
+Decisions & Changes tab reads from decisions and changes tables for the selected project. Decisions rendered with title, phase label, date, body text, and why-reasoning (border-left treatment). Changes rendered with title, date, was/became grid. Both sections ordered most recent first. No overlays — read-only reference content.
+
+Screens:
+  - sprint-02-project-detail.html (primary — Decisions & Changes tab)
+
+Acceptance criteria:
+  1. All decisions from decisions.md render with title, phase, date, body, and reasoning
+  2. All changes render with title, date, was value, and became value
+  3. Both sections ordered most recent first
+
+Self-verification checklist:
+  - Add a test decision to a real decisions.md, sync, and confirm it appears with all fields
+  - Confirm entries are ordered most recent first
+
+Builder confirmation:
+Pending build
+
+Slices: SL-022
+References:
+  - sprint-02-project-detail.html — Decisions & Changes tab design
+  - docs/continuity/decisions.md — example of the file format being parsed
+Depends on: D-04
+Notes: None.
+
+---
+
+### D-09 · Review Flow
+
+Status: Defined
+Type: Logic
+Phase: 4
+
+Plain language description:
+When a framework build session marks a slice as done and records a review URL, the companion automatically shows a Review button on that slice. The solo clicks it and sees the finished work in the browser. If the app was stopped, the companion starts it first — the solo never needs to open a terminal to review work.
+
+Technical description:
+SL-023: review_url read from slices table (populated at sync from backlog.md slice records). Review button rendered on Done slices with non-null review_url — opens URL in new tab. SL-024: port check on page render (GET to app port from tech-context.md, 500ms timeout). Start & Review button (amber) rendered when port not responding. /start-and-review POST route: reads start_command from tech-context.md, runs subprocess.Popen, polls port every 500ms for up to 10 seconds, redirects to review_url on success, returns error page on timeout.
+
+Screens:
+  - sprint-02-project-detail.html (affected — Progress tab slice rows, Backlog tab slice rows)
+  - sprint-01-dashboard.html (affected — Slices bucket rows)
+
+Acceptance criteria:
+  1. Review button appears on Done slices with review_url in backlog.md — absent on all other slices
+  2. Start & Review button appears when the project app's port is not responding — Review button appears when it is
+  3. Start & Review successfully starts a stopped app and opens the review URL within 10 seconds
+
+Self-verification checklist:
+  - Add review_url to a real Done slice record, sync, confirm Review button appears on Progress tab
+  - Stop a project app, confirm Start & Review appears; click it and confirm app starts and URL opens
+  - Confirm error page renders correctly when app fails to start within 10 seconds
+
+Builder confirmation:
+Pending build
+
+Slices: SL-023, SL-024
+References:
+  - sprint-02-project-detail.html — Progress tab slice row with Review/Start & Review button
+  - docs/continuity/handoff.md — Start & Review is the one operational action; read-only boundary
+Depends on: D-05 · Framework curator change (review_url in backlog slice records, start_command in tech-context.md)
+Notes: SL-023 builds as soon as Phase 3 is accepted. SL-024 waits on the framework curator change. Build SL-023 first. When the curator change lands, build SL-024.
 
 ---
 
@@ -37,8 +522,8 @@
 ### SL-001 · App Startup and Server
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 1
+Deliverable: D-01
 
 Plain language description:
 The companion app starts automatically when the Mac logs in and runs silently in the background. When the solo opens their browser and goes to the companion's local address, the app is already there — no manual launch required.
@@ -75,8 +560,8 @@ Notes: Port 8710 chosen as next available after the existing suite (8700–8765)
 ### SL-002 · Sync on Open — Project Discovery
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 1
+Deliverable: D-01
 
 Plain language description:
 Every time the solo opens the companion app, it reads the framework's project registry to discover all active projects and their locations on disk. The solo never has to tell the companion where projects live — it finds them automatically.
@@ -113,8 +598,8 @@ Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This
 ### SL-003 · Sync — Parse Framework Files and Populate SQLite
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 1
+Deliverable: D-01
 
 Plain language description:
 After discovering which projects exist, the companion reads each project's framework files and turns them into structured data the app can display. This is what makes the dashboard and project detail screens show real information — not just project names.
@@ -179,8 +664,8 @@ Notes: This is the most complex slice in the build. The markdown parsing must be
 ### SL-004 · Sidebar — Project List, Recency, and Navigation
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-02
 
 Plain language description:
 The left sidebar shows the list of all active projects, each with a colored dot and a recency indicator showing how recently the project was worked on. Clicking a project navigates to that project's detail page. The Views section at the top links to Dashboard and Activity Feed.
@@ -218,8 +703,8 @@ Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not buil
 ### SL-005 · Dashboard Top Bar
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-02
 
 Plain language description:
 The top of the dashboard shows the page title, a count of how many active projects are being tracked, when the data was last synced, and a refresh button the solo can click to pull the latest data from their framework files.
@@ -251,8 +736,8 @@ Notes: None.
 ### SL-006 · Needs Attention — Blocked Card
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-02
 
 Plain language description:
 When any project has a slice that is blocked — meaning work cannot proceed until something is resolved — it appears in a red-tinted card at the top of the dashboard. Each blocked item shows the slice ID, what's blocking it, which project it belongs to, and how long it has been open. When there are no blocked items across any project, this card does not appear.
@@ -286,8 +771,8 @@ Notes: Empty state means the card is not rendered — not rendered with a "no bl
 ### SL-007 · Needs Attention — Flagged Card
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-02
 
 Plain language description:
 When any project has items that warrant attention — stale slices, open notes from the handoff file, or items the solo has flagged — they appear in an amber-tinted card on the dashboard. Each flagged item shows what the signal is, which project it came from, and what type of object it relates to. When there are nothing flagged across any project, this card does not appear.
@@ -321,8 +806,8 @@ Notes: "Outstanding questions" items appear in the questions table and surface o
 ### SL-008 · Dashboard — Phases Bucket
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-02
 
 Plain language description:
 The Phases section of the dashboard shows every active build phase across all projects — one row per phase, with the project name, current phase name, and a progress bar showing how far through the slices the solo is.
@@ -355,8 +840,8 @@ Notes: None.
 ### SL-009 · Dashboard — Deliverables Bucket with Project Filter
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-02
 
 Plain language description:
 The Deliverables section of the dashboard shows deliverables that are currently being worked on across all projects. A filter lets the solo narrow the view to a single project. Each row shows the deliverable name, which project it belongs to, and its current status.
@@ -389,8 +874,8 @@ Notes: None.
 ### SL-010 · Dashboard — Slices Bucket with Project Filter
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-02
 
 Plain language description:
 The Slices section of the dashboard shows slices that are actively being worked on across all projects — In Progress, In QA, and In Test. A filter lets the solo narrow to one project. Each row shows the slice ID, name, project, and current status.
@@ -423,8 +908,8 @@ Notes: Ready slices are not shown here — they haven't started. Done slices are
 ### SL-011 · Overlay — Slice Panel
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-03
 
 Plain language description:
 When the solo clicks any slice — anywhere in the app — a panel slides over the current screen showing everything about that slice: its description, which project and deliverable it belongs to, its current status, the four anchors, and its quality gates. A button at the bottom takes the solo to that slice's project detail page.
@@ -458,8 +943,8 @@ Notes: The four anchors section reads the anchor fields directly from the slice 
 ### SL-012 · Overlay — Deliverable Panel
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-03
 
 Plain language description:
 When the solo clicks a deliverable anywhere in the app, a panel appears showing the deliverable's description, which phase it belongs to, its status, and the list of slices within it with their current statuses.
@@ -491,8 +976,8 @@ Notes: None.
 ### SL-013 · Overlay — Phase Panel
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 2
+Deliverable: D-03
 
 Plain language description:
 When the solo clicks a phase anywhere in the app, a panel appears showing the phase's description, gate status, a progress breakdown by slice status, and the list of deliverables within it.
@@ -524,8 +1009,8 @@ Notes: None.
 ### SL-014 · Project Detail — Routing and Breadcrumb
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-04
 
 Plain language description:
 Clicking any project in the sidebar — or the "Take me to this project" button in any overlay — loads a dedicated page for that project. The page shows the project name in the breadcrumb at the top and a pill showing the current build phase.
@@ -559,8 +1044,8 @@ Notes: None.
 ### SL-015 · Project Detail — Action Tab
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-04
 
 Plain language description:
 The Action tab is the first thing the solo sees when they open a project. It shows three sections: anything that is blocking work (with a red treatment), anything that is flagged for attention (amber), and any outstanding questions that need an answer. Every item is clickable and shows full details.
@@ -595,8 +1080,8 @@ Notes: None.
 ### SL-016 · Progress Tab — Phase Summary Card
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-05
 
 Plain language description:
 The top of the Progress tab shows a summary card for the current phase — its name, when it started, whether the gate has been cleared, and a progress bar showing how many slices are done.
@@ -628,8 +1113,8 @@ Notes: None.
 ### SL-017 · Progress Tab — Deliverables Section
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-05
 
 Plain language description:
 Below the phase summary, the Progress tab shows all deliverables in the current phase — each as a clickable row showing the deliverable name, how many slices it contains, and its current status.
@@ -660,8 +1145,8 @@ Notes: None.
 ### SL-018 · Progress Tab — Slice List
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-05
 
 Plain language description:
 Below the deliverables, the Progress tab shows the full list of slices in the current phase — each with its ID, name, which deliverable it belongs to, and its status. Done UI slices show a Review button that opens the built screen in the browser.
@@ -696,8 +1181,8 @@ Notes: Port check for "is the app running" is a synchronous GET to the app's por
 ### SL-019 · Backlog Tab
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-06
 
 Plain language description:
 The Backlog tab shows the full picture of the project across all phases — every phase, every deliverable, and every slice including upcoming work that hasn't started yet. Everything is clickable. Upcoming phases and slices are visually dimmed so active work is clearly distinct.
@@ -731,8 +1216,8 @@ Notes: None.
 ### SL-020 · Materials Tab — Inline Document Rendering
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-07
 
 Plain language description:
 The Materials tab shows all framework documents for the project organized by phase. Clicking a markdown document opens an overlay that renders the document content inline — the solo can read the discovery brief, process maps, or any other text document without leaving the companion app or opening a separate editor.
@@ -780,8 +1265,8 @@ Notes: Stdlib-only regex rendering approach (resolved Round 2). Pattern order ma
 ### SL-021 · Materials Tab — HTML Screen Overlay
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-07
 
 Plain language description:
 Clicking a design screen in the Materials tab opens a panel showing the screen's name, which phase it belongs to, when it was created, and a description of what it covers. An "Open in browser" button opens the HTML file in the system default browser.
@@ -813,8 +1298,8 @@ Notes: File creation date used as "created" date — this may show the sync date
 ### SL-022 · Decisions & Changes Tab
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 3
+Deliverable: D-08
 
 Plain language description:
 The Decisions & Changes tab shows a log of every design decision made during the project and every time a scope or approach change was recorded. Decisions include the reasoning behind them. Changes show what was and what became.
@@ -846,8 +1331,8 @@ Notes: None.
 ### SL-023 · Review Link Surfacing
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 4
+Deliverable: D-09
 
 Plain language description:
 When the solo-build skill ships a slice and serves the built UI for review, the URL it serves gets stored in the slice record. The companion reads that URL at sync time and surfaces a Review button on that slice wherever it appears — in the dashboard Slices bucket, the Progress tab, and the Backlog tab.
@@ -882,8 +1367,8 @@ Notes: The framework curator change to solo-build is a separate workstream. This
 ### SL-024 · Start & Review Action
 
 Status: Ready
-Phase: Pending prd-to-plan
-Deliverable: Pending prd-to-plan
+Phase: 4
+Deliverable: D-09
 
 Plain language description:
 If the solo wants to review a completed UI slice but the project's app is not currently running, they click "Start & Review" instead of "Review." The companion starts the app for them and then opens the review URL in the browser — no terminal required.
@@ -977,4 +1462,10 @@ Confirmed by: Solo
 Decision: review_url stored as a field in the slice record in backlog.md. The companion reads it; solo-build writes it.
 Reason: Single source of truth in the framework file. Companion stays read-only.
 Impact: SL-023 defined accordingly. Solo-build framework curator change required in a separate pass.
+Confirmed by: Solo
+
+### 2026-04-28 — Build plan approved (4 phases, 9 deliverables, 24 slices)
+Decision: Four-phase tracer-bullet build plan locked: Phase 1 Foundation (SL-001–003), Phase 2 Dashboard (SL-004–013), Phase 3 Project Detail (SL-014–022), Phase 4 Review Flow (SL-023–024).
+Reason: Tracer-bullet sequencing — each phase answers one question and proves one assumption before the next begins. Foundation first because nothing else runs without reliable parsing. Dashboard second because it proves the data model in real UI. Project Detail third as the deepest read surface. Review Flow fourth as it depends on framework format changes not yet made.
+Impact: All 24 slice records updated with phase and deliverable assignments.
 Confirmed by: Solo
