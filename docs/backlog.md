@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-004, SL-005, SL-006 |
+| **Next up (Ready, not started)** | SL-014, SL-015 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -72,7 +72,7 @@ Notes: If the markdown parser fails on any real framework file, stop and fix bef
 
 ### Phase 2 · Dashboard
 
-Status: Planning
+Status: Done
 
 Plain language description:
 The solo can open the companion app and see everything that matters across all their projects on one screen — what's blocked, what's flagged, what phases and deliverables and slices are active. Clicking any item shows its full details. This is the primary orientation tool — the reason the app exists.
@@ -227,7 +227,7 @@ Notes: The markdown parser is the highest-risk element in the entire build. If r
 
 ### D-02 · Dashboard Core
 
-Status: Defined
+Status: Accepted
 Type: Screen
 Phase: 2
 
@@ -263,7 +263,7 @@ Notes: None.
 
 ### D-03 · Dashboard Overlays
 
-Status: Defined
+Status: Accepted
 Type: Screen
 Phase: 2
 
@@ -673,7 +673,7 @@ Notes: This is the most complex slice in the build. The markdown parsing must be
 
 ### SL-004 · Sidebar — Project List, Recency, and Navigation
 
-Status: In QA
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -715,7 +715,7 @@ Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not buil
 
 ### SL-005 · Dashboard Top Bar
 
-Status: In QA
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -750,7 +750,7 @@ Notes: None.
 
 ### SL-006 · Needs Attention — Blocked Card
 
-Status: In QA
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -787,7 +787,7 @@ Notes: Empty state means the card is not rendered — not rendered with a "no bl
 
 ### SL-007 · Needs Attention — Flagged Card
 
-Status: In QA
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -824,7 +824,7 @@ Notes: "Outstanding questions" items appear in the questions table and surface o
 
 ### SL-008 · Dashboard — Phases Bucket
 
-Status: In QA
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -860,7 +860,7 @@ Notes: None.
 
 ### SL-009 · Dashboard — Deliverables Bucket with Project Filter
 
-Status: In QA
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -896,7 +896,7 @@ Notes: None.
 
 ### SL-010 · Dashboard — Slices Bucket with Project Filter
 
-Status: In QA
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -933,7 +933,7 @@ Notes: Ready slices are not shown here — they haven't started. Done slices are
 
 ### SL-011 · Overlay — Slice Panel
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-03
 
@@ -968,7 +968,7 @@ Notes: The four anchors section reads the anchor fields directly from the slice 
 
 ### SL-012 · Overlay — Deliverable Panel
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-03
 
@@ -1001,7 +1001,7 @@ Notes: None.
 
 ### SL-013 · Overlay — Phase Panel
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-03
 
