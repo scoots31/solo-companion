@@ -29,7 +29,18 @@ def dashboard():
 
 @app.route("/project/<name>")
 def project_detail(name):
-    return render_template_string(PROJECT_SHELL, project_name=name)
+    from data import get_project_detail
+    run_sync()
+    project = get_project_by_name(name)
+    if not project:
+        abort(404)
+    return render_template(
+        "project_detail.html",
+        project=project,
+        projects=get_projects(),
+        last_synced=get_last_synced(),
+        detail=get_project_detail(project["id"]),
+    )
 
 
 @app.route("/feed")

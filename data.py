@@ -167,3 +167,107 @@ def get_project_by_name(name):
     row = c.fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+def get_project_detail(project_id):
+    """Return all tab data for a project detail page."""
+    conn = get_conn()
+    c = conn.cursor()
+
+    # Action tab — blocked slices
+    c.execute("""
+        SELECT slice_id, name, phase_name, deliverable_name, status
+        FROM slices WHERE project_id = ? AND is_blocked = 1
+        ORDER BY slice_id
+    """, (project_id,))
+    blocked = [dict(r) for r in c.fetchall()]
+
+    # Action tab — flagged items
+    c.execute("""
+        SELECT text, flagged_reason, object_type, object_id
+        FROM flags WHERE project_id = ?
+        ORDER BY id
+    """, (project_id,))
+    flagged = [dict(r) for r in c.fetchall()]
+
+    # Action tab — outstanding questions
+    c.execute("""
+        SELECT text, source, who_can_answer, open_days
+        FROM questions WHERE project_id = ?
+        ORDER BY id
+    """, (project_id,))
+    questions = [dict(r) for r in c.fetchall()]
+
+    # Progress tab — phases
+    c.execute("""
+        SELECT name, status, started_date, gate_status, progress_pct
+        FROM phases WHERE project_id = ?
+        ORDER BY name
+    """, (project_id,))
+    phases = [dict(r) for r in c.fetchall()]
+
+    # Progress tab — deliverables
+    c.execute("""
+        SELECT name, status, type, slice_count, phase_name
+        FROM deliverables WHERE project_id = ?
+        ORDER BY phase_name, name
+    """, (project_id,))
+    deliverables = [dict(r) for r in c.fetchall()]
+
+    # Progress + Backlog — all slices
+    c.execute("""
+        SELECT slice_id, name, status, phase_name, deliverable_name,
+               is_blocked, is_flagged, flagged_reason, review_url
+        FROM slices WHERE project_id = ?
+        ORDER BY slice_id
+    """, (project_id,))
+    slices = [dict(r) for r in c.fetchall()]
+
+    # Materials tab
+    c.execute("""
+        SELECT name, type, file_path
+        FROM materials WHERE project_id = ?
+        ORDER BY type, name
+    """, (project_id,))
+    materials = [dict(r) for r in c.fetchall()]
+
+    # Decisions & Changes tab
+    c.execute("""
+        SELECT title, date, body, why, phase
+        FROM decisions WHERE project_id = ?
+        ORDER BY date DESC
+    """, (project_id,))
+    decisions = [dict(r) for r in c.fetchall()]
+
+    c.execute("""
+        SELECT title, date, was_value, became_value
+        FROM changes WHERE project_id = ?
+        ORDER BY date DESC
+    """, (project_id,))
+    changes = [dict(r) for r in c.fetchall()]
+
+    conn.close()
+
+    # Compute tab counts
+    action_count  = len(blocked) + len(flagged) + len(questions)
+    progress_count = len(phases) + len(deliverables)
+    backlog_count  = len(slices)
+    mat_count      = len(materials)
+    dec_count      = len(decisions) + len(changes)
+
+    return {
+        "blocked":        blocked,
+        "flagged":        flagged,
+        "questions":      questions,
+        "phases":         phases,
+        "deliverables":   deliverables,
+        "slices":         slices,
+        "materials":      materials,
+        "decisions":      decisions,
+        "changes":        changes,
+        "action_count":   action_count,
+        "progress_count": progress_count,
+        "backlog_count":  backlog_count,
+        "mat_count":      mat_count,
+        "dec_count":      dec_count,
+    }
