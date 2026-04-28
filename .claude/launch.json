@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "solo-companion",
+      "runtimeExecutable": "/Users/scottheinemeier/Apps/.venv/bin/python3",
+      "runtimeArgs": ["/Users/scottheinemeier/Developer/Solo Companion/app.py"],
+      "port": 8710
+    }
+  ]
+}

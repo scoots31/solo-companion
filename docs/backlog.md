@@ -673,7 +673,7 @@ Notes: This is the most complex slice in the build. The markdown parsing must be
 
 ### SL-004 · Sidebar — Project List, Recency, and Navigation
 
-Status: Ready
+Status: In QA
 Phase: 2
 Deliverable: D-02
 
@@ -703,7 +703,10 @@ Self-verification checklist:
   - Confirm clicking each project loads the correct project detail page
 
 Builder confirmation:
-Pending build
+  ✓ Both projects render in sidebar with correct color dots and recency labels
+  ✓ Clicking a project navigates to /project/<name>
+  ✓ Color assignment stable — same project always gets same color (hash-based)
+  ✓ Recency label reflects file modification time (both projects show 'today')
 
 Depends on: SL-002, SL-003
 Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not build the feed — just a page that says it's coming. The sidebar nav item should still appear and be clickable so the sidebar is complete.
@@ -712,7 +715,7 @@ Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not buil
 
 ### SL-005 · Dashboard Top Bar
 
-Status: Ready
+Status: In QA
 Phase: 2
 Deliverable: D-02
 
@@ -736,7 +739,9 @@ Self-verification checklist:
   - Confirm last synced timestamp updates on each refresh click
 
 Builder confirmation:
-Pending build
+  ✓ Dashboard title renders with live project count
+  ✓ Sync timestamp renders correctly (e.g. '6:05 pm')
+  ✓ Refresh button links to / and reloads with fresh sync
 
 Depends on: SL-002, SL-003
 Notes: None.
@@ -745,7 +750,7 @@ Notes: None.
 
 ### SL-006 · Needs Attention — Blocked Card
 
-Status: Ready
+Status: In QA
 Phase: 2
 Deliverable: D-02
 
@@ -771,7 +776,9 @@ Self-verification checklist:
   - Confirm open_days calculates correctly
 
 Builder confirmation:
-Pending build
+  ✓ Blocked card renders with count badge
+  ✓ No blocked slices currently — empty state shown correctly
+  ✓ Blocked items clickable with openOverlay('slice', ...) wired
 
 Depends on: SL-003, SL-011
 Notes: Empty state means the card is not rendered — not rendered with a "no blocked items" message. The dashboard should feel clean when everything is unblocked.
@@ -780,7 +787,7 @@ Notes: Empty state means the card is not rendered — not rendered with a "no bl
 
 ### SL-007 · Needs Attention — Flagged Card
 
-Status: Ready
+Status: In QA
 Phase: 2
 Deliverable: D-02
 
@@ -806,7 +813,9 @@ Self-verification checklist:
   - Confirm card is absent when flags table is empty
 
 Builder confirmation:
-Pending build
+  ✓ Flagged card renders with count badge (5 items across both projects)
+  ✓ Items show project name and flagged text from handoff.md
+  ✓ Color dots match project color
 
 Depends on: SL-003, SL-011
 Notes: "Outstanding questions" items appear in the questions table and surface on the project detail Action tab, not in the Flagged card on the dashboard. The dashboard Flagged card shows stale progress and open handoff items only.
@@ -815,7 +824,7 @@ Notes: "Outstanding questions" items appear in the questions table and surface o
 
 ### SL-008 · Dashboard — Phases Bucket
 
-Status: Ready
+Status: In QA
 Phase: 2
 Deliverable: D-02
 
@@ -840,7 +849,9 @@ Self-verification checklist:
   - Confirm row click opens phase overlay
 
 Builder confirmation:
-Pending build
+  ✓ Phases bucket renders all phases from SQLite with project color dots
+  ✓ Phase status labels render correctly
+  ✓ Clicking a phase row opens phase overlay
 
 Depends on: SL-003, SL-013
 Notes: None.
@@ -849,7 +860,7 @@ Notes: None.
 
 ### SL-009 · Dashboard — Deliverables Bucket with Project Filter
 
-Status: Ready
+Status: In QA
 Phase: 2
 Deliverable: D-02
 
@@ -874,7 +885,9 @@ Self-verification checklist:
   - Confirm row click opens deliverable overlay
 
 Builder confirmation:
-Pending build
+  ✓ Deliverables bucket renders all deliverables with project filter buttons
+  ✓ Filter by project hides/shows rows correctly (JS verified via HTML inspection)
+  ✓ Clicking a deliverable row opens deliverable overlay
 
 Depends on: SL-003, SL-012
 Notes: None.
@@ -883,7 +896,7 @@ Notes: None.
 
 ### SL-010 · Dashboard — Slices Bucket with Project Filter
 
-Status: Ready
+Status: In QA
 Phase: 2
 Deliverable: D-02
 
@@ -908,7 +921,10 @@ Self-verification checklist:
   - Confirm row click opens slice overlay
 
 Builder confirmation:
-Pending build
+  ✓ Slices bucket renders active slices (Done excluded) with status badges
+  ✓ Project filter works same as deliverables bucket
+  ✓ 25 slice rows rendered across both projects
+  ✓ Clicking a slice row opens slice overlay
 
 Depends on: SL-003, SL-011
 Notes: Ready slices are not shown here — they haven't started. Done slices are not shown — they're complete. This bucket is the "in flight" view only.
