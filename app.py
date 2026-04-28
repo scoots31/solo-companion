@@ -5,15 +5,19 @@ Runs as a LaunchAgent on port 8710. Serves project state derived from framework 
 
 from flask import Flask, render_template_string, jsonify, abort
 import os
+from db import init_db
+from sync import run_sync
 
 PORT = 8710
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 
 app = Flask(__name__)
+init_db()  # idempotent — creates tables if they don't exist
 
 
 @app.route("/")
 def dashboard():
+    run_sync()
     return render_template_string(DASHBOARD_SHELL)
 
 
@@ -25,6 +29,22 @@ def project_detail(name):
 @app.route("/health")
 def health():
     return jsonify({"status": "ok", "port": PORT})
+
+
+@app.route("/debug/sync")
+def debug_sync():
+    """Inspect current sync state — used during build verification only."""
+    from db import get_conn
+    conn = get_conn()
+    c = conn.cursor()
+    result = {}
+    for table in ("projects", "phases", "deliverables", "slices", "materials", "flags", "questions"):
+        c.execute(f"SELECT COUNT(*) as n FROM {table}")
+        result[table] = c.fetchone()["n"]
+    c.execute("SELECT name, path, color, last_synced, is_active FROM projects")
+    result["project_list"] = [dict(r) for r in c.fetchall()]
+    conn.close()
+    return jsonify(result)
 
 
 # Minimal shells — replaced by real templates in SL-004+

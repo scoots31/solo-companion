@@ -521,7 +521,7 @@ Notes: SL-023 builds as soon as Phase 3 is accepted. SL-024 waits on the framewo
 
 ### SL-001 · App Startup and Server
 
-Status: In QA
+Status: Done
 Phase: 1
 Deliverable: D-01
 
@@ -561,7 +561,7 @@ Notes: Port 8710 confirmed free before build. Flask runs from ~/Apps/.venv/bin/p
 
 ### SL-002 · Sync on Open — Project Discovery
 
-Status: Ready
+Status: In QA
 Phase: 1
 Deliverable: D-01
 
@@ -572,7 +572,7 @@ Technical description:
 On each request to / (dashboard), trigger a sync pass. Read ~/Developer/engineering-playbook/projects.md — parse the markdown table to extract project name and path for every registered project. Store discovered projects in SQLite projects table. Record sync timestamp. If a project path no longer exists on disk, mark it inactive rather than deleting — preserves history. Framework path is set once at install time (config file or environment variable).
 
 Design anchor: sprint-01-dashboard.html — last synced timestamp, sidebar project list
-Data anchor: Pending data-scaffold
+Data anchor: N/A — infrastructure slice, no data consumed (writes to SQLite, does not read from it)
 Process anchor: Dashboard loads — syncs from framework files → C (main path) · infrastructure
 
 References:
@@ -590,7 +590,9 @@ Self-verification checklist:
   - Confirm inactive marking works when a path is removed
 
 Builder confirmation:
-Pending build
+  ✓ Both projects in projects.md appear in SQLite after sync (player-evaluation, solo-companion)
+  ✓ Sync timestamp present and reflects actual sync time (ISO timestamp recorded on each run)
+  ✓ Inactive marking verified — ghost-project with non-existent path appeared with is_active=0; restored and re-synced clean
 
 Depends on: SL-001
 Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This keeps the implementation simple and covers the primary use case (open app to orient before a session).
@@ -599,7 +601,7 @@ Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This
 
 ### SL-003 · Sync — Parse Framework Files and Populate SQLite
 
-Status: Ready
+Status: In QA
 Phase: 1
 Deliverable: D-01
 
@@ -636,7 +638,7 @@ Flagged item derivation rules (applied at parse time):
 Blocked item rule: any slice with status Blocked in backlog.md.
 
 Design anchor: sprint-01-dashboard.html — Needs Attention section, bucket data
-Data anchor: Pending data-scaffold
+Data anchor: N/A — this slice writes the data layer; nothing reads from SQLite yet
 Process anchor: Dashboard loads — syncs from framework files → C (main path) · infrastructure
 
 References:
@@ -656,7 +658,12 @@ Self-verification checklist:
   - Confirm materials populated for a project with all expected file types
 
 Builder confirmation:
-Pending build
+  ✓ All 24 slices from solo-companion backlog.md appear in SQLite with correct statuses after sync
+  ✓ Flags derived from handoff.md "Open right now" sections — 4 from player-evaluation, 1 from solo-companion
+  ✓ Questions derived from handoff.md "Outstanding questions" section — 1 from solo-companion
+  ✓ Blocked slice detection wired (no blocked slices exist currently — logic verified by code review)
+  ✓ Materials populated — 6 for solo-companion (3 screens, 1 process to-be, 1 process as-is, 1 discovery brief)
+  ✓ Stale In Progress flagging wired (no In Progress slices currently — fires when status = In Progress)
 
 Depends on: SL-001, SL-002
 Notes: This is the most complex slice in the build. The markdown parsing must be robust to minor formatting variations in the framework files — the framework does not enforce rigid formatting. Use section-header anchoring (## Section Name) rather than line-number-based parsing. When a section is not found, treat as empty — not an error.
