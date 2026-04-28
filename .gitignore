@@ -1,5 +1,17 @@
+# User data — never ships
 companion.db
 companion.log
+config.json
+
+# Python artifacts
 __pycache__/
 *.pyc
+.venv/
+
+# OS metadata
 .DS_Store
+
+# Editor scratch
+*.swp
+.idea/
+.vscode/

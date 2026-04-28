@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · Plan approved
+**Last updated:** 2026-04-28 · Phase 1–3 build scrapped, rebuild from SL-001
 **Project status:** Ready for Build
 
 ---
@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-023, SL-024 |
+| **Next up (Ready, not started)** | SL-001 (rebuild start) |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -34,7 +34,7 @@
 
 ### Phase 1 · Foundation
 
-Status: Done
+Status: Planning
 
 Plain language description:
 The companion app starts, runs, and reads real framework files from disk. When Phase 1 is complete, the sync layer reliably turns markdown files into structured data — every project, every phase, every deliverable, every slice, every flag, every decision is in SQLite and queryable. The app is running at localhost:8710 and serving data from real projects.
@@ -72,7 +72,7 @@ Notes: If the markdown parser fails on any real framework file, stop and fix bef
 
 ### Phase 2 · Dashboard
 
-Status: Done
+Status: Planning
 
 Plain language description:
 The solo can open the companion app and see everything that matters across all their projects on one screen — what's blocked, what's flagged, what phases and deliverables and slices are active. Clicking any item shows its full details. This is the primary orientation tool — the reason the app exists.
@@ -110,7 +110,7 @@ Notes: None.
 
 ### Phase 3 · Project Detail
 
-Status: Done
+Status: Planning
 
 Plain language description:
 The solo can navigate to any project and see everything about it across five tabs — what needs action, full progress with all slices and deliverables, the complete backlog across all phases, every framework document, and the full decision and change history. The companion replaces every orientation question the solo would otherwise ask the framework.
@@ -521,7 +521,7 @@ Notes: SL-023 builds as soon as Phase 3 is accepted. SL-024 waits on the framewo
 
 ### SL-001 · App Startup and Server
 
-Status: Done
+Status: Ready
 Phase: 1
 Deliverable: D-01
 
@@ -550,9 +550,7 @@ Self-verification checklist:
   - Confirm /project/<name> route returns HTTP 200 for a known project name
 
 Builder confirmation:
-  ✓ LaunchAgent plist registered — com.scotth.solocompanion listed in launchctl, server answers at port 8710
-  ✓ Dashboard route — http://localhost:8710/ returns HTTP 200
-  ✓ Project route — http://localhost:8710/project/test-project returns HTTP 200
+Pending build
 
 Depends on: none
 Notes: Port 8710 confirmed free before build. Flask runs from ~/Apps/.venv/bin/python3 (venv carries Flask; system python3 does not). Plist copied to ~/Library/LaunchAgents/ and loaded.
@@ -562,7 +560,7 @@ Distribution note: plist has Scott's username hardcoded in app path and python p
 
 ### SL-002 · Sync on Open — Project Discovery
 
-Status: Done
+Status: Ready
 Phase: 1
 Deliverable: D-01
 
@@ -591,9 +589,7 @@ Self-verification checklist:
   - Confirm inactive marking works when a path is removed
 
 Builder confirmation:
-  ✓ Both projects in projects.md appear in SQLite after sync (player-evaluation, solo-companion)
-  ✓ Sync timestamp present and reflects actual sync time (ISO timestamp recorded on each run)
-  ✓ Inactive marking verified — ghost-project with non-existent path appeared with is_active=0; restored and re-synced clean
+Pending build
 
 Depends on: SL-001
 Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This keeps the implementation simple and covers the primary use case (open app to orient before a session).
@@ -602,7 +598,7 @@ Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This
 
 ### SL-003 · Sync — Parse Framework Files and Populate SQLite
 
-Status: Done
+Status: Ready
 Phase: 1
 Deliverable: D-01
 
@@ -659,12 +655,7 @@ Self-verification checklist:
   - Confirm materials populated for a project with all expected file types
 
 Builder confirmation:
-  ✓ All 24 slices from solo-companion backlog.md appear in SQLite with correct statuses after sync
-  ✓ Flags derived from handoff.md "Open right now" sections — 4 from player-evaluation, 1 from solo-companion
-  ✓ Questions derived from handoff.md "Outstanding questions" section — 1 from solo-companion
-  ✓ Blocked slice detection wired (no blocked slices exist currently — logic verified by code review)
-  ✓ Materials populated — 6 for solo-companion (3 screens, 1 process to-be, 1 process as-is, 1 discovery brief)
-  ✓ Stale In Progress flagging wired (no In Progress slices currently — fires when status = In Progress)
+Pending build
 
 Depends on: SL-001, SL-002
 Notes: This is the most complex slice in the build. The markdown parsing must be robust to minor formatting variations in the framework files — the framework does not enforce rigid formatting. Use section-header anchoring (## Section Name) rather than line-number-based parsing. When a section is not found, treat as empty — not an error.
@@ -673,7 +664,7 @@ Notes: This is the most complex slice in the build. The markdown parsing must be
 
 ### SL-004 · Sidebar — Project List, Recency, and Navigation
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-02
 
@@ -703,10 +694,7 @@ Self-verification checklist:
   - Confirm clicking each project loads the correct project detail page
 
 Builder confirmation:
-  ✓ Both projects render in sidebar with correct color dots and recency labels
-  ✓ Clicking a project navigates to /project/<name>
-  ✓ Color assignment stable — same project always gets same color (hash-based)
-  ✓ Recency label reflects file modification time (both projects show 'today')
+Pending build
 
 Depends on: SL-002, SL-003
 Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not build the feed — just a page that says it's coming. The sidebar nav item should still appear and be clickable so the sidebar is complete.
@@ -715,7 +703,7 @@ Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not buil
 
 ### SL-005 · Dashboard Top Bar
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-02
 
@@ -739,9 +727,7 @@ Self-verification checklist:
   - Confirm last synced timestamp updates on each refresh click
 
 Builder confirmation:
-  ✓ Dashboard title renders with live project count
-  ✓ Sync timestamp renders correctly (e.g. '6:05 pm')
-  ✓ Refresh button links to / and reloads with fresh sync
+Pending build
 
 Depends on: SL-002, SL-003
 Notes: None.
@@ -750,7 +736,7 @@ Notes: None.
 
 ### SL-006 · Needs Attention — Blocked Card
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-02
 
@@ -776,9 +762,7 @@ Self-verification checklist:
   - Confirm open_days calculates correctly
 
 Builder confirmation:
-  ✓ Blocked card renders with count badge
-  ✓ No blocked slices currently — empty state shown correctly
-  ✓ Blocked items clickable with openOverlay('slice', ...) wired
+Pending build
 
 Depends on: SL-003, SL-011
 Notes: Empty state means the card is not rendered — not rendered with a "no blocked items" message. The dashboard should feel clean when everything is unblocked.
@@ -787,7 +771,7 @@ Notes: Empty state means the card is not rendered — not rendered with a "no bl
 
 ### SL-007 · Needs Attention — Flagged Card
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-02
 
@@ -813,9 +797,7 @@ Self-verification checklist:
   - Confirm card is absent when flags table is empty
 
 Builder confirmation:
-  ✓ Flagged card renders with count badge (5 items across both projects)
-  ✓ Items show project name and flagged text from handoff.md
-  ✓ Color dots match project color
+Pending build
 
 Depends on: SL-003, SL-011
 Notes: "Outstanding questions" items appear in the questions table and surface on the project detail Action tab, not in the Flagged card on the dashboard. The dashboard Flagged card shows stale progress and open handoff items only.
@@ -824,7 +806,7 @@ Notes: "Outstanding questions" items appear in the questions table and surface o
 
 ### SL-008 · Dashboard — Phases Bucket
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-02
 
@@ -849,9 +831,7 @@ Self-verification checklist:
   - Confirm row click opens phase overlay
 
 Builder confirmation:
-  ✓ Phases bucket renders all phases from SQLite with project color dots
-  ✓ Phase status labels render correctly
-  ✓ Clicking a phase row opens phase overlay
+Pending build
 
 Depends on: SL-003, SL-013
 Notes: None.
@@ -860,7 +840,7 @@ Notes: None.
 
 ### SL-009 · Dashboard — Deliverables Bucket with Project Filter
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-02
 
@@ -885,9 +865,7 @@ Self-verification checklist:
   - Confirm row click opens deliverable overlay
 
 Builder confirmation:
-  ✓ Deliverables bucket renders all deliverables with project filter buttons
-  ✓ Filter by project hides/shows rows correctly (JS verified via HTML inspection)
-  ✓ Clicking a deliverable row opens deliverable overlay
+Pending build
 
 Depends on: SL-003, SL-012
 Notes: None.
@@ -896,7 +874,7 @@ Notes: None.
 
 ### SL-010 · Dashboard — Slices Bucket with Project Filter
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-02
 
@@ -921,10 +899,7 @@ Self-verification checklist:
   - Confirm row click opens slice overlay
 
 Builder confirmation:
-  ✓ Slices bucket renders active slices (Done excluded) with status badges
-  ✓ Project filter works same as deliverables bucket
-  ✓ 25 slice rows rendered across both projects
-  ✓ Clicking a slice row opens slice overlay
+Pending build
 
 Depends on: SL-003, SL-011
 Notes: Ready slices are not shown here — they haven't started. Done slices are not shown — they're complete. This bucket is the "in flight" view only.
@@ -933,7 +908,7 @@ Notes: Ready slices are not shown here — they haven't started. Done slices are
 
 ### SL-011 · Overlay — Slice Panel
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-03
 
@@ -968,7 +943,7 @@ Notes: The four anchors section reads the anchor fields directly from the slice 
 
 ### SL-012 · Overlay — Deliverable Panel
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-03
 
@@ -1001,7 +976,7 @@ Notes: None.
 
 ### SL-013 · Overlay — Phase Panel
 
-Status: Done
+Status: Ready
 Phase: 2
 Deliverable: D-03
 
@@ -1034,7 +1009,7 @@ Notes: None.
 
 ### SL-014 · Project Detail — Routing and Breadcrumb
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-04
 
@@ -1069,7 +1044,7 @@ Notes: None.
 
 ### SL-015 · Project Detail — Action Tab
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-04
 
@@ -1105,7 +1080,7 @@ Notes: None.
 
 ### SL-016 · Progress Tab — Phase Summary Card
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-05
 
@@ -1138,7 +1113,7 @@ Notes: None.
 
 ### SL-017 · Progress Tab — Deliverables Section
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-05
 
@@ -1170,7 +1145,7 @@ Notes: None.
 
 ### SL-018 · Progress Tab — Slice List
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-05
 
@@ -1206,7 +1181,7 @@ Notes: Port check for "is the app running" is a synchronous GET to the app's por
 
 ### SL-019 · Backlog Tab
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-06
 
@@ -1241,7 +1216,7 @@ Notes: None.
 
 ### SL-020 · Materials Tab — Inline Document Rendering
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-07
 
@@ -1290,7 +1265,7 @@ Notes: Stdlib-only regex rendering approach (resolved Round 2). Pattern order ma
 
 ### SL-021 · Materials Tab — HTML Screen Overlay
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-07
 
@@ -1323,7 +1298,7 @@ Notes: File creation date used as "created" date — this may show the sync date
 
 ### SL-022 · Decisions & Changes Tab
 
-Status: Done
+Status: Ready
 Phase: 3
 Deliverable: D-08
 
