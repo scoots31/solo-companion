@@ -556,6 +556,7 @@ Builder confirmation:
 
 Depends on: none
 Notes: Port 8710 confirmed free before build. Flask runs from ~/Apps/.venv/bin/python3 (venv carries Flask; system python3 does not). Plist copied to ~/Library/LaunchAgents/ and loaded.
+Distribution note: plist has Scott's username hardcoded in app path and python path. Before first public release, an install script must generate the plist dynamically from the installing user's home directory. companion.db is excluded from git — derived data, populated fresh from each user's own framework files on first run.
 
 ---
 
