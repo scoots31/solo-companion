@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-001 done — rebuild underway
+**Last updated:** 2026-04-28 · SL-002 done — projects table populating from projects.md
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 23 |
+| ✅ Ready | 22 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 1 |
+| ✓ Done | 2 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-002 |
+| **Next up (Ready, not started)** | SL-003 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -566,7 +566,7 @@ Distribution note: plist has Scott's username hardcoded in app path and python p
 
 ### SL-002 · Sync on Open — Project Discovery
 
-Status: Ready
+Status: Done
 Phase: 1
 Deliverable: D-01
 
@@ -595,7 +595,13 @@ Self-verification checklist:
   - Confirm inactive marking works when a path is removed
 
 Builder confirmation:
-Pending build
+  ✓ projects table created on init_db; schema is 5 columns (id, name, path, last_synced, is_active)
+  ✓ config.py reads framework_path from config.json with sensible default — supports distribution without hardcoded paths
+  ✓ sync.discover_projects() parses projects.md table, reconciles inserts/updates, marks missing-path projects inactive
+  ✓ Both projects from projects.md (player-evaluation, solo-companion) populated correctly with ISO sync timestamp
+  ✓ Inactive marking logic in place — projects whose path no longer exists on disk → is_active = 0; projects no longer present in projects.md → is_active = 0 (history preserved)
+  ✓ Dashboard placeholder shows synced project count + list + last-synced time, confirming sync ran on request
+  ✓ Solo browser sign-off — confirmed 2026-04-28
 
 Depends on: SL-001
 Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This keeps the implementation simple and covers the primary use case (open app to orient before a session).
