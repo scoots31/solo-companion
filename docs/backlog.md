@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-011 done — Slice overlay panel with all 17 spec fields
+**Last updated:** 2026-04-28 · SL-014 done — Project detail routing, breadcrumb, phase pill, tab bar
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 13 |
+| ✅ Ready | 10 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 11 |
+| ✓ Done | 14 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-012 |
+| **Next up (Ready, not started)** | SL-015 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -1089,7 +1089,7 @@ Notes: None.
 
 ### SL-014 · Project Detail — Routing and Breadcrumb
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-04
 
@@ -1115,7 +1115,17 @@ Self-verification checklist:
   - Confirm 404 for /project/nonexistent
 
 Builder confirmation:
-Pending build
+  ✓ /project/<name> returns HTTP 200 for every active project, 404 for unknown names
+  ✓ Breadcrumb: Dashboard (link → /) / project_name (bold), matches sprint-02-project-detail.html exactly
+  ✓ Phase pill: teal treatment (rgba(13,148,136,0.15) / #5EEAD4 / border rgba(13,148,136,0.25)) — current phase read from phases table
+  ✓ Tab bar: 5 tabs (Action, Progress, Backlog, Materials, Decisions & Changes) with count badges
+  ✓ Action tab active on load — blue underline (#2563EB), count badge blue-tinted
+  ✓ Tab switching JS: switchTab() toggles border, color, badge styling and panel display client-side
+  ✓ Placeholder content per tab — SL-015+ replaces
+  ✓ Counts verified: Progress=3 (Phase 1 slices), Backlog=24, Materials=12, Decisions & Changes=7
+  ✓ padded=False layout: main wrapper is flex-column so top bar is sticky at top of viewport
+  ✓ Sidebar highlights active project with color-matched left border
+  ✓ Solo browser sign-off confirmed 2026-04-28
 
 Depends on: SL-003, SL-004
 Notes: None.

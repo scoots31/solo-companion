@@ -179,7 +179,7 @@ def _sidebar_html(projects, active_name=None):
 
 # ── Page layout wrapper ──────────────────────────────────────────────────
 
-def _page(sidebar_html, main_html, title="Solo Companion"):
+def _page(sidebar_html, main_html, title="Solo Companion", padded=True):
     overlay_js = (
         "<div id='overlay-backdrop' onclick='closeOverlay()' "
         "style='display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);"
@@ -225,7 +225,11 @@ def _page(sidebar_html, main_html, title="Solo Companion"):
         "<body style='font-family:-apple-system,sans-serif;background:#0F1729;color:#EDE8E0;"
         "margin:0;display:flex;min-height:100vh;'>"
         + sidebar_html
-        + f"<div style='flex:1;padding:48px 40px;min-width:0;'>{main_html}</div>"
+        + (
+            f"<div style='flex:1;padding:48px 40px;min-width:0;'>{main_html}</div>"
+            if padded else
+            f"<div style='flex:1;min-width:0;display:flex;flex-direction:column;'>{main_html}</div>"
+        )
         + overlay_js
         + "</body></html>"
     )
@@ -1302,18 +1306,198 @@ def dashboard():
 @app.route("/project/<name>")
 def project_detail(name):
     conn = get_conn()
+
+    proj = conn.execute(
+        "SELECT id, name, path FROM projects WHERE name = ? AND is_active = 1",
+        (name,)
+    ).fetchone()
+
+    if not proj:
+        projects = _get_active_projects(conn)
+        conn.close()
+        name_esc = name.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        main_html = (
+            "<div style='padding:48px 40px;'>"
+            f"<h1 style='font-size:20px;font-weight:600;margin:0 0 8px;'>Project not found</h1>"
+            f"<p style='font-size:13px;color:rgba(255,255,255,0.4);margin:0;'>"
+            f"No active project named “{name_esc}”.</p>"
+            "</div>"
+        )
+        return _page(_sidebar_html(projects), main_html, title="Solo Companion — Not Found"), 404
+
+    project_id = proj["id"]
+    proj_name = proj["name"]
+
+    # Current phase: prefer Active/In Progress, else first non-Done/Cancelled
+    current_phase = conn.execute(
+        "SELECT name FROM phases WHERE project_id = ? "
+        "AND status IN ('Active','In Progress') ORDER BY name LIMIT 1",
+        (project_id,)
+    ).fetchone()
+    if not current_phase:
+        current_phase = conn.execute(
+            "SELECT name FROM phases WHERE project_id = ? "
+            "AND status NOT IN ('Done','Cancelled') ORDER BY name LIMIT 1",
+            (project_id,)
+        ).fetchone()
+    phase_label = current_phase["name"] if current_phase else "—"
+
+    # Phase number ("Phase 2 · Dashboard" → "2") for scoped slice count
+    if current_phase:
+        parts = current_phase["name"].split(" ")
+        phase_num = parts[1] if len(parts) > 1 else current_phase["name"]
+    else:
+        phase_num = None
+
+    # Tab counts
+    n_blocked = conn.execute(
+        "SELECT COUNT(*) FROM slices WHERE project_id=? AND is_blocked=1",
+        (project_id,)
+    ).fetchone()[0]
+    n_flags = conn.execute(
+        "SELECT COUNT(*) FROM flags WHERE project_id=?",
+        (project_id,)
+    ).fetchone()[0]
+    n_questions = conn.execute(
+        "SELECT COUNT(*) FROM questions WHERE project_id=? "
+        "AND (status IS NULL OR status != 'Answered')",
+        (project_id,)
+    ).fetchone()[0]
+    action_count = n_blocked + n_flags + n_questions
+
+    progress_count = 0
+    if phase_num:
+        progress_count = conn.execute(
+            "SELECT COUNT(*) FROM slices WHERE project_id=? AND phase=?",
+            (project_id, phase_num)
+        ).fetchone()[0]
+
+    backlog_count = conn.execute(
+        "SELECT COUNT(*) FROM slices WHERE project_id=?",
+        (project_id,)
+    ).fetchone()[0]
+    materials_count = conn.execute(
+        "SELECT COUNT(*) FROM materials WHERE project_id=?",
+        (project_id,)
+    ).fetchone()[0]
+    dc_count = (
+        conn.execute("SELECT COUNT(*) FROM decisions WHERE project_id=?", (project_id,)).fetchone()[0]
+        + conn.execute("SELECT COUNT(*) FROM changes WHERE project_id=?", (project_id,)).fetchone()[0]
+    )
+
+    last_synced = get_last_synced()
+    synced_label = _relative_synced(last_synced)
     projects = _get_active_projects(conn)
     conn.close()
 
-    color = _project_color(name)
-    main_html = (
-        f"<h1 style='font-size:20px;font-weight:600;margin:0 0 6px;'>{name}</h1>"
-        f"<p style='font-size:13px;color:rgba(255,255,255,0.4);margin:0;'>"
-        f"Project detail arrives in SL-014 onwards.</p>"
+    name_esc = proj_name.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    # ── Top bar ─────────────────────────────────────────────────────────
+    top_bar = (
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:18px 40px;border-bottom:1px solid rgba(255,255,255,0.07);"
+        "background:rgba(0,0,0,0.2);position:sticky;top:0;z-index:5;flex-shrink:0;'>"
+        "<div style='display:flex;align-items:center;gap:12px;'>"
+        "<div style='display:flex;align-items:center;gap:8px;font-size:13px;'>"
+        "<a href='/' style='color:rgba(255,255,255,0.35);text-decoration:none;'>Dashboard</a>"
+        "<span style='color:rgba(255,255,255,0.2);'>/</span>"
+        f"<span style='color:#fff;font-weight:600;'>{name_esc}</span>"
+        "</div>"
+        f"<span style='font-size:11px;font-weight:600;background:rgba(13,148,136,0.15);"
+        f"color:#5EEAD4;border:1px solid rgba(13,148,136,0.25);padding:3px 10px;"
+        f"border-radius:20px;'>{phase_label}</span>"
+        "</div>"
+        "<div style='display:flex;align-items:center;gap:12px;'>"
+        f"<span style='font-size:11px;color:rgba(255,255,255,0.3);"
+        f'font-family:"SF Mono","Fira Code",monospace;'
+        f"'>synced {synced_label}</span>"
+        "<form method='POST' action='/sync' style='margin:0;'>"
+        "<button type='submit' style='display:flex;align-items:center;gap:6px;"
+        "background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);"
+        "color:rgba(255,255,255,0.6);padding:6px 14px;border-radius:6px;font-size:12px;"
+        "font-weight:500;cursor:pointer;font-family:-apple-system,sans-serif;'>↻ Refresh</button>"
+        "</form>"
+        "</div>"
+        "</div>"
     )
 
-    sidebar = _sidebar_html(projects, active_name=name)
-    return _page(sidebar, main_html, title=f"Solo Companion — {name}")
+    # ── Tab bar ──────────────────────────────────────────────────────────
+    def tab_btn(tab_id, label, count, active=False):
+        t_color = "#fff" if active else "rgba(255,255,255,0.4)"
+        t_border = "2px solid #2563EB" if active else "2px solid transparent"
+        c_bg = "rgba(37,99,235,0.2)" if active else "rgba(255,255,255,0.08)"
+        c_color = "#93C5FD" if active else "rgba(255,255,255,0.4)"
+        return (
+            f"<div id='tab-btn-{tab_id}' onclick='switchTab(\"{tab_id}\")' "
+            f"style='padding:14px 18px;font-size:13px;font-weight:500;color:{t_color};"
+            f"cursor:pointer;border-bottom:{t_border};display:flex;align-items:center;"
+            f"gap:7px;font-family:-apple-system,sans-serif;'>"
+            f"{label} "
+            f"<span id='tab-count-{tab_id}' style='font-size:10px;font-weight:700;"
+            f"padding:1px 6px;border-radius:10px;background:{c_bg};color:{c_color};'>"
+            f"{count}</span>"
+            f"</div>"
+        )
+
+    tab_bar = (
+        "<div style='display:flex;align-items:center;gap:2px;padding:0 40px;"
+        "border-bottom:1px solid rgba(255,255,255,0.07);background:rgba(0,0,0,0.15);"
+        "flex-shrink:0;'>"
+        + tab_btn("action", "Action", action_count, active=True)
+        + tab_btn("progress", "Progress", progress_count)
+        + tab_btn("backlog", "Backlog", backlog_count)
+        + tab_btn("materials", "Materials", materials_count)
+        + tab_btn("decisions", "Decisions &amp; Changes", dc_count)
+        + "</div>"
+    )
+
+    # ── Tab panels (placeholders — SL-015+ replaces) ─────────────────────
+    ph = "font-size:13px;color:rgba(255,255,255,0.25);margin:0;"
+
+    def tab_panel(panel_id, content, active=False):
+        disp = "block" if active else "none"
+        return f"<div id='tab-panel-{panel_id}' style='display:{disp};'>{content}</div>"
+
+    content = (
+        "<div style='padding:32px 40px;flex:1;'>"
+        + tab_panel("action",    f"<p style='{ph}'>Action items arrive in unit of work SL-015.</p>",    active=True)
+        + tab_panel("progress",  f"<p style='{ph}'>Progress view arrives in unit of work SL-016.</p>")
+        + tab_panel("backlog",   f"<p style='{ph}'>Backlog view arrives in unit of work SL-017.</p>")
+        + tab_panel("materials", f"<p style='{ph}'>Materials view arrives in unit of work SL-018.</p>")
+        + tab_panel("decisions", f"<p style='{ph}'>Decisions &amp; Changes view arrives in unit of work SL-019.</p>")
+        + "</div>"
+    )
+
+    # ── Tab switching JS ─────────────────────────────────────────────────
+    tab_js = (
+        "<script>"
+        "var _tabIds=['action','progress','backlog','materials','decisions'];"
+        "function switchTab(name){"
+        "  _tabIds.forEach(function(t){"
+        "    var btn=document.getElementById('tab-btn-'+t);"
+        "    var panel=document.getElementById('tab-panel-'+t);"
+        "    var cnt=document.getElementById('tab-count-'+t);"
+        "    if(t===name){"
+        "      btn.style.color='#fff';"
+        "      btn.style.borderBottom='2px solid #2563EB';"
+        "      cnt.style.background='rgba(37,99,235,0.2)';"
+        "      cnt.style.color='#93C5FD';"
+        "      panel.style.display='block';"
+        "    }else{"
+        "      btn.style.color='rgba(255,255,255,0.4)';"
+        "      btn.style.borderBottom='2px solid transparent';"
+        "      cnt.style.background='rgba(255,255,255,0.08)';"
+        "      cnt.style.color='rgba(255,255,255,0.4)';"
+        "      panel.style.display='none';"
+        "    }"
+        "  });"
+        "}"
+        "</script>"
+    )
+
+    main_html = top_bar + tab_bar + content + tab_js
+    sidebar = _sidebar_html(projects, active_name=proj_name)
+    return _page(sidebar, main_html, title=f"Solo Companion — {proj_name}", padded=False)
 
 
 @app.route("/feed")
