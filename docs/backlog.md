@@ -1,6 +1,6 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-024 done — Start & Review Action
-**Project status:** Ready for Build
+**Last updated:** 2026-04-29 · Phase 5 design review Round 1 — SL-025 through SL-030 defined
+**Project status:** In Design Review (Phase 5)
 
 ---
 
@@ -9,8 +9,8 @@
 ### Slice Status
 | Status | Count |
 |--------|-------|
-| 🔄 In Review | 0 |
-| ✅ Ready | 0 |
+| 🔄 In Review | 4 |
+| ✅ Ready | 2 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
@@ -22,8 +22,8 @@
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | — |
-| **Blocked — waiting on** | — |
+| **Next up (Ready, not started)** | SL-025, SL-026 |
+| **Blocked — waiting on** | SL-027–030 (depend on SL-025) |
 | **Open spikes** | — |
 
 ---
@@ -181,6 +181,46 @@ Builder confirmation:
 Pending build
 
 Notes: SL-023 (review link surfacing) can build as soon as Phase 3 is complete — it reads review_url from SQLite which is already parsed in SL-003. SL-024 (Start & Review) waits on the framework curator change for start_command. Build SL-023 first, then SL-024 after the curator pass.
+
+---
+
+### Phase 5 · Activity Feed
+
+Status: In Design Review
+
+Plain language description:
+The solo can open the Activity Feed and see a chronological log of what changed across all their projects — slices moving to Done, review links appearing, blocks opening and resolving, phase gates clearing — grouped by day. They can filter by project or event type. Clicking any event opens the existing slice, deliverable, or phase overlay. Review and Start & Review buttons appear inline on review-ready events.
+
+Technical description:
+New `events` table in SQLite. Sync diff layer records state transitions at sync time using file mtime as the event timestamp. Flask route `/feed` replaced with a full-rendered page. Feed reads from the events table grouped by day. Filter bar wired to client-side JS. Event rows click to existing overlay JS functions. Review button logic reuses the SL-023/024 port-check and Start & Review pattern.
+
+Question this phase answers: What changed across all my projects, and when?
+Deliverables: D-10
+Process steps completed: Activity feed
+Proves / de-risks: The companion's value compounds over time — not just current state but motion and history.
+
+Explicitly out of scope:
+Real-time feed updates (sync-on-open covers this). Notification system. Per-event edit or undo.
+
+Blocked by: Phase 4 (all events infrastructure builds on top of existing sync layer)
+Definition of done: Feed renders real events from at least two projects. Events are grouped by day and accurately reflect status changes. Filters work. Clicking an event opens the correct overlay.
+
+Acceptance criteria:
+  1. Events appear for all eight event types when the corresponding change is detected at sync
+  2. Filter bar correctly shows/hides events by project and type
+  3. Clicking any event opens the correct overlay for that object
+  4. Empty state renders correctly when no events exist yet
+
+Self-verification checklist:
+  - Change a slice status in a framework file, sync, confirm event appears in feed
+  - Confirm filter chips hide/show events correctly
+  - Click one event of each type and confirm correct overlay opens
+  - Confirm empty state renders on a fresh sync with no prior history
+
+Builder confirmation:
+Pending build
+
+Notes: Event timestamp uses file mtime (last_modified already in SQLite) — not sync-run time and not git history. See framework-improvements.md for the Option C upgrade path when per-slice accuracy is needed.
 
 ---
 
@@ -512,6 +552,41 @@ References:
   - docs/continuity/handoff.md — Start & Review is the one operational action; read-only boundary
 Depends on: D-05 · Framework curator change (review_url in backlog slice records, start_command in tech-context.md)
 Notes: SL-023 builds as soon as Phase 3 is accepted. SL-024 waits on the framework curator change. Build SL-023 first. When the curator change lands, build SL-024.
+
+---
+
+### D-10 · Activity Feed
+
+Status: In Design Review
+Type: Screen
+Phase: 5
+
+Plain language description:
+A chronological event log across all active projects. The solo opens the feed and sees what changed — slices shipped, review links available, blocks opened and resolved, phase gates cleared — grouped by day. They can filter by project or event type. Every event is clickable and opens the relevant overlay. Review and Start & Review buttons appear inline on review-ready events.
+
+Technical description:
+Events table in SQLite populated by sync diff logic. Feed route reads events grouped by day. Filter bar uses client-side JS. Overlays reuse the existing slice/deliverable/phase overlay system. Review button logic reuses the SL-023/024 port-check pattern. Event timestamp derived from slice's last_modified (file mtime).
+
+Screens:
+  - sprint-03-activity-feed.html (primary)
+
+Acceptance criteria:
+  1. Events appear for all eight event types when the corresponding change is detected at sync
+  2. Filter bar correctly shows/hides events by project and type
+  3. Clicking any event opens the correct overlay for that object
+  4. Empty state renders correctly when no events exist yet
+
+Self-verification checklist:
+  - Change a slice status in a framework file, sync, confirm event appears in feed
+  - Confirm filter chips hide/show events correctly
+  - Click one event of each type and confirm the correct overlay opens
+
+Builder confirmation:
+Pending build
+
+Slices: SL-025, SL-026, SL-027, SL-028, SL-029, SL-030
+Depends on: D-01 (sync layer), D-09 (review button pattern)
+Notes: SL-025 (events table + sync diff) must ship before all others. SL-026 (page shell) can build in parallel.
 
 ---
 
@@ -1579,7 +1654,238 @@ Notes: tech-context.md field name for the start command needs to be confirmed �
 
 ---
 
+### SL-025 · Events Table and Sync Diff Layer
+
+Status: Ready
+Phase: 5
+Deliverable: D-10
+
+Plain language description:
+The companion tracks what changes across all projects over time. Every time the app syncs, it compares the new state against what it previously knew and records any differences as events — slices moving to Done, review links appearing, blocks opening or closing, flags raised, phase gates cleared, deliverables completing. These events are the data source for the Activity Feed.
+
+Technical description:
+New `events` table in SQLite: (id, project_id, event_type TEXT, object_type TEXT, object_id TEXT, project_name TEXT, object_name TEXT, event_ts TEXT, review_url TEXT). Event types: slice_done, slice_in_progress, review_ready, block_opened, block_resolved, flag_raised, deliverable_done, gate_cleared. At sync time in sync.py: snapshot current slice state from SQLite before the sync overwrites it, run the sync as normal, then diff before/after states and INSERT new event rows for each detected transition. Event timestamp = the slice's last_modified (file mtime) — not datetime.now(). Deliverable and gate events computed from slice counts after all slice rows are synced. New init_db() migration adds events table via ALTER-safe CREATE TABLE IF NOT EXISTS.
+
+Design anchor: None — infrastructure slice
+Data anchor: None — this slice IS the data layer for the feed
+Process anchor: Activity feed → main path · infrastructure
+
+References:
+  - docs/continuity/framework-improvements.md — Option C upgrade path for per-slice timestamp accuracy
+
+Done criteria:
+  - events table exists in SQLite after init_db() runs
+  - A slice status change in a framework file, followed by sync, produces a corresponding row in events with correct event_type, object_id, project_name, and timestamp matching the file's last_modified
+  - No duplicate events written on re-sync of an unchanged state
+  - All eight event types are detectable and written correctly
+
+Self-verification checklist:
+  - Change a slice status in a real backlog.md, restart server (triggers sync), query events table and confirm new row
+  - Sync twice without changes, confirm no duplicate rows inserted
+  - Confirm event_ts matches the backlog.md file's mtime, not the current time
+
+Builder confirmation:
+Pending build
+
+Depends on: SL-003 (sync layer)
+Notes: Snapshot approach — read all slice statuses from SQLite before the sync transaction begins, hold in memory, run sync, diff after. This avoids the need for a shadow table. Events are append-only; never update or delete rows.
+
+---
+
+### SL-026 · Activity Feed Page Shell
+
+Status: Ready
+Phase: 5
+Deliverable: D-10
+
+Plain language description:
+The Activity Feed link in the sidebar opens a real page — not the placeholder that's there now. The page has the same top bar and sidebar as every other page in the app. Below the top bar is a filter bar with project chips and event type chips. The feed content area shows the empty state when there are no events yet.
+
+Technical description:
+Replace the stub `/feed` route with a full-rendered page using `_page()` with `padded=False`. Top bar: "Activity Feed" title + synced label + Refresh button (same pattern as project detail). Filter bar: one chip per active project (colored dot + name) plus event type chips (Done, Review ready, Flagged, In Progress, Gate cleared, Block opened, Block resolved, Deliverable done) — rendered as HTML, JS wired in SL-028. Feed content area: if events table is empty or no events exist, render the empty state: "Events start appearing once you sync after changes have been made." If events exist, render placeholder text (feed entries built in SL-027). Query projects from SQLite for sidebar and project filter chips.
+
+Design anchor: sprint-03-activity-feed.html — full page layout, top bar, filter bar
+Data anchor: projects table — project names and colors for filter chips
+Process anchor: Activity feed → main path
+
+Done criteria:
+  - /feed returns HTTP 200 and renders the full page shell (not the placeholder)
+  - Sidebar, top bar, and filter bar are present and match the design
+  - Empty state message renders when the events table has no rows
+  - Project filter chips show correct project names and colors
+
+Self-verification checklist:
+  - Navigate to /feed and confirm the page renders (not the placeholder)
+  - Confirm sidebar shows both projects
+  - Confirm filter bar renders all project chips and all eight event type chips
+  - Confirm empty state is visible when events table is empty
+
+Builder confirmation:
+Pending build
+
+Depends on: none (shell can build before events exist)
+Notes: The empty state copy is: "Events start appearing once you sync after changes have been made." Filter bar JS is wired in SL-028 — for this slice, chips render but don't filter yet.
+
+---
+
+### SL-027 · Feed Rendering — Event Entries by Day
+
+Status: In Review
+Phase: 5
+Deliverable: D-10
+
+Plain language description:
+When there are events in the feed, each one appears as a card showing what changed, which project it belongs to, when it happened, and what type of event it was. Events are grouped under day headers. Each card has a colored left accent by event type, a badge, the project color dot, and a plain-language description of what happened.
+
+Technical description:
+Query events table ordered by event_ts DESC. Group by date portion of event_ts. For each day group: render a day label (e.g. "Today — Apr 29", "Yesterday — Apr 28", or "Apr 26" for older). For each event row: render an `.event` div with type class (type-done, type-review, type-block-open, etc.), event-time span (time portion of event_ts), project color dot, event-badge with correct badge class, project name, and event-desc built from event_type + object_name. event-tag shows object_id + deliverable/phase context. Event div has onclick='openXxxOverlay(pid, oid)' (wired per object_type). Inline review button slot left empty — filled by SL-029. Day label logic: compare date to today and yesterday; format older dates as "Apr DD".
+
+Design anchor: sprint-03-activity-feed.html — day group, event entry, badge and accent styles
+Data anchor: events table — event_type, object_type, object_id, object_name, project_name, event_ts, review_url
+Process anchor: Activity feed → main path
+
+Done criteria:
+  - Events from the events table render grouped under correct day headers
+  - Each event shows the correct type badge, accent color, project dot, and description
+  - "Today" and "Yesterday" labels appear for the correct dates; older events show formatted date
+  - Events are ordered newest-first within each day group
+
+Self-verification checklist:
+  - With real events in the table, confirm day grouping is correct
+  - Confirm each event type renders with the correct badge and accent color per the design
+  - Confirm description text is readable and accurate for each event type
+
+Builder confirmation:
+Pending build
+
+Depends on: SL-025, SL-026
+Notes: Description templates per event type: slice_done → "[name] moved to Done"; review_ready → "Review link available for [name]"; block_opened → "[name] blocked"; block_resolved → "[name] block resolved"; flag_raised → "[name] flagged"; deliverable_done → "[name] deliverable complete — all slices Done"; gate_cleared → "[phase name] gate cleared".
+
+---
+
+### SL-028 · Filter Bar — Client-Side Filtering
+
+Status: In Review
+Phase: 5
+Deliverable: D-10
+
+Plain language description:
+The filter chips at the top of the feed actually work. Clicking a project chip shows only events from that project. Clicking an event type chip shows only events of that type. Chips can be combined. Clicking "All" resets to show everything. Active chips have a highlighted style.
+
+Technical description:
+JS in the page (not in _page() global — feed-specific): maintain active project filter set and active type filter set. On chip click: toggle the filter, update chip active style, then for each .event div check its data-project and data-type attributes against active filters and set display:none / display:flex accordingly. Each event div rendered in SL-027 carries data-project="[name]" and data-type="[event_type]" attributes. "All" resets both filter sets and shows all events. Active chip style: background rgba(37,99,235,0.15), border rgba(37,99,235,0.3), color #93C5FD (matches existing active state pattern).
+
+Design anchor: sprint-03-activity-feed.html — filter bar, active chip state
+Data anchor: None — client-side only, operates on rendered HTML
+Process anchor: Activity feed → main path
+
+Done criteria:
+  - Clicking a project chip hides events from other projects
+  - Clicking an event type chip hides other event types
+  - Multiple active filters are ANDed (project AND type)
+  - Active chips are visually distinct from inactive chips
+  - "All" chip resets all filters
+
+Self-verification checklist:
+  - With events from two projects, click one project chip and confirm only that project's events show
+  - Click a type chip and confirm only that type shows
+  - Combine a project chip and type chip and confirm correct intersection
+  - Click All and confirm all events reappear
+
+Builder confirmation:
+Pending build
+
+Depends on: SL-027
+Notes: Filter is AND logic — project AND type, not OR. If no type chip is active, all types show. If no project chip is active, all projects show.
+
+---
+
+### SL-029 · Inline Review Buttons on Review-Ready Events
+
+Status: In Review
+Phase: 5
+Deliverable: D-10
+
+Plain language description:
+Review-ready events in the feed show a Review or Start & Review button inline, the same as on the project detail tabs. Clicking it opens the review URL or starts the app first if it's not running.
+
+Technical description:
+For event rows with event_type='review_ready': render a button in the event-action slot using the same rev-btn class and data attributes (data-url, data-port, data-project, data-state) as the SL-023/024 pattern. The existing _upgradeRevBtns() and handleReview() JS functions in _page() handle everything automatically — the feed page already includes them via _page(). The DOMContentLoaded port check already fires for any .rev-btn on the page. No new JS needed.
+
+Design anchor: sprint-03-activity-feed.html — review-ready event row, Review and Start & Review button states
+Data anchor: events table — review_url field on review_ready events
+Process anchor: Review link appears in companion app → main path (surfaced via feed as well as project detail)
+
+Done criteria:
+  - Review-ready events show an amber Start & Review button on load; it upgrades to teal Review if the port is alive
+  - Clicking teal Review opens the review URL in a new tab
+  - Button is absent on all other event types
+  - Port check does not delay page load
+
+Self-verification checklist:
+  - Confirm a review_ready event shows the review button and other event types do not
+  - Confirm the button upgrades from amber to teal on a live port
+  - Confirm clicking Review opens the correct URL
+
+Builder confirmation:
+Pending build
+
+Depends on: SL-025, SL-027
+Notes: Reuses the existing rev-btn class and JS entirely — no new JS functions needed. The DOMContentLoaded listener in _page() already scans for .rev-btn elements across the full page.
+
+---
+
+### SL-030 · Event Click → Existing Overlay
+
+Status: In Review
+Phase: 5
+Deliverable: D-10
+
+Plain language description:
+Clicking any event in the feed opens the full detail overlay for that object — same overlays already in the app for slices, deliverables, and phases.
+
+Technical description:
+Each event div rendered in SL-027 carries onclick= wired to the correct existing JS function: openSliceOverlay(project_id, slice_id) for slice events, openDeliverableOverlay(project_id, deliverable_id) for deliverable events, openPhaseOverlay(project_id, phase_db_id) for gate events. The events table stores object_type and object_id; the sync diff layer also stores the project's SQLite id. Phase db_id lookup: at event write time, query the phases table for the matching phase record and store its id. event.stopPropagation() on the review button prevents click-through to the overlay when the button is clicked.
+
+Design anchor: sprint-03-activity-feed.html — event row onclick, overlay panels
+Data anchor: events table — object_type, object_id, project_id
+Process anchor: Activity feed → main path
+
+Done criteria:
+  - Clicking a slice event opens the slice overlay with correct slice data
+  - Clicking a deliverable event opens the deliverable overlay with correct data
+  - Clicking a gate event opens the phase overlay with correct data
+  - Clicking the review button on a review_ready event does not also open the overlay
+
+Self-verification checklist:
+  - Click one event of each object type and confirm the correct overlay opens
+  - Confirm the overlay shows the correct object (not a different slice)
+  - Confirm clicking the review button does not trigger the overlay open
+
+Builder confirmation:
+Pending build
+
+Depends on: SL-027
+Notes: The existing overlay JS functions are already in _page() — no additions needed. The phase_db_id must be stored in the events table at write time (not looked up at render time) since it's an internal SQLite id, not the phase name.
+
+---
+
 ## Review Log
+
+### Round 3 — 2026-04-29
+**Focus:** Full first pass on sprint-03-activity-feed.html — Phase 5 (Activity Feed)
+**Slices promoted to Ready:** SL-025, SL-026
+**Slices added:** SL-025, SL-026, SL-027, SL-028, SL-029, SL-030
+**Spikes triggered:** None
+**Design changes:** None — screen approved as-is
+**Data questions resolved this round:**
+  - Event timestamp source: file mtime (last_modified already in SQLite) — Option A chosen; Option C documented in framework-improvements.md for future curator pass
+  - Empty state: defined copy ("No recent activity. Kick off a build to see events here.")
+  - Events table: snapshot-diff approach at sync time; all six event types confirmed
+  - Overlay anchor: phase_db_id stored at event-write time to enable SL-030's overlay call
+**Next round focus:** None — all 6 slices defined; SL-025 and SL-026 Ready; build can start on SL-025 immediately. SL-027–030 will reach Ready as SL-025 lands.
+
+---
 
 ### Round 2 — 2026-04-28
 **Focus:** Resolve SL-020 rendering approach. Confirm tech-context.md start_command field status.
