@@ -2628,28 +2628,44 @@ def activity_feed():
         "</div>"
     )
 
-    # ── Project filter chips ─────────────────────────────────────────────
-    chip_style = (
-        "display:flex;align-items:center;gap:8px;"
-        "background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);"
-        "border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;"
-        "color:rgba(255,255,255,0.7);cursor:pointer;transition:all 0.15s;"
-    )
-    project_chips = f"<div style='display:flex;align-items:center;gap:8px;' id='proj-chips'>"
-    project_chips += (
-        f"<span style='{chip_style}' class='proj-chip active-chip' data-project='all'>"
+    # ── Project filter dropdown ──────────────────────────────────────────
+    proj_options = "<div id='proj-dropdown' style='display:none;position:absolute;top:calc(100% + 4px);left:0;min-width:180px;background:#1A2540;border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:4px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.5);'>"
+    proj_options += (
+        "<div class='proj-opt' data-project='all' data-color='' "
+        "style='display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;"
+        "font-size:12px;font-weight:500;color:rgba(255,255,255,0.8);cursor:pointer;transition:background 0.1s;' "
+        "onmouseover=\"this.style.background='rgba(255,255,255,0.07)'\" "
+        "onmouseout=\"this.style.background='transparent'\">"
         "<span style='width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);display:inline-block;'></span>"
-        "All projects</span>"
+        "All projects</div>"
     )
     for p in projects:
         color = _project_color(p["name"])
         name_esc = p["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-        project_chips += (
-            f"<span style='{chip_style}' class='proj-chip' data-project='{name_esc}'>"
+        proj_options += (
+            f"<div class='proj-opt' data-project='{name_esc}' data-color='{color}' "
+            "style='display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;"
+            "font-size:12px;font-weight:500;color:rgba(255,255,255,0.8);cursor:pointer;transition:background 0.1s;' "
+            "onmouseover=\"this.style.background='rgba(255,255,255,0.07)'\" "
+            f"onmouseout=\"this.style.background='transparent'\">"
             f"<span style='width:6px;height:6px;border-radius:50%;background:{color};display:inline-block;'></span>"
-            f"{name_esc}</span>"
+            f"{name_esc}</div>"
         )
-    project_chips += "</div>"
+    proj_options += "</div>"
+
+    project_dropdown = (
+        "<div style='position:relative;' id='proj-dd-wrap'>"
+        "<button id='proj-dd-btn' onclick='toggleProjDropdown()' "
+        "style='display:flex;align-items:center;gap:8px;"
+        "background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);"
+        "border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;"
+        "color:rgba(255,255,255,0.7);cursor:pointer;transition:all 0.15s;font-family:-apple-system,sans-serif;'>"
+        "<span id='proj-dd-dot' style='width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);display:inline-block;'></span>"
+        "<span id='proj-dd-label'>All projects</span>"
+        " ▾</button>"
+        + proj_options
+        + "</div>"
+    )
 
     # ── Event type chips ─────────────────────────────────────────────────
     type_chip_base = (
@@ -2683,8 +2699,8 @@ def activity_feed():
     filter_bar = (
         "<div style='display:flex;align-items:center;justify-content:space-between;"
         "padding:12px 40px;border-bottom:1px solid rgba(255,255,255,0.06);"
-        "background:rgba(0,0,0,0.1);gap:16px;flex-wrap:wrap;'>"
-        + project_chips
+        "background:rgba(0,0,0,0.1);gap:16px;'>"
+        + project_dropdown
         + type_chips
         + "</div>"
     )
@@ -2706,7 +2722,36 @@ def activity_feed():
             "</div>"
         )
 
-    main_html = top_bar + filter_bar + feed_body
+    feed_js = (
+        "<script>"
+        "function toggleProjDropdown(){"
+        "  var d=document.getElementById('proj-dropdown');"
+        "  d.style.display=d.style.display==='block'?'none':'block';"
+        "}"
+        "document.addEventListener('click',function(e){"
+        "  var wrap=document.getElementById('proj-dd-wrap');"
+        "  if(wrap&&!wrap.contains(e.target)){"
+        "    document.getElementById('proj-dropdown').style.display='none';"
+        "  }"
+        "});"
+        "document.querySelectorAll('.proj-opt').forEach(function(opt){"
+        "  opt.addEventListener('click',function(){"
+        "    var project=opt.dataset.project;"
+        "    var color=opt.dataset.color;"
+        "    var label=project==='all'?'All projects':project;"
+        "    document.getElementById('proj-dd-label').textContent=label;"
+        "    var dot=document.getElementById('proj-dd-dot');"
+        "    dot.style.background=color||'rgba(255,255,255,0.3)';"
+        "    document.getElementById('proj-dropdown').style.display='none';"
+        "    document.querySelectorAll('.event[data-project]').forEach(function(ev){"
+        "      ev.style.display=(project==='all'||ev.dataset.project===project)?'flex':'none';"
+        "    });"
+        "  });"
+        "});"
+        "</script>"
+    )
+
+    main_html = top_bar + filter_bar + feed_body + feed_js
 
     sidebar = _sidebar_html(projects)
     return _page(sidebar, main_html, title="Solo Companion — Activity Feed", padded=False)

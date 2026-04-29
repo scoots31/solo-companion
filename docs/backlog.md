@@ -1950,6 +1950,12 @@ Reason: Single source of truth in the framework file. Companion stays read-only.
 Impact: SL-023 defined accordingly. Solo-build framework curator change required in a separate pass.
 Confirmed by: Solo
 
+### 2026-04-29 — Activity feed project filter changed from chips to dropdown
+Decision: Project filter in the activity feed filter bar uses a single dropdown button ("All projects ▾") instead of one chip per project.
+Reason: Individual chips overflow the filter bar at scale — 5+ projects push into the type chips. A dropdown scales to any number of projects and matches the design intent in sprint-03-activity-feed.html.
+Impact: SL-026 filter bar updated. SL-028 filter JS wires to `.proj-opt` click and `data-project` attributes on event divs (same attribute name, different element shape).
+Confirmed by: Solo
+
 ### 2026-04-29 — Phase 5 build plan approved (1 phase, 1 deliverable, 6 slices)
 Decision: Phase 5 Activity Feed plan locked. Build sequence: SL-025 (events table + sync diff) → SL-026 (feed page shell) → SL-027 (feed rendering) → SL-028/SL-029/SL-030 (filter bar, review buttons, overlay wiring). Risk order drives SL-025 first — everything reads from the events table.
 Reason: Tracer-bullet sequencing. SL-025 proves the riskiest assumption (schema + diff logic) before any UI renders. SL-026 confirms the route and layout independently. SL-027 proves real events read and render. SL-028/029/030 are peer slices with no dependencies between them.
