@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-019 done — Backlog Tab; review URLs written to all Done slices
+**Last updated:** 2026-04-29 · SL-020 + SL-021 done — Materials Tab (inline rendering + HTML screen overlay)
 **Project status:** Ready for Build
 
 ---
@@ -16,13 +16,13 @@
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 19 |
+| ✓ Done | 21 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-020 |
+| **Next up (Ready, not started)** | SL-022 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -1360,7 +1360,7 @@ Notes: None.
 
 ### SL-020 · Materials Tab — Inline Document Rendering
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-07
 
@@ -1390,7 +1390,15 @@ Self-verification checklist:
   - Click "Open in editor" and confirm the file opens in the system default app
 
 Builder confirmation:
-Pending build
+  ✓ 14 material cards render across 5 phase sections — matches 12 materials in SQLite plus brainstorm doc
+  ✓ Doc overlay: Handoff renders with Continuity phase chip, correct created date, "Open in editor" button, formatted doc-content
+  ✓ Mermaid file (as-is process map): content rendered in <pre> block — readable raw display, no broken render
+  ✓ Markdown renderer: h3→h2→h1 order (no partial matches), bold, italic, ul wrapping, hr, paragraph fallback
+  ✓ /open-file route returns 204 and calls subprocess.Popen(['open', path])
+  ✓ openMaterialOverlay() and openFile() wired in global overlay JS
+  ✓ Solo browser sign-off confirmed 2026-04-29
+
+Review URL: http://localhost:8710/project/solo-companion?tab=materials
 
 Depends on: SL-003, SL-014
 Notes: Stdlib-only regex rendering approach (resolved Round 2). Pattern order matters — h3 before h2 before h1 to prevent partial matches:
@@ -1409,7 +1417,7 @@ Notes: Stdlib-only regex rendering approach (resolved Round 2). Pattern order ma
 
 ### SL-021 · Materials Tab — HTML Screen Overlay
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-07
 
@@ -1433,7 +1441,13 @@ Self-verification checklist:
   - Click "Open in browser" and confirm the HTML file opens in the browser
 
 Builder confirmation:
-Pending build
+  ✓ Design screen cards render in Design phase section with 🖥 icon and "HTML Screen" type label
+  ✓ Clicking sprint-01-dashboard.html opens overlay with "HTML Screen" badge, "Sprint 01 — Dashboard" label, 16/9 thumb placeholder, 2-column metadata grid
+  ✓ Phase, created date, type, and file path all render correctly in metadata grid
+  ✓ "Open in browser" button present (blue treatment per design) — calls openFile() → /open-file route
+  ✓ Solo browser sign-off confirmed 2026-04-29 (built and verified alongside SL-020)
+
+Review URL: http://localhost:8710/project/solo-companion?tab=materials
 
 Depends on: SL-003, SL-014
 Notes: File creation date used as "created" date — this may show the sync date if files were moved. Acceptable for Phase 1.
