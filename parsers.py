@@ -173,6 +173,7 @@ SLICE_FIELDS = (
     "Done criteria",
     "Self-verification checklist",
     "Builder confirmation",
+    "Review URL",
     "Depends on",
     "Notes",
     "Distribution note",

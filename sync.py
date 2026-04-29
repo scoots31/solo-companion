@@ -299,7 +299,7 @@ def _sync_slices(c, project_id, backlog_text, backlog_mtime, open_right_now):
             is_blocked,
             is_flagged,
             flagged_reason,
-            None,  # review_url — populated when framework curator change lands
+            _scalar(fields.get("Review URL")),
             backlog_mtime,
         ))
 
