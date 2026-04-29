@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-016 done — Progress tab: Phase Summary Card
+**Last updated:** 2026-04-28 · SL-017 done — Progress tab: Deliverables Section
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 8 |
+| ✅ Ready | 7 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 16 |
+| ✓ Done | 17 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-017 |
+| **Next up (Ready, not started)** | SL-018 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -34,7 +34,7 @@
 
 ### Phase 1 · Foundation
 
-Status: Planning
+Status: Done
 
 Plain language description:
 The companion app starts, runs, and reads real framework files from disk. When Phase 1 is complete, the sync layer reliably turns markdown files into structured data — every project, every phase, every deliverable, every slice, every flag, every decision is in SQLite and queryable. The app is running at localhost:8710 and serving data from real projects.
@@ -72,7 +72,7 @@ Notes: If the markdown parser fails on any real framework file, stop and fix bef
 
 ### Phase 2 · Dashboard
 
-Status: Planning
+Status: Done
 
 Plain language description:
 The solo can open the companion app and see everything that matters across all their projects on one screen — what's blocked, what's flagged, what phases and deliverables and slices are active. Clicking any item shows its full details. This is the primary orientation tool — the reason the app exists.
@@ -110,7 +110,7 @@ Notes: None.
 
 ### Phase 3 · Project Detail
 
-Status: Planning
+Status: In Progress
 
 Plain language description:
 The solo can navigate to any project and see everything about it across five tabs — what needs action, full progress with all slices and deliverables, the complete backlog across all phases, every framework document, and the full decision and change history. The companion replaces every orientation question the solo would otherwise ask the framework.
@@ -1209,7 +1209,7 @@ Notes: phases.status raw field (from backlog.md) is separate from derived gate s
 
 ### SL-017 · Progress Tab — Deliverables Section
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-05
 
@@ -1232,10 +1232,10 @@ Self-verification checklist:
   - Confirm deliverable overlay opens on row click
 
 Builder confirmation:
-Pending build
+5 deliverables rendered for Phase 3. Status derived from slice completion: D-04 Done (2/2 slices Done), D-05–D-08 Ready (slices not yet In Progress). Slice count per deliverable from JOIN. Row click opens deliverable overlay (200 verified). Phase status fields updated in backlog.md (Phase 1/2 Done, Phase 3 In Progress) so companion correctly identifies current phase.
 
 Depends on: SL-003, SL-012, SL-016
-Notes: None.
+Notes: Deliverable status is derived at render time from slices, not from deliverables.status raw field (which stores acceptance status, not build status).
 
 ---
 

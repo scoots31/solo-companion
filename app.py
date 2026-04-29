@@ -1401,8 +1401,8 @@ def _action_tab_html(blocked_rows, flag_items, flagged_slices, question_rows, pr
     return "".join(sections)
 
 
-def _progress_tab_html(current_phase, phase_slice_counts, project_id):
-    """Render the Progress tab — phase summary card + placeholders for SL-017/018."""
+def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, project_id):
+    """Render the Progress tab — phase summary card + deliverables list + placeholder for SL-018."""
 
     ph = "font-size:13px;color:rgba(255,255,255,0.25);margin:0;"
 
@@ -1500,10 +1500,67 @@ def _progress_tab_html(current_phase, phase_slice_counts, project_id):
         + "</div>"
     )
 
+    def _deliv_status(row):
+        """Derive display status + colors from slice counts."""
+        sc = row["slice_count"] or 0
+        if sc == 0:
+            return "Ready", "rgba(255,255,255,0.07)", "rgba(255,255,255,0.4)"
+        if row["blocked_count"]:
+            return "Blocked", "rgba(190,18,60,0.12)", "#FDA4AF"
+        if (row["done_count"] or 0) >= sc:
+            return "Done", "rgba(13,148,136,0.2)", "#5EEAD4"
+        if row["active_count"]:
+            return "In Progress", "rgba(37,99,235,0.2)", "#93C5FD"
+        return "Ready", "rgba(255,255,255,0.07)", "rgba(255,255,255,0.4)"
+
+    def deliv_row_html(row):
+        did = row["deliverable_id"]
+        dname = row["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        sc = row["slice_count"] or 0
+        slice_label = f"{sc} slice{'s' if sc != 1 else ''}"
+        status_label, st_bg, st_color = _deliv_status(row)
+        return (
+            f"<div onclick='openDeliverableOverlay({project_id},\"{did}\")' "
+            f"style='display:flex;align-items:center;gap:14px;padding:12px 16px;"
+            f"background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:9px;cursor:pointer;margin-bottom:6px;' "
+            f"onmouseover='this.style.background=\"rgba(255,255,255,0.07)\"' "
+            f"onmouseout='this.style.background=\"rgba(255,255,255,0.04)\"'>"
+            f"<div style='width:28px;height:28px;border-radius:7px;"
+            f"background:rgba(37,99,235,0.12);display:flex;align-items:center;"
+            f"justify-content:center;font-size:12px;flex-shrink:0;'>⊞</div>"
+            f"<span style='flex:1;font-size:13px;color:rgba(255,255,255,0.85);"
+            f"font-weight:500;'>{dname}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.3);flex-shrink:0;'>"
+            f"{slice_label}</span>"
+            f"<span style='font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+            f"background:{st_bg};color:{st_color};flex-shrink:0;'>{status_label}</span>"
+            f"</div>"
+        )
+
+    n_delivs = len(deliverable_rows)
+    section_header = (
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "margin-bottom:12px;margin-top:0;'>"
+        "<span style='font-size:11px;font-weight:700;text-transform:uppercase;"
+        "letter-spacing:1.5px;color:rgba(255,255,255,0.35);'>Deliverables</span>"
+        f"<span style='font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;"
+        f"background:rgba(124,58,237,0.15);color:#C4B5FD;'>{n_delivs} in phase</span>"
+        "</div>"
+    )
+
+    deliverables_html = (
+        section_header
+        + "".join(deliv_row_html(r) for r in deliverable_rows)
+        if deliverable_rows else ""
+    )
+
     return (
         card
-        + f"<p style='{ph}'>Deliverables list arrives in unit of work SL-017.</p>"
-        + f"<p style='{ph};margin-top:8px;'>Slices list arrives in unit of work SL-018.</p>"
+        + "<div style='margin-bottom:28px;'>"
+        + deliverables_html
+        + "</div>"
+        + f"<p style='{ph}'>Slices list arrives in unit of work SL-018.</p>"
     )
 
 
@@ -1641,6 +1698,21 @@ def project_detail(name):
             phase_slice_counts[row["status"] or "Unknown"] = row["cnt"]
     progress_count = sum(phase_slice_counts.values())
 
+    deliverable_rows = []
+    if phase_num:
+        deliverable_rows = conn.execute(
+            "SELECT d.deliverable_id, d.name, "
+            "COUNT(s.id) AS slice_count, "
+            "SUM(CASE WHEN s.status='Done' THEN 1 ELSE 0 END) AS done_count, "
+            "SUM(CASE WHEN s.status IN ('In Progress','In QA','In Test') THEN 1 ELSE 0 END) AS active_count, "
+            "SUM(CASE WHEN s.is_blocked=1 THEN 1 ELSE 0 END) AS blocked_count "
+            "FROM deliverables d "
+            "LEFT JOIN slices s ON s.project_id=d.project_id AND s.deliverable_ref=d.deliverable_id "
+            "WHERE d.project_id=? AND d.phase=? "
+            "GROUP BY d.deliverable_id ORDER BY d.deliverable_id",
+            (project_id, phase_num)
+        ).fetchall()
+
     backlog_count = conn.execute(
         "SELECT COUNT(*) FROM slices WHERE project_id=?",
         (project_id,)
@@ -1730,7 +1802,7 @@ def project_detail(name):
     action_html   = _action_tab_html(
         blocked_rows, flag_items, flagged_slices, question_rows, project_id
     )
-    progress_html = _progress_tab_html(current_phase, phase_slice_counts, project_id)
+    progress_html = _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, project_id)
 
     content = (
         "<div style='padding:32px 40px;flex:1;'>"
