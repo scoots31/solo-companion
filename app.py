@@ -14,6 +14,7 @@ SL-006: Needs Attention — Blocked card. Red-tinted card for is_blocked
         slices; absent from DOM when no blocked slices exist.
 SL-007: Needs Attention — Flagged card. Amber-tinted card for flags
         table items + is_flagged slices; absent when nothing flagged.
+SL-008: Dashboard Phases bucket — In Progress phases with progress bars.
 """
 
 import os
@@ -266,6 +267,79 @@ def _blocked_card(conn, projects_by_id):
     )
 
 
+def _bucket_section(header, rows_html):
+    """Shared container for dashboard data buckets (Phases, Deliverables, Slices)."""
+    return (
+        "<div style='margin-bottom:24px;'>"
+        f"<div style='font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);"
+        f"letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;'>{header}</div>"
+        "<div style='border:1px solid rgba(255,255,255,0.08);border-radius:10px;overflow:hidden;'>"
+        + "".join(rows_html)
+        + "</div></div>"
+    )
+
+
+def _phases_bucket(conn, projects_by_id):
+    """Render In Progress phases with slice progress bars."""
+    phases = conn.execute(
+        "SELECT id, name, project_id FROM phases WHERE status = 'In Progress' "
+        "ORDER BY project_id, name"
+    ).fetchall()
+
+    if not phases:
+        return (
+            "<div style='margin-bottom:24px;'>"
+            "<div style='font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);"
+            "letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;'>Phases</div>"
+            "<div style='font-size:12px;color:rgba(255,255,255,0.25);padding:14px 0;'>"
+            "No phases in progress.</div></div>"
+        )
+
+    rows = []
+    for ph in phases:
+        proj = projects_by_id.get(ph["project_id"], {})
+        proj_name = proj.get("name", "unknown")
+        color = _project_color(proj_name)
+
+        # Extract phase number from "Phase N · Name" to match slices.phase = "N"
+        parts = ph["name"].split(" ")
+        phase_num = parts[1] if len(parts) > 1 else ph["name"]
+
+        total = conn.execute(
+            "SELECT COUNT(*) FROM slices WHERE project_id = ? AND phase = ?",
+            (ph["project_id"], phase_num)
+        ).fetchone()[0]
+        done = conn.execute(
+            "SELECT COUNT(*) FROM slices WHERE project_id = ? AND phase = ? AND status = 'Done'",
+            (ph["project_id"], phase_num)
+        ).fetchone()[0]
+
+        pct = int(done / total * 100) if total > 0 else 0
+        phase_display = ph["name"].split(" · ", 1)[1] if " · " in ph["name"] else ph["name"]
+
+        rows.append(
+            f"<div style='padding:12px 16px;display:flex;align-items:center;gap:12px;"
+            f"border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;"
+            f"background:transparent;'>"
+            f"<span style='width:8px;height:8px;border-radius:50%;background:{color};"
+            f"flex-shrink:0;'></span>"
+            f"<div style='flex:1;min-width:0;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
+            f"{proj_name}</div>"
+            f"<div style='font-size:13px;color:rgba(255,255,255,0.8);'>{phase_display}</div>"
+            f"</div>"
+            f"<div style='flex-shrink:0;text-align:right;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:4px;'>"
+            f"{done}/{total}</div>"
+            f"<div style='width:80px;height:4px;background:rgba(255,255,255,0.08);"
+            f"border-radius:2px;overflow:hidden;'>"
+            f"<div style='width:{pct}%;height:100%;background:{color};border-radius:2px;'>"
+            f"</div></div></div></div>"
+        )
+
+    return _bucket_section("Phases", rows)
+
+
 def _flagged_card(conn, projects_by_id):
     """Render the Flagged needs-attention card, or '' if nothing flagged."""
     # Union: handoff open-right-now items (flags table) + stale in-progress slices
@@ -345,6 +419,7 @@ def dashboard():
     projects_by_id = {p["id"]: dict(p) for p in projects}
     blocked = _blocked_card(conn, projects_by_id)
     flagged = _flagged_card(conn, projects_by_id)
+    phases = _phases_bucket(conn, projects_by_id)
     conn.close()
 
     project_count = len(projects)
@@ -391,6 +466,7 @@ def dashboard():
         top_bar
         + blocked
         + flagged
+        + phases
         + "".join(project_blocks)
     )
 

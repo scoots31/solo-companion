@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-007 done — Needs Attention Flagged card
+**Last updated:** 2026-04-28 · SL-008 done — Dashboard Phases bucket with progress bars
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 17 |
+| ✅ Ready | 16 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 7 |
+| ✓ Done | 8 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-008 |
+| **Next up (Ready, not started)** | SL-009 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -869,7 +869,7 @@ Notes: "Outstanding questions" items appear in the questions table and surface o
 
 ### SL-008 · Dashboard — Phases Bucket
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -894,7 +894,12 @@ Self-verification checklist:
   - Confirm row click opens phase overlay
 
 Builder confirmation:
-Pending build
+  ✓ _phases_bucket() queries phases WHERE status='In Progress', shared _bucket_section() container
+  ✓ Phase number extracted from "Phase N · Name" to match slices.phase = "N"
+  ✓ Progress bar: done/total slices per project+phase, color-matched to project
+  ✓ Empty state: "No phases in progress." message when query returns zero rows
+  ✓ Verified: Phase 2 set to In Progress → row rendered with "4/10" and progress bar
+  ✓ _bucket_section() helper introduced for Deliverables + Slices buckets to reuse
 
 Depends on: SL-003, SL-013
 Notes: None.
