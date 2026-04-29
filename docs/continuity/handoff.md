@@ -1,7 +1,7 @@
 # Project Handoff — 2026-04-28
 
 **Current phase:** Phase 3 — Project Detail
-**Overall status:** Phase 1 (Foundation) and Phase 2 (Dashboard) complete. SL-001–SL-014 Done. Project detail shell live — routing, breadcrumb, phase pill, tab bar. Moving to SL-015 (Action Tab content).
+**Overall status:** Phase 1 (Foundation) and Phase 2 (Dashboard) complete. SL-001–SL-015 Done. Project detail shell + Action tab live. Moving to SL-016 (Progress Tab — Phase Summary Card).
 
 ## Where we are
 

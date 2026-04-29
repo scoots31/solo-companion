@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-014 done — Project detail routing, breadcrumb, phase pill, tab bar
+**Last updated:** 2026-04-28 · SL-015 done — Action tab (Blocked, Flagged, Outstanding Questions cards)
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 10 |
+| ✅ Ready | 9 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 14 |
+| ✓ Done | 15 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-015 |
+| **Next up (Ready, not started)** | SL-016 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -1134,7 +1134,7 @@ Notes: None.
 
 ### SL-015 · Project Detail — Action Tab
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-04
 
@@ -1161,7 +1161,13 @@ Self-verification checklist:
   - Confirm clean state when no action items exist
 
 Builder confirmation:
-Pending build
+  ✓ Blocked card (red): renders all is_blocked=1 slices for the project — each row clickable, opens slice overlay
+  ✓ Flagged card (amber): unions flags table + slices WHERE is_flagged=1 for the project — slice rows clickable
+  ✓ Outstanding Questions card (blue): renders open questions with surfaced_during tag and who_can_answer
+  ✓ Each section absent from DOM when empty — not rendered as empty container
+  ✓ All three empty → clean "No action items" checkmark state
+  ✓ Action tab count badge updates correctly (blocked + flags + flagged_slices + questions)
+  ✓ Verified all three cards with test data injected directly into SQLite — solo browser sign-off confirmed 2026-04-28
 
 Depends on: SL-003, SL-011, SL-014
 Notes: None.

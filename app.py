@@ -1252,6 +1252,155 @@ def _render_slice_overlay(s, proj_name, from_project=None):
     )
 
 
+# ── Project detail tab renderers ─────────────────────────────────────────
+
+def _action_tab_html(blocked_rows, flag_items, flagged_slices, question_rows, project_id):
+    """Render the Action tab content for a project detail page."""
+
+    def _esc(s):
+        return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    def _truncate(s, n=120):
+        s = (s or "").strip()
+        return s[:n - 3] + "…" if len(s) > n else s
+
+    def action_item(dot_color, text, tag=None, who=None, age=None,
+                    clickable=False, pid=None, sid=None):
+        click_attr = f"onclick='openSliceOverlay({pid},\"{sid}\")' " if clickable else ""
+        hover_attrs = (
+            "onmouseover='this.style.background=\"rgba(255,255,255,0.05)\"' "
+            "onmouseout='this.style.background=\"transparent\"'"
+        ) if clickable else ""
+        cursor = "cursor:pointer;" if clickable else ""
+        meta_parts = []
+        if tag:
+            meta_parts.append(
+                f"<span style='font-size:10px;color:rgba(255,255,255,0.3);"
+                f'font-family:"SF Mono","Fira Code",monospace;'
+                f"'>{_esc(tag)}</span>"
+            )
+        if who:
+            meta_parts.append(
+                f"<span style='font-size:11px;color:rgba(255,255,255,0.25);'>"
+                f"Who can answer: {_esc(who)}</span>"
+            )
+        if age:
+            meta_parts.append(
+                f"<span style='font-size:11px;color:rgba(255,255,255,0.2);'>Open {age}</span>"
+            )
+        meta_html = (
+            f"<div style='display:flex;align-items:center;gap:12px;'>{''.join(meta_parts)}</div>"
+            if meta_parts else ""
+        )
+        return (
+            f"<div {click_attr}{hover_attrs} "
+            f"style='display:flex;align-items:flex-start;gap:10px;padding:10px 8px;"
+            f"border-radius:6px;{cursor}margin:0 -8px;'>"
+            f"<div style='width:6px;height:6px;border-radius:50%;background:{dot_color};"
+            f"margin-top:5px;flex-shrink:0;'></div>"
+            f"<div style='flex:1;min-width:0;'>"
+            f"<div style='font-size:13px;color:rgba(255,255,255,0.8);line-height:1.5;"
+            f"margin-bottom:4px;'>{_esc(_truncate(text))}</div>"
+            f"{meta_html}"
+            f"</div></div>"
+        )
+
+    def card(bg, border_color, badge_bg, badge_color, badge_label, tier_desc, items_html):
+        # Add dividers between items (last item has no border)
+        dividers = []
+        for i, h in enumerate(items_html):
+            sep = "" if i == len(items_html) - 1 else "border-bottom:1px solid rgba(255,255,255,0.05);"
+            dividers.append(h.replace("border-radius:6px;", f"border-radius:6px;{sep}", 1))
+        return (
+            f"<div style='background:{bg};border:1px solid {border_color};"
+            f"border-radius:10px;padding:16px 18px;margin-bottom:12px;'>"
+            f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:12px;'>"
+            f"<span style='font-size:10px;font-weight:700;text-transform:uppercase;"
+            f"letter-spacing:1px;padding:2px 8px;border-radius:4px;"
+            f"background:{badge_bg};color:{badge_color};'>{badge_label}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.3);'>{tier_desc}</span>"
+            f"</div>"
+            + "".join(dividers)
+            + "</div>"
+        )
+
+    sections = []
+
+    # ── Blocked ─────────────────────────────────────────────────────────
+    if blocked_rows:
+        items = [
+            action_item(
+                "#FDA4AF",
+                r["notes"] or r["name"],
+                tag=f"{r['slice_id']} · Slice",
+                age=_open_duration(r["last_modified"]),
+                clickable=True, pid=project_id, sid=r["slice_id"]
+            )
+            for r in blocked_rows
+        ]
+        sections.append(card(
+            "rgba(190,18,60,0.08)", "rgba(190,18,60,0.25)",
+            "rgba(190,18,60,0.25)", "#FDA4AF",
+            "Blocked", "Hard stop — work cannot proceed", items
+        ))
+
+    # ── Flagged ─────────────────────────────────────────────────────────
+    flagged_items_html = []
+    for f in flag_items:
+        is_slice = f["object_type"] == "slice" and f["object_id"]
+        flagged_items_html.append(action_item(
+            "#FCD34D",
+            f["reason"],
+            tag=f"{f['object_id']} · {f['object_type'].title()}" if f["object_id"] else None,
+            clickable=bool(is_slice), pid=project_id, sid=f["object_id"] if is_slice else None
+        ))
+    for s in flagged_slices:
+        flagged_items_html.append(action_item(
+            "#FCD34D",
+            s["reason"] or s["name"],
+            tag=f"{s['slice_id']} · Slice",
+            age=_open_duration(s["last_modified"]),
+            clickable=True, pid=project_id, sid=s["slice_id"]
+        ))
+    if flagged_items_html:
+        sections.append(card(
+            "rgba(180,83,9,0.08)", "rgba(180,83,9,0.2)",
+            "rgba(180,83,9,0.25)", "#FCD34D",
+            "Flagged", "Soft signal — worth attention", flagged_items_html
+        ))
+
+    # ── Outstanding Questions ────────────────────────────────────────────
+    if question_rows:
+        items = [
+            action_item(
+                "#93C5FD",
+                q["text"],
+                tag=q["surfaced_during"] or None,
+                who=q["who_can_answer"] or None
+            )
+            for q in question_rows
+        ]
+        sections.append(card(
+            "rgba(37,99,235,0.06)", "rgba(37,99,235,0.18)",
+            "rgba(37,99,235,0.2)", "#93C5FD",
+            "Outstanding Questions", "External input needed", items
+        ))
+
+    if not sections:
+        return (
+            "<div style='display:flex;flex-direction:column;align-items:center;"
+            "justify-content:center;padding:60px 0;text-align:center;'>"
+            "<div style='font-size:24px;margin-bottom:12px;opacity:0.3;'>✓</div>"
+            "<p style='font-size:14px;font-weight:600;color:rgba(255,255,255,0.4);"
+            "margin:0 0 4px;'>No action items</p>"
+            "<p style='font-size:12px;color:rgba(255,255,255,0.2);margin:0;'>"
+            "Nothing blocked, flagged, or outstanding for this project.</p>"
+            "</div>"
+        )
+
+    return "".join(sections)
+
+
 # ── Routes ───────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -1350,19 +1499,30 @@ def project_detail(name):
         phase_num = None
 
     # Tab counts
-    n_blocked = conn.execute(
-        "SELECT COUNT(*) FROM slices WHERE project_id=? AND is_blocked=1",
+    # Action tab — full row data + counts
+    blocked_rows = conn.execute(
+        "SELECT slice_id, name, notes, last_modified FROM slices "
+        "WHERE project_id=? AND is_blocked=1 ORDER BY last_modified ASC",
         (project_id,)
-    ).fetchone()[0]
-    n_flags = conn.execute(
-        "SELECT COUNT(*) FROM flags WHERE project_id=?",
+    ).fetchall()
+    flag_items = conn.execute(
+        "SELECT text AS reason, object_type, object_id FROM flags WHERE project_id=?",
         (project_id,)
-    ).fetchone()[0]
-    n_questions = conn.execute(
-        "SELECT COUNT(*) FROM questions WHERE project_id=? "
-        "AND (status IS NULL OR status != 'Answered')",
+    ).fetchall()
+    flagged_slices = conn.execute(
+        "SELECT slice_id, name, flagged_reason AS reason, last_modified FROM slices "
+        "WHERE project_id=? AND is_flagged=1",
         (project_id,)
-    ).fetchone()[0]
+    ).fetchall()
+    question_rows = conn.execute(
+        "SELECT text, surfaced_during, who_can_answer FROM questions "
+        "WHERE project_id=? AND (status IS NULL OR status != 'Answered') ORDER BY id",
+        (project_id,)
+    ).fetchall()
+
+    n_blocked = len(blocked_rows)
+    n_flags = len(flag_items) + len(flagged_slices)
+    n_questions = len(question_rows)
     action_count = n_blocked + n_flags + n_questions
 
     progress_count = 0
@@ -1458,9 +1618,13 @@ def project_detail(name):
         disp = "block" if active else "none"
         return f"<div id='tab-panel-{panel_id}' style='display:{disp};'>{content}</div>"
 
+    action_html = _action_tab_html(
+        blocked_rows, flag_items, flagged_slices, question_rows, project_id
+    )
+
     content = (
         "<div style='padding:32px 40px;flex:1;'>"
-        + tab_panel("action",    f"<p style='{ph}'>Action items arrive in unit of work SL-015.</p>",    active=True)
+        + tab_panel("action",    action_html,                                                            active=True)
         + tab_panel("progress",  f"<p style='{ph}'>Progress view arrives in unit of work SL-016.</p>")
         + tab_panel("backlog",   f"<p style='{ph}'>Backlog view arrives in unit of work SL-017.</p>")
         + tab_panel("materials", f"<p style='{ph}'>Materials view arrives in unit of work SL-018.</p>")
