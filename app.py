@@ -297,7 +297,7 @@ def _status_pill(status):
 
 
 def _phases_bucket(conn, projects_by_id):
-    """Render active phases (not Done/Cancelled) with slice progress bars."""
+    """Render active phases (not Done/Cancelled, and not fully complete by slice count)."""
     phases = conn.execute(
         "SELECT id, name, status, project_id FROM phases "
         "WHERE status NOT IN ('Done', 'Cancelled') "
@@ -325,6 +325,10 @@ def _phases_bucket(conn, projects_by_id):
             "SELECT COUNT(*) FROM slices WHERE project_id = ? AND phase = ? AND status = 'Done'",
             (ph["project_id"], phase_num)
         ).fetchone()[0]
+
+        # Skip phases where every slice is already Done — they're complete regardless of status field
+        if total > 0 and done == total:
+            continue
 
         pct = int(done / total * 100) if total > 0 else 0
         rows.append(
