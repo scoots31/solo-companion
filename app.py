@@ -29,11 +29,6 @@ PORT = 8710
 app = Flask(__name__)
 init_db()
 
-CONTENT_TABLES = (
-    "phases", "deliverables", "slices", "materials",
-    "decisions", "changes", "questions", "flags",
-)
-
 # ── Color palette (deterministic hash of project name) ──────────────────
 
 _PALETTE = [
@@ -279,21 +274,38 @@ def _bucket_section(header, rows_html):
     )
 
 
+def _status_pill(status):
+    """Return a small inline status badge."""
+    colors = {
+        "In Progress": ("#3B82F6", "rgba(59,130,246,0.15)"),
+        "In QA":       ("#8B5CF6", "rgba(139,92,246,0.15)"),
+        "In Test":     ("#0D9488", "rgba(13,148,136,0.15)"),
+        "Ready":       ("rgba(255,255,255,0.4)", "rgba(255,255,255,0.06)"),
+        "Blocked":     ("#EF4444", "rgba(220,38,38,0.15)"),
+        "Done":        ("#22C55E", "rgba(34,197,94,0.12)"),
+        "Defined":     ("rgba(255,255,255,0.4)", "rgba(255,255,255,0.06)"),
+        "Accepted":    ("#22C55E", "rgba(34,197,94,0.12)"),
+        "Active":      ("#3B82F6", "rgba(59,130,246,0.15)"),
+        "Planning":    ("rgba(255,255,255,0.4)", "rgba(255,255,255,0.06)"),
+    }
+    text_color, bg = colors.get(status or "", ("rgba(255,255,255,0.35)", "rgba(255,255,255,0.06)"))
+    return (
+        f"<span style='font-size:10px;padding:2px 7px;border-radius:8px;"
+        f"background:{bg};color:{text_color};white-space:nowrap;flex-shrink:0;'>"
+        f"{status or '—'}</span>"
+    )
+
+
 def _phases_bucket(conn, projects_by_id):
-    """Render In Progress phases with slice progress bars."""
+    """Render active phases (not Done/Cancelled) with slice progress bars."""
     phases = conn.execute(
-        "SELECT id, name, project_id FROM phases WHERE status = 'In Progress' "
+        "SELECT id, name, status, project_id FROM phases "
+        "WHERE status NOT IN ('Done', 'Cancelled') "
         "ORDER BY project_id, name"
     ).fetchall()
 
     if not phases:
-        return (
-            "<div style='margin-bottom:24px;'>"
-            "<div style='font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);"
-            "letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;'>Phases</div>"
-            "<div style='font-size:12px;color:rgba(255,255,255,0.25);padding:14px 0;'>"
-            "No phases in progress.</div></div>"
-        )
+        return ""
 
     rows = []
     for ph in phases:
@@ -319,8 +331,7 @@ def _phases_bucket(conn, projects_by_id):
 
         rows.append(
             f"<div style='padding:12px 16px;display:flex;align-items:center;gap:12px;"
-            f"border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;"
-            f"background:transparent;'>"
+            f"border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;'>"
             f"<span style='width:8px;height:8px;border-radius:50%;background:{color};"
             f"flex-shrink:0;'></span>"
             f"<div style='flex:1;min-width:0;'>"
@@ -328,6 +339,7 @@ def _phases_bucket(conn, projects_by_id):
             f"{proj_name}</div>"
             f"<div style='font-size:13px;color:rgba(255,255,255,0.8);'>{phase_display}</div>"
             f"</div>"
+            f"{_status_pill(ph['status'])}"
             f"<div style='flex-shrink:0;text-align:right;'>"
             f"<div style='font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:4px;'>"
             f"{done}/{total}</div>"
@@ -338,6 +350,82 @@ def _phases_bucket(conn, projects_by_id):
         )
 
     return _bucket_section("Phases", rows)
+
+
+def _deliverables_bucket(conn, projects_by_id):
+    """Render active deliverables (not Done/Cancelled) across all projects."""
+    deliverables = conn.execute(
+        "SELECT deliverable_id, name, status, project_id FROM deliverables "
+        "WHERE status NOT IN ('Done', 'Cancelled') "
+        "ORDER BY project_id, deliverable_id"
+    ).fetchall()
+
+    if not deliverables:
+        return ""
+
+    rows = []
+    for d in deliverables:
+        proj = projects_by_id.get(d["project_id"], {})
+        proj_name = proj.get("name", "unknown")
+        color = _project_color(proj_name)
+        rows.append(
+            f"<div style='padding:12px 16px;display:flex;align-items:center;gap:12px;"
+            f"border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;'>"
+            f"<span style='width:8px;height:8px;border-radius:50%;background:{color};"
+            f"flex-shrink:0;'></span>"
+            f"<div style='flex:1;min-width:0;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
+            f"{proj_name} · {d['deliverable_id']}</div>"
+            f"<div style='font-size:13px;color:rgba(255,255,255,0.8);'>{d['name']}</div>"
+            f"</div>"
+            f"{_status_pill(d['status'])}"
+            f"</div>"
+        )
+
+    return _bucket_section("Deliverables", rows)
+
+
+def _slices_bucket(conn, projects_by_id):
+    """Render in-flight slices; if none, show next Ready slices as up-next."""
+    in_flight = conn.execute(
+        "SELECT slice_id, name, status, project_id FROM slices "
+        "WHERE status IN ('In Progress', 'In QA', 'In Test') "
+        "ORDER BY project_id, slice_id"
+    ).fetchall()
+
+    if in_flight:
+        rows_data = list(in_flight)
+        header_label = "Slices"
+    else:
+        # Nothing in flight — show next Ready slices as "up next"
+        rows_data = conn.execute(
+            "SELECT slice_id, name, status, project_id FROM slices "
+            "WHERE status = 'Ready' ORDER BY project_id, slice_id LIMIT 10"
+        ).fetchall()
+        header_label = "Slices — Up Next"
+
+    if not rows_data:
+        return ""
+
+    rows = []
+    for s in rows_data:
+        proj = projects_by_id.get(s["project_id"], {})
+        proj_name = proj.get("name", "unknown")
+        color = _project_color(proj_name)
+        rows.append(
+            f"<div style='padding:10px 16px;display:flex;align-items:center;gap:12px;"
+            f"border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;'>"
+            f"<span style='font-family:SF Mono,monospace;font-size:11px;"
+            f"color:rgba(255,255,255,0.4);min-width:56px;'>{s['slice_id']}</span>"
+            f"<span style='flex:1;font-size:12px;color:rgba(255,255,255,0.75);'>{s['name']}</span>"
+            f"{_status_pill(s['status'])}"
+            f"<span style='display:flex;align-items:center;gap:5px;flex-shrink:0;'>"
+            f"<span style='width:6px;height:6px;border-radius:50%;background:{color};'></span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.3);'>{proj_name}</span>"
+            f"</span></div>"
+        )
+
+    return _bucket_section(header_label, rows)
 
 
 def _flagged_card(conn, projects_by_id):
@@ -405,27 +493,18 @@ def dashboard():
     conn = get_conn()
 
     projects = _get_active_projects(conn)
-
-    rows_per_project = {}
-    for p in projects:
-        rows_per_project[p["name"]] = {
-            t: conn.execute(
-                f"SELECT COUNT(*) FROM {t} WHERE project_id = ?", (p["id"],)
-            ).fetchone()[0]
-            for t in CONTENT_TABLES
-        }
-
     last_synced = get_last_synced()
     projects_by_id = {p["id"]: dict(p) for p in projects}
     blocked = _blocked_card(conn, projects_by_id)
     flagged = _flagged_card(conn, projects_by_id)
     phases = _phases_bucket(conn, projects_by_id)
+    deliverables = _deliverables_bucket(conn, projects_by_id)
+    slices = _slices_bucket(conn, projects_by_id)
     conn.close()
 
     project_count = len(projects)
     synced_label = _relative_synced(last_synced)
 
-    # Top bar — project count, last synced, refresh button
     top_bar = (
         "<div style='display:flex;align-items:center;justify-content:space-between;"
         "margin-bottom:32px;'>"
@@ -444,30 +523,13 @@ def dashboard():
         "</div>"
     )
 
-    # Per-project count blocks (sync verification — placeholder until SL-006+)
-    project_blocks = []
-    for p in projects:
-        counts = rows_per_project.get(p["name"], {})
-        cells = " · ".join(f"{t}: {counts.get(t, 0)}" for t in CONTENT_TABLES)
-        color = _project_color(p["name"])
-        project_blocks.append(
-            f"<div style='margin-bottom:10px;padding:10px 14px;"
-            f"background:rgba(255,255,255,0.04);"
-            f"border:1px solid rgba(255,255,255,0.07);border-left:3px solid {color};"
-            f"border-radius:8px;'>"
-            f"<div style='font-family:SF Mono,monospace;font-size:12px;"
-            f"color:rgba(255,255,255,0.85);margin-bottom:4px;'>{p['name']}</div>"
-            f"<div style='font-family:SF Mono,monospace;font-size:10px;"
-            f"color:rgba(255,255,255,0.4);'>{cells}</div>"
-            f"</div>"
-        )
-
     main_html = (
         top_bar
         + blocked
         + flagged
         + phases
-        + "".join(project_blocks)
+        + deliverables
+        + slices
     )
 
     sidebar = _sidebar_html(projects)
