@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-026 Done
+**Last updated:** 2026-04-29 · SL-027 Done — SL-028/029/030 Ready
 **Project status:** In Build (Phase 5)
 
 ---
@@ -9,22 +9,22 @@
 ### Slice Status
 | Status | Count |
 |--------|-------|
-| 🔄 In Review | 4 |
-| ✅ Ready | 0 |
+| 🔄 In Review | 0 |
+| ✅ Ready | 3 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 26 |
+| ✓ Done | 27 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Currently in build** | SL-027 |
-| **Next up (Ready, not started)** | — |
-| **Blocked — waiting on** | SL-028–030 (depend on SL-027) |
+| **Currently in build** | — |
+| **Next up (Ready, not started)** | SL-028, SL-029, SL-030 |
+| **Blocked — waiting on** | — |
 | **Open spikes** | — |
 
 ---
@@ -1733,7 +1733,8 @@ Notes: The empty state copy is: "Events start appearing once you sync after chan
 
 ### SL-027 · Feed Rendering — Event Entries by Day
 
-Status: In Review
+Status: Done
+Review URL: None — infrastructure slice
 Phase: 5
 Deliverable: D-10
 
@@ -1759,7 +1760,7 @@ Self-verification checklist:
   - Confirm description text is readable and accurate for each event type
 
 Builder confirmation:
-Pending build
+Done — events render grouped by day with correct day labels, left accent strips, badges, project dots, description templates, and openSliceOverlay/openDeliverableOverlay calls. data-project and data-type attributes on every card for SL-028 filtering. 2026-04-29.
 
 Depends on: SL-025, SL-026
 Notes: Description templates per event type: slice_done → "[name] moved to Done"; review_ready → "Review link available for [name]"; block_opened → "[name] blocked"; block_resolved → "[name] block resolved"; flag_raised → "[name] flagged"; deliverable_done → "[name] deliverable complete — all slices Done"; gate_cleared → "[phase name] gate cleared".
@@ -1768,7 +1769,7 @@ Notes: Description templates per event type: slice_done → "[name] moved to Don
 
 ### SL-028 · Filter Bar — Client-Side Filtering
 
-Status: In Review
+Status: Ready
 Phase: 5
 Deliverable: D-10
 
@@ -1805,7 +1806,7 @@ Notes: Filter is AND logic — project AND type, not OR. If no type chip is acti
 
 ### SL-029 · Inline Review Buttons on Review-Ready Events
 
-Status: In Review
+Status: Ready
 Phase: 5
 Deliverable: D-10
 
@@ -1840,7 +1841,7 @@ Notes: Reuses the existing rev-btn class and JS entirely — no new JS functions
 
 ### SL-030 · Event Click → Existing Overlay
 
-Status: In Review
+Status: Ready
 Phase: 5
 Deliverable: D-10
 

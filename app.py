@@ -2598,12 +2598,157 @@ def project_detail(name):
     return _page(sidebar, main_html, title=f"Solo Companion — {proj_name}", padded=False)
 
 
+# ── Activity feed rendering helpers (SL-027) ────────────────────────────
+
+_EVENT_META = {
+    # event_type → (accent_color, badge_bg, badge_color, badge_label)
+    "slice_done":        ("#5EEAD4",              "rgba(13,148,136,0.2)",   "#5EEAD4",              "Done"),
+    "review_ready":      ("#5EEAD4",              "rgba(13,148,136,0.2)",   "#5EEAD4",              "Review ready"),
+    "block_opened":      ("#FDA4AF",              "rgba(190,18,60,0.2)",    "#FDA4AF",              "Block opened"),
+    "block_resolved":    ("#86EFAC",              "rgba(21,128,61,0.2)",    "#86EFAC",              "Block resolved"),
+    "flag_raised":       ("#FCD34D",              "rgba(180,83,9,0.2)",     "#FCD34D",              "Flagged"),
+    "gate_cleared":      ("#93C5FD",              "rgba(37,99,235,0.2)",    "#93C5FD",              "Gate cleared"),
+    "deliverable_done":  ("#C4B5FD",              "rgba(124,58,237,0.2)",   "#C4B5FD",              "Deliverable done"),
+    "slice_in_progress": ("rgba(255,255,255,0.15)","rgba(255,255,255,0.08)","rgba(255,255,255,0.4)","In Progress"),
+}
+
+def _event_desc(event_type, name):
+    name_esc = name.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;") if name else "—"
+    bold = f"<strong style='color:#fff;font-weight:600;'>{name_esc}</strong>"
+    t = {
+        "slice_done":        f"{bold} moved to Done",
+        "review_ready":      f"Review link available for {bold}",
+        "block_opened":      f"{bold} blocked",
+        "block_resolved":    f"{bold} block resolved",
+        "flag_raised":       f"{bold} flagged",
+        "deliverable_done":  f"{bold} deliverable complete — all slices Done",
+        "gate_cleared":      f"{bold} gate cleared",
+        "slice_in_progress": f"{bold} moved to In Progress",
+    }
+    return t.get(event_type, f"{bold}")
+
+
+def _render_event_card(ev, dt_local):
+    import time as _time
+    event_type  = ev["event_type"] or "slice_done"
+    object_type = ev["object_type"] or "slice"
+    object_id   = ev["object_id"]  or ""
+    object_name = ev["object_name"] or object_id
+    project_id  = ev["project_id"]
+    project_name = ev["project_name"] or ""
+    proj_color  = _project_color(project_name)
+    pname_esc   = project_name.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+    oid_esc     = object_id.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+
+    accent, badge_bg, badge_color, badge_label = _EVENT_META.get(
+        event_type, ("#5EEAD4","rgba(13,148,136,0.2)","#5EEAD4","Event")
+    )
+
+    time_str = dt_local.strftime("%I:%M %p").lstrip("0").lower()
+
+    desc_html = _event_desc(event_type, object_name)
+
+    if object_type == "slice":
+        onclick = f"openSliceOverlay({project_id},'{oid_esc}')"
+    elif object_type == "deliverable":
+        onclick = f"openDeliverableOverlay({project_id},'{oid_esc}')"
+    else:
+        # phase overlay wired in SL-030
+        onclick = f"openPhaseOverlay({project_id},0)"
+
+    return (
+        f"<div style='display:flex;align-items:flex-start;gap:14px;"
+        f"padding:14px 16px 14px 20px;border-radius:10px;"
+        f"border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);"
+        f"margin-bottom:8px;cursor:pointer;position:relative;transition:background 0.15s;'"
+        f" data-project='{pname_esc}' data-type='{event_type}'"
+        f" onclick=\"{onclick}\""
+        f" onmouseover=\"this.style.background='rgba(255,255,255,0.06)'\""
+        f" onmouseout=\"this.style.background='rgba(255,255,255,0.03)'\">"
+        # left accent strip
+        f"<div style='position:absolute;left:0;top:12px;bottom:12px;width:3px;"
+        f"border-radius:0 3px 3px 0;background:{accent};'></div>"
+        # time
+        f"<span style='font-size:10px;color:rgba(255,255,255,0.2);"
+        f'font-family:"SF Mono","Fira Code",monospace;'
+        f"width:58px;flex-shrink:0;padding-top:2px;'>{time_str}</span>"
+        # project dot
+        f"<div style='width:6px;height:6px;border-radius:50%;background:{proj_color};"
+        f"flex-shrink:0;margin-top:5px;'></div>"
+        # body
+        f"<div style='flex:1;min-width:0;'>"
+        f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap;'>"
+        f"<span style='font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;"
+        f"padding:2px 7px;border-radius:4px;flex-shrink:0;"
+        f"background:{badge_bg};color:{badge_color};'>{badge_label}</span>"
+        f"<span style='font-size:10px;color:rgba(255,255,255,0.3);"
+        f'font-family:"SF Mono","Fira Code",monospace;'
+        f"'>{pname_esc}</span>"
+        f"</div>"
+        f"<div style='font-size:13px;color:rgba(255,255,255,0.8);line-height:1.5;'>{desc_html}</div>"
+        f"<div style='font-size:10px;color:rgba(255,255,255,0.3);"
+        f'font-family:"SF Mono","Fira Code",monospace;'
+        f"margin-top:5px;'>{oid_esc}</div>"
+        f"</div>"
+        # action slot — filled by SL-029
+        f"<div style='flex-shrink:0;display:flex;align-items:center;'></div>"
+        f"</div>"
+    )
+
+
+def _render_feed_events(events):
+    from datetime import datetime, timezone, timedelta
+    import time as _time
+    local_offset = timedelta(seconds=-(_time.altzone if _time.daylight else _time.timezone))
+    local_tz = timezone(local_offset)
+    today = datetime.now(local_tz).date()
+    yesterday = today - timedelta(days=1)
+
+    days = {}
+    for ev in events:
+        try:
+            dt_utc = datetime.fromisoformat(ev["event_ts"])
+            dt_local = dt_utc.astimezone(local_tz)
+        except (ValueError, TypeError):
+            dt_local = datetime.now(local_tz)
+        d = dt_local.date()
+        days.setdefault(d, []).append((ev, dt_local))
+
+    html = "<div style='padding:28px 40px 60px;max-width:820px;'>"
+    for date in sorted(days.keys(), reverse=True):
+        if date == today:
+            label = f"Today — {date.strftime('%b')} {date.day}"
+        elif date == yesterday:
+            label = f"Yesterday — {date.strftime('%b')} {date.day}"
+        else:
+            label = f"{date.strftime('%b')} {date.day}"
+
+        html += (
+            "<div style='margin-bottom:32px;'>"
+            "<div style='font-size:10px;font-weight:700;text-transform:uppercase;"
+            "letter-spacing:1.5px;color:rgba(255,255,255,0.2);margin-bottom:14px;"
+            "display:flex;align-items:center;gap:12px;'>"
+            f"{label}"
+            "<div style='flex:1;height:1px;background:rgba(255,255,255,0.06);'></div>"
+            "</div>"
+        )
+        for ev, dt_local in days[date]:
+            html += _render_event_card(ev, dt_local)
+        html += "</div>"
+
+    html += "</div>"
+    return html
+
+
 @app.route("/feed")
 def activity_feed():
     conn = get_conn()
     projects = _get_active_projects(conn)
-    event_count = conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"]
+    events = conn.execute(
+        "SELECT * FROM events ORDER BY event_ts DESC"
+    ).fetchall()
     conn.close()
+    event_count = len(events)
 
     last_synced = get_last_synced()
     synced_label = _relative_synced(last_synced)
@@ -2716,11 +2861,7 @@ def activity_feed():
             "</div>"
         )
     else:
-        feed_body = (
-            "<div style='padding:28px 40px 60px;max-width:820px;'>"
-            "<p style='font-size:13px;color:rgba(255,255,255,0.35);'>Feed entries render in the next build step.</p>"
-            "</div>"
-        )
+        feed_body = _render_feed_events(events)
 
     feed_js = (
         "<script>"
