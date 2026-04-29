@@ -1401,6 +1401,112 @@ def _action_tab_html(blocked_rows, flag_items, flagged_slices, question_rows, pr
     return "".join(sections)
 
 
+def _progress_tab_html(current_phase, phase_slice_counts, project_id):
+    """Render the Progress tab — phase summary card + placeholders for SL-017/018."""
+
+    ph = "font-size:13px;color:rgba(255,255,255,0.25);margin:0;"
+
+    if not current_phase:
+        return f"<p style='{ph}'>No active phase found for this project.</p>"
+
+    phase_id   = current_phase["id"]
+    phase_name = current_phase["name"]
+    name_esc   = phase_name.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    n_total = sum(phase_slice_counts.values())
+    n_done  = phase_slice_counts.get("Done", 0)
+    n_prog  = phase_slice_counts.get("In Progress", 0)
+    n_test  = phase_slice_counts.get("In Test", 0) + phase_slice_counts.get("In QA", 0)
+    n_ready = phase_slice_counts.get("Ready", 0)
+    pct     = int(n_done / n_total * 100) if n_total > 0 else 0
+
+    gate_cleared = n_total > 0 and n_done == n_total
+    gate_label   = "Cleared" if gate_cleared else "Not yet cleared"
+    gate_color   = "#5EEAD4" if gate_cleared else "rgba(255,255,255,0.5)"
+    gate_sub     = "All slices are Done" if gate_cleared else "All slices must reach Done"
+
+    def col_label(text):
+        return (
+            f"<div style='font-size:10px;font-weight:700;text-transform:uppercase;"
+            f"letter-spacing:1.5px;color:rgba(255,255,255,0.3);margin-bottom:4px;'>{text}</div>"
+        )
+
+    def col_value(text, size="18px", color="#fff"):
+        esc = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return f"<div style='font-size:{size};font-weight:700;color:{color};'>{esc}</div>"
+
+    def col_sub(text):
+        return (
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.35);margin-top:2px;'>"
+            f"{text}</div>"
+        )
+
+    def count_chip(dot_color, num, label):
+        return (
+            f"<div style='display:flex;align-items:center;gap:5px;'>"
+            f"<div style='width:6px;height:6px;border-radius:50%;background:{dot_color};'></div>"
+            f"<span style='font-size:11px;font-weight:700;color:rgba(255,255,255,0.6);'>{num}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.35);'>{label}</span>"
+            f"</div>"
+        )
+
+    divider = (
+        "<div style='width:1px;height:40px;background:rgba(255,255,255,0.08);"
+        "flex-shrink:0;'></div>"
+    )
+
+    card = (
+        f"<div onclick='openPhaseOverlay({project_id},{phase_id})' "
+        f"style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);"
+        f"border-radius:12px;padding:20px 24px;margin-bottom:24px;"
+        f"display:flex;align-items:center;gap:32px;cursor:pointer;' "
+        f"onmouseover='this.style.background=\"rgba(255,255,255,0.07)\";"
+        f"this.style.borderColor=\"rgba(255,255,255,0.14)\"' "
+        f"onmouseout='this.style.background=\"rgba(255,255,255,0.04)\";"
+        f"this.style.borderColor=\"rgba(255,255,255,0.08)\"'>"
+
+        # Column 1 — current phase name
+        f"<div>"
+        + col_label("Current phase")
+        + col_value(name_esc)
+        + "</div>"
+
+        + divider
+
+        # Column 2 — gate status
+        + "<div>"
+        + col_label("Gate status")
+        + col_value(gate_label, size="14px", color=gate_color)
+        + col_sub(gate_sub)
+        + "</div>"
+
+        + divider
+
+        # Column 3 — progress bar + 4-bucket counts
+        + "<div style='flex:1;'>"
+        + col_label(f"Slice progress — {n_done} of {n_total} Done")
+        + f"<div style='height:6px;background:rgba(255,255,255,0.08);border-radius:3px;"
+        f"overflow:hidden;margin-bottom:6px;'>"
+        f"<div style='width:{pct}%;height:100%;background:#2563EB;border-radius:3px;'>"
+        f"</div></div>"
+        + "<div style='display:flex;gap:16px;'>"
+        + count_chip("#5EEAD4", n_done, "Done")
+        + count_chip("#93C5FD", n_prog, "In Progress")
+        + count_chip("#C4B5FD", n_test, "In Test")
+        + count_chip("rgba(255,255,255,0.3)", n_ready, "Ready")
+        + "</div>"
+        + "</div>"
+
+        + "</div>"
+    )
+
+    return (
+        card
+        + f"<p style='{ph}'>Deliverables list arrives in unit of work SL-017.</p>"
+        + f"<p style='{ph};margin-top:8px;'>Slices list arrives in unit of work SL-018.</p>"
+    )
+
+
 # ── Routes ───────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -1479,13 +1585,13 @@ def project_detail(name):
 
     # Current phase: prefer Active/In Progress, else first non-Done/Cancelled
     current_phase = conn.execute(
-        "SELECT name FROM phases WHERE project_id = ? "
+        "SELECT id, name, status FROM phases WHERE project_id = ? "
         "AND status IN ('Active','In Progress') ORDER BY name LIMIT 1",
         (project_id,)
     ).fetchone()
     if not current_phase:
         current_phase = conn.execute(
-            "SELECT name FROM phases WHERE project_id = ? "
+            "SELECT id, name, status FROM phases WHERE project_id = ? "
             "AND status NOT IN ('Done','Cancelled') ORDER BY name LIMIT 1",
             (project_id,)
         ).fetchone()
@@ -1525,12 +1631,15 @@ def project_detail(name):
     n_questions = len(question_rows)
     action_count = n_blocked + n_flags + n_questions
 
-    progress_count = 0
+    phase_slice_counts = {}
     if phase_num:
-        progress_count = conn.execute(
-            "SELECT COUNT(*) FROM slices WHERE project_id=? AND phase=?",
+        for row in conn.execute(
+            "SELECT status, COUNT(*) AS cnt FROM slices "
+            "WHERE project_id=? AND phase=? GROUP BY status",
             (project_id, phase_num)
-        ).fetchone()[0]
+        ).fetchall():
+            phase_slice_counts[row["status"] or "Unknown"] = row["cnt"]
+    progress_count = sum(phase_slice_counts.values())
 
     backlog_count = conn.execute(
         "SELECT COUNT(*) FROM slices WHERE project_id=?",
@@ -1618,14 +1727,15 @@ def project_detail(name):
         disp = "block" if active else "none"
         return f"<div id='tab-panel-{panel_id}' style='display:{disp};'>{content}</div>"
 
-    action_html = _action_tab_html(
+    action_html   = _action_tab_html(
         blocked_rows, flag_items, flagged_slices, question_rows, project_id
     )
+    progress_html = _progress_tab_html(current_phase, phase_slice_counts, project_id)
 
     content = (
         "<div style='padding:32px 40px;flex:1;'>"
-        + tab_panel("action",    action_html,                                                            active=True)
-        + tab_panel("progress",  f"<p style='{ph}'>Progress view arrives in unit of work SL-016.</p>")
+        + tab_panel("action",    action_html,    active=True)
+        + tab_panel("progress",  progress_html)
         + tab_panel("backlog",   f"<p style='{ph}'>Backlog view arrives in unit of work SL-017.</p>")
         + tab_panel("materials", f"<p style='{ph}'>Materials view arrives in unit of work SL-018.</p>")
         + tab_panel("decisions", f"<p style='{ph}'>Decisions &amp; Changes view arrives in unit of work SL-019.</p>")

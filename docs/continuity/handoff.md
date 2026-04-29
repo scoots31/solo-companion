@@ -1,7 +1,7 @@
 # Project Handoff — 2026-04-28
 
 **Current phase:** Phase 3 — Project Detail
-**Overall status:** Phase 1 (Foundation) and Phase 2 (Dashboard) complete. SL-001–SL-015 Done. Project detail shell + Action tab live. Moving to SL-016 (Progress Tab — Phase Summary Card).
+**Overall status:** Phase 1 (Foundation) and Phase 2 (Dashboard) complete. SL-001–SL-016 Done. Project detail shell, Action tab, and Progress tab Phase Summary Card live. Moving to SL-017 (Progress Tab — Deliverables Section).
 
 ## Where we are
 
@@ -13,7 +13,19 @@ Phase 1 (Foundation) and Phase 2 (Dashboard) are complete. Phase 3 (Project Deta
 
 ## What was just completed
 
-SL-014 — Project detail shell:
+SL-016 — Progress Tab: Phase Summary Card:
+- Phase summary card at top of Progress tab
+- Gate status derived live from slice completion (not from phases.status raw field)
+- Progress bar + 4-bucket status counts (Done/In Progress/In Test/Ready)
+- Card clickable → opens phase overlay (SL-013)
+- Placeholder text for SL-017/018 below the card
+
+SL-014/SL-015 — Project detail shell + Action tab:
+- Full routing, breadcrumb, phase pill, tab bar with counts
+- Action tab: Blocked (red), Flagged (amber), Questions (blue) — absent when empty
+- "No action items" clean empty state
+
+Prior: SL-014 — Project detail shell:
 - `/project/<name>` route fully implemented (replaces stub)
 - `padded=False` layout mode added to `_page()` — flex-column main wrapper so top bar sticks
 - Top bar: breadcrumb (Dashboard / project_name) + phase pill (current phase from phases table, teal styling)
@@ -23,7 +35,7 @@ SL-014 — Project detail shell:
 
 ## Open right now
 
-Nothing blocked. SL-015 is next.
+Nothing blocked. SL-017 is next.
 
 ## Outstanding questions needing outside input
 
@@ -34,15 +46,12 @@ player-evaluation is currently excluded from Solo Companion (`is_active=0`) beca
 
 ## Next session picks up at
 
-**SL-015 — Action Tab.** First tab content slice. Spec:
-- Three sections: Blocked (red), Flagged (amber), Outstanding Questions (blue) — each absent when empty
-- Blocked: slices WHERE is_blocked=1 for this project
-- Flagged: flags table WHERE project_id
-- Questions: questions table WHERE project_id AND status != 'Answered'
-- Each blocked/flagged item is clickable → opens slice overlay (SL-011)
-- All three sections empty → clean "No action items" state
-- Design anchor: sprint-02-project-detail.html — Action tab
-- Done criteria: all three sections render correctly from real data; empty state is clean
+**SL-017 — Progress Tab: Deliverables Section.** Spec:
+- List of deliverables for current phase (from deliverables table WHERE phase_id)
+- Each row: deliverable name + slice count + status chips — clickable → opens deliverable overlay (SL-012)
+- Empty state if no deliverables for current phase
+- Design anchor: sprint-02-project-detail.html — Progress tab, deliverables section
+- Done criteria: deliverable rows render from live data; overlay opens on click
 
 ## Key context to carry
 

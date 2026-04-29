@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-015 done — Action tab (Blocked, Flagged, Outstanding Questions cards)
+**Last updated:** 2026-04-28 · SL-016 done — Progress tab: Phase Summary Card
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 9 |
+| ✅ Ready | 8 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 15 |
+| ✓ Done | 16 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-016 |
+| **Next up (Ready, not started)** | SL-017 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -1176,7 +1176,7 @@ Notes: None.
 
 ### SL-016 · Progress Tab — Phase Summary Card
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-05
 
@@ -1200,10 +1200,10 @@ Self-verification checklist:
   - Confirm phase overlay opens on card click
 
 Builder confirmation:
-Pending build
+Phase summary card renders from live SQLite. Gate status derived from slice completion (3/3 Done → Cleared for Phase 1). Progress bar and 4-bucket counts correct. Card opens phase overlay on click. Server verified 200, HTML confirmed.
 
 Depends on: SL-003, SL-013, SL-014
-Notes: None.
+Notes: phases.status raw field (from backlog.md) is separate from derived gate status — gate is computed at render time, not read from the status field.
 
 ---
 
