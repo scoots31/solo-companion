@@ -157,6 +157,18 @@ def init_db():
             object_id      TEXT,
             flagged_reason TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS events (
+            id           INTEGER PRIMARY KEY AUTOINCREMENT,
+            project_id   INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+            project_name TEXT    NOT NULL,
+            event_type   TEXT    NOT NULL,
+            object_type  TEXT    NOT NULL,
+            object_id    TEXT    NOT NULL,
+            object_name  TEXT,
+            event_ts     TEXT    NOT NULL,
+            review_url   TEXT
+        );
     """)
     conn.commit()
     # Add runtime columns to projects if not present (safe on existing DBs)

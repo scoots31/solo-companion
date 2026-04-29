@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · Phase 5 plan approved — 1 phase, 1 deliverable, 6 slices
+**Last updated:** 2026-04-29 · SL-025 Done
 **Project status:** In Build (Phase 5)
 
 ---
@@ -10,20 +10,20 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 4 |
-| ✅ Ready | 2 |
+| ✅ Ready | 1 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 24 |
+| ✓ Done | 25 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-025, SL-026 |
-| **Blocked — waiting on** | SL-027–030 (depend on SL-025) |
+| **Next up (Ready, not started)** | SL-026 |
+| **Blocked — waiting on** | SL-027–030 (depend on SL-025 — now unblocked) |
 | **Open spikes** | — |
 
 ---
@@ -1656,7 +1656,8 @@ Notes: tech-context.md field name for the start command needs to be confirmed �
 
 ### SL-025 · Events Table and Sync Diff Layer
 
-Status: Ready
+Status: Done
+Review URL: None — infrastructure slice
 Phase: 5
 Deliverable: D-10
 
@@ -1685,7 +1686,7 @@ Self-verification checklist:
   - Confirm event_ts matches the backlog.md file's mtime, not the current time
 
 Builder confirmation:
-Pending build
+Done — events table in SQLite, snapshot diff wired into sync_project_content. All 8 event types detectable. No duplicates on re-sync. event_ts matches backlog.md file mtime. 2026-04-29.
 
 Depends on: SL-003 (sync layer)
 Notes: Snapshot approach — read all slice statuses from SQLite before the sync transaction begins, hold in memory, run sync, diff after. This avoids the need for a shadow table. Events are append-only; never update or delete rows.

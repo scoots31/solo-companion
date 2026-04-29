@@ -130,7 +130,13 @@ def sync_project_content(conn, project_id, project_name, project_path):
 
     c = conn.cursor()
 
+    # Snapshot state before overwriting — used for event diff after re-insert
+    before_slices   = _snapshot_slices(c, project_id)
+    before_del_done = _snapshot_deliverable_completion(c, project_id)
+    before_phases   = _snapshot_phases(c, project_id)
+
     # Wipe child rows for this project; re-insert fresh below
+    # events is intentionally excluded — it is append-only and never reset
     for table in ("phases", "deliverables", "slices", "materials",
                   "decisions", "changes", "questions", "flags"):
         c.execute(f"DELETE FROM {table} WHERE project_id = ?", (project_id,))
@@ -144,6 +150,10 @@ def sync_project_content(conn, project_id, project_name, project_path):
     _sync_flags(c, project_id, handoff_open_right_now)
     _sync_materials(c, project_id, project_dir)
     _sync_runtime(conn, project_id, project_dir)
+
+    # Diff before/after and append event rows
+    _write_events(c, project_id, project_name, before_slices, before_del_done,
+                  before_phases, backlog_mtime)
 
     conn.commit()
 
@@ -439,6 +449,108 @@ def _sync_runtime(conn, project_id, project_dir):
             project_id,
         ),
     )
+
+
+# ── Event diff layer (SL-025) ──────────────────────────────────────────
+
+def _snapshot_slices(c, project_id):
+    """Capture status/review_url/is_flagged for all slices before sync overwrites them."""
+    rows = c.execute(
+        "SELECT slice_id, status, review_url, is_flagged FROM slices WHERE project_id = ?",
+        (project_id,),
+    ).fetchall()
+    return {r["slice_id"]: {"status": r["status"], "review_url": r["review_url"],
+                             "is_flagged": r["is_flagged"]} for r in rows}
+
+
+def _snapshot_deliverable_completion(c, project_id):
+    """Return dict of {deliverable_ref: bool} — True when all slices in that deliverable are Done."""
+    rows = c.execute(
+        """SELECT deliverable_ref,
+                  COUNT(*) AS total,
+                  SUM(CASE WHEN status = 'Done' THEN 1 ELSE 0 END) AS done_count
+           FROM slices
+           WHERE project_id = ? AND deliverable_ref IS NOT NULL
+           GROUP BY deliverable_ref""",
+        (project_id,),
+    ).fetchall()
+    return {r["deliverable_ref"]: (r["total"] > 0 and r["total"] == r["done_count"])
+            for r in rows}
+
+
+def _snapshot_phases(c, project_id):
+    """Capture phase status before sync overwrites them."""
+    rows = c.execute(
+        "SELECT name, status FROM phases WHERE project_id = ?", (project_id,)
+    ).fetchall()
+    return {r["name"]: r["status"] for r in rows}
+
+
+def _write_events(c, project_id, project_name, before_slices, before_del_done,
+                  before_phases, backlog_mtime):
+    """Diff before/after slice state and INSERT new event rows. Skips on first sync."""
+    if not before_slices:
+        # No baseline — first sync for this project; nothing to diff against
+        return
+
+    new_slices = {r["slice_id"]: {"status": r["status"], "review_url": r["review_url"],
+                                   "is_flagged": r["is_flagged"], "name": r["name"]}
+                  for r in c.execute(
+                      "SELECT slice_id, name, status, review_url, is_flagged "
+                      "FROM slices WHERE project_id = ?",
+                      (project_id,),
+                  ).fetchall()}
+
+    def _insert(event_type, object_type, object_id, object_name, review_url=None):
+        c.execute(
+            """INSERT INTO events
+                 (project_id, project_name, event_type, object_type,
+                  object_id, object_name, event_ts, review_url)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            (project_id, project_name, event_type, object_type,
+             object_id, object_name, backlog_mtime, review_url),
+        )
+
+    for slice_id, new in new_slices.items():
+        old = before_slices.get(slice_id, {})
+        old_status  = old.get("status")
+        new_status  = new["status"]
+        old_url     = old.get("review_url") or ""
+        new_url     = new.get("review_url") or ""
+        old_flagged = old.get("is_flagged", 0)
+        new_flagged = new.get("is_flagged", 0)
+
+        if old_status != new_status:
+            if new_status == "Done":
+                _insert("slice_done", "slice", slice_id, new["name"])
+            elif new_status == "In Build":
+                _insert("slice_in_progress", "slice", slice_id, new["name"])
+            elif new_status == "Blocked":
+                _insert("block_opened", "slice", slice_id, new["name"])
+            elif old_status == "Blocked":
+                _insert("block_resolved", "slice", slice_id, new["name"])
+
+        # review_ready: url newly appeared (wasn't a valid http URL, now is)
+        if not old_url.startswith("http") and new_url.startswith("http"):
+            _insert("review_ready", "slice", slice_id, new["name"], new_url)
+
+        # flag_raised: is_flagged transitioned 0 → 1
+        if not old_flagged and new_flagged:
+            _insert("flag_raised", "slice", slice_id, new["name"])
+
+    # deliverable_done: all slices in a deliverable are now Done
+    new_del_done = _snapshot_deliverable_completion(c, project_id)
+    for del_id, now_done in new_del_done.items():
+        if now_done and not before_del_done.get(del_id, False):
+            _insert("deliverable_done", "deliverable", del_id, del_id)
+
+    # gate_cleared: a phase transitioned to Done
+    new_phases = {r["name"]: r["status"] for r in c.execute(
+        "SELECT name, status FROM phases WHERE project_id = ?", (project_id,)
+    ).fetchall()}
+    for phase_name, new_pstatus in new_phases.items():
+        if new_pstatus == "Done" and before_phases.get(phase_name) != "Done":
+            _insert("gate_cleared", "phase", phase_name, phase_name)
 
 
 # ── Handoff section reader ──────────────────────────────────────────────
