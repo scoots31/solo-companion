@@ -21,6 +21,8 @@ SL-011: Overlay — Slice panel. All 17 spec fields, quality gates derived
 
 import json
 import os
+import re
+import subprocess
 import time
 from datetime import datetime, timezone
 from flask import Flask, redirect, request, url_for
@@ -211,6 +213,17 @@ def _page(sidebar_html, main_html, title="Solo Companion", padded=True):
         "    document.getElementById('overlay-root').innerHTML=h;"
         "    document.getElementById('overlay-backdrop').style.display='flex';"
         "  });}"
+        "function openMaterialOverlay(mid){"
+        "  fetch('/overlay/material/'+mid)"
+        "  .then(function(r){return r.text()})"
+        "  .then(function(h){"
+        "    document.getElementById('overlay-root').innerHTML=h;"
+        "    document.getElementById('overlay-backdrop').style.display='flex';"
+        "  });}"
+        "function openFile(path){"
+        "  fetch('/open-file',{method:'POST',"
+        "    headers:{'Content-Type':'application/json'},"
+        "    body:JSON.stringify({path:path})});}"
         "function closeOverlay(){"
         "  document.getElementById('overlay-backdrop').style.display='none';"
         "  document.getElementById('overlay-root').innerHTML='';}"
@@ -1401,6 +1414,481 @@ def _action_tab_html(blocked_rows, flag_items, flagged_slices, question_rows, pr
     return "".join(sections)
 
 
+# ── SL-020: Materials tab ─────────────────────────────────────────────────
+
+_MATERIAL_ICONS = {
+    "Discovery brief":    "📋",
+    "As-is process map":  "↔",
+    "To-be process map":  "→",
+    "Brainstorm":         "💡",
+    "Design screen":      "🖥",
+    "Deferred decisions": "⊘",
+    "Backlog":            "▤",
+    "Handoff":            "↪",
+    "Current phase":      "⟳",
+    "Decision log":       "📝",
+}
+
+def _mat_icon(mat_type):
+    return _MATERIAL_ICONS.get(mat_type, "📄")
+
+
+def _mat_type_label(mat_type, file_path):
+    """Human-readable type badge for the overlay header."""
+    if mat_type == "Design screen":
+        return "HTML Screen"
+    # Mermaid detection deferred to render time — label both as Markdown for card display
+    return "Markdown"
+
+
+def _render_markdown(text):
+    """Convert markdown text to HTML using stdlib regex only (SL-020 spec)."""
+    # Protect mermaid blocks — wrap in <pre> before any other processing
+    mermaid_placeholder = "\x00MERMAID\x00"
+    mermaid_blocks = []
+    def _save_mermaid(m):
+        mermaid_blocks.append(m.group(0))
+        return mermaid_placeholder
+    text = re.sub(r'```mermaid.*?```', _save_mermaid, text, flags=re.DOTALL)
+
+    # Headings — h3 before h2 before h1 to prevent partial matches
+    text = re.sub(r'^### (.+)$', r'<h3>\1</h3>', text, flags=re.MULTILINE)
+    text = re.sub(r'^## (.+)$',  r'<h2>\1</h2>', text, flags=re.MULTILINE)
+    text = re.sub(r'^# (.+)$',   r'<h1>\1</h1>', text, flags=re.MULTILINE)
+
+    # Inline formatting
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    text = re.sub(r'\*(.+?)\*',     r'<em>\1</em>', text)
+
+    # Horizontal rules
+    text = re.sub(r'^---$', r'<hr>', text, flags=re.MULTILINE)
+
+    # Unordered list items — collect consecutive <li> blocks into <ul>
+    text = re.sub(r'^- (.+)$', r'<li>\1</li>', text, flags=re.MULTILINE)
+    text = re.sub(r'(<li>.*?</li>\n?)+', lambda m: '<ul>' + m.group(0) + '</ul>', text, flags=re.DOTALL)
+
+    # Paragraphs — double-newline-separated blocks not already tagged
+    parts = re.split(r'\n{2,}', text)
+    wrapped = []
+    for part in parts:
+        part = part.strip()
+        if not part:
+            continue
+        if part.startswith('<') or part == mermaid_placeholder:
+            wrapped.append(part)
+        else:
+            wrapped.append(f'<p>{part}</p>')
+    text = '\n'.join(wrapped)
+
+    # Restore mermaid blocks as readable <pre> blocks
+    for block in mermaid_blocks:
+        text = text.replace(mermaid_placeholder, f'<pre style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:7px;padding:14px 16px;font-size:12px;color:rgba(255,255,255,0.5);overflow-x:auto;white-space:pre;">{block}</pre>', 1)
+
+    return text
+
+
+def _materials_tab_html(materials):
+    """Render the Materials tab — phase-grouped card grid (SL-020)."""
+    if not materials:
+        return "<p style='font-size:13px;color:rgba(255,255,255,0.25);margin:0;'>No materials discovered for this project.</p>"
+
+    # Group by phase
+    phases_order = []
+    by_phase = {}
+    for m in materials:
+        ph = m["phase_name"]
+        if ph not in by_phase:
+            phases_order.append(ph)
+            by_phase[ph] = []
+        by_phase[ph].append(m)
+
+    css = (
+        "<style>"
+        ".mat-phase{margin-bottom:28px;}"
+        ".mat-phase-header{display:flex;align-items:center;gap:10px;padding:10px 0;"
+        "margin-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.06);}"
+        ".mat-phase-name{font-size:11px;font-weight:700;text-transform:uppercase;"
+        "letter-spacing:1.5px;color:rgba(255,255,255,0.35);}"
+        ".mat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}"
+        ".mat-card{display:flex;align-items:center;gap:12px;"
+        "background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);"
+        "border-radius:9px;padding:12px 14px;cursor:pointer;transition:all 0.15s;}"
+        ".mat-card:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.14);}"
+        ".mat-icon{font-size:16px;width:32px;height:32px;border-radius:7px;"
+        "display:flex;align-items:center;justify-content:center;flex-shrink:0;"
+        "background:rgba(255,255,255,0.06);}"
+        ".mat-info{flex:1;min-width:0;}"
+        ".mat-name{font-size:12px;font-weight:600;color:#fff;margin-bottom:2px;"
+        "overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}"
+        ".mat-type{font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;letter-spacing:0.8px;}"
+        "</style>"
+    )
+
+    sections = []
+    for ph in phases_order:
+        cards = []
+        for m in by_phase[ph]:
+            icon = _mat_icon(m["type"])
+            type_label = _mat_type_label(m["type"], m["file_path"])
+            mid = m["id"]
+            cards.append(
+                f"<div class='mat-card' onclick='openMaterialOverlay({mid})'>"
+                f"<div class='mat-icon'>{icon}</div>"
+                f"<div class='mat-info'>"
+                f"<div class='mat-name'>{m['name']}</div>"
+                f"<div class='mat-type'>{type_label}</div>"
+                f"</div></div>"
+            )
+        sections.append(
+            f"<div class='mat-phase'>"
+            f"<div class='mat-phase-header'><span class='mat-phase-name'>{ph}</span></div>"
+            f"<div class='mat-grid'>{''.join(cards)}</div>"
+            f"</div>"
+        )
+
+    return css + "".join(sections)
+
+
+def _render_material_doc_overlay(m, abs_path):
+    """Overlay HTML for a markdown/mermaid material document."""
+    name = m["name"]
+    phase = m["phase_name"]
+    file_display = m["file_path"]
+    type_badge = _mat_type_label(m["type"], m["file_path"])
+
+    # Read and render file content
+    try:
+        raw = open(abs_path, encoding="utf-8").read()
+        # Check for mermaid — show as raw <pre> without markdown rendering for pure mermaid docs
+        if "```mermaid" in raw and not re.search(r'^#', raw, re.MULTILINE):
+            body_html = (
+                f"<pre style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);"
+                f"border-radius:7px;padding:14px 16px;font-size:12px;color:rgba(255,255,255,0.5);"
+                f"overflow-x:auto;white-space:pre;'>{raw}</pre>"
+            )
+            type_badge = "Mermaid"
+        else:
+            rendered = _render_markdown(raw)
+            body_html = f"<div class='doc-content'>{rendered}</div>"
+    except OSError:
+        body_html = "<p style='color:rgba(255,255,255,0.3);font-size:13px;'>File could not be read.</p>"
+
+    # Created date from filesystem
+    try:
+        ctime = os.path.getctime(abs_path)
+        created = datetime.fromtimestamp(ctime).strftime("%b %-d, %Y")
+    except OSError:
+        created = "Unknown"
+
+    encoded_path = abs_path.replace("'", "\\'")
+
+    return (
+        "<div style='background:#1A2035;border:1px solid rgba(255,255,255,0.1);border-radius:14px;"
+        "width:680px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;'>"
+        # Header
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;'>"
+        "<div style='display:flex;align-items:center;gap:10px;'>"
+        f"<span style='font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;"
+        f"background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);'>{type_badge}</span>"
+        f"<span style='font-size:15px;font-weight:700;color:#fff;'>{name}</span>"
+        "</div>"
+        "<button onclick='closeOverlay()' style='background:none;border:none;color:rgba(255,255,255,0.4);"
+        "font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px;'>✕</button>"
+        "</div>"
+        # Body
+        "<div style='padding:20px 24px;overflow-y:auto;flex:1;'>"
+        # Meta chips
+        "<div style='display:flex;align-items:center;gap:10px;margin-bottom:18px;"
+        "padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,0.07);'>"
+        f"<span style='font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+        f"background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);'>{phase} phase</span>"
+        f"<span style='font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+        f"background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);'>Created {created}</span>"
+        f"<span style='font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+        f"background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);font-family:monospace;'>{file_display}</span>"
+        "</div>"
+        # Content
+        "<style>"
+        ".doc-content{font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;}"
+        ".doc-content h1{font-size:16px;font-weight:700;color:#fff;margin-bottom:6px;margin-top:20px;}"
+        ".doc-content h1:first-child{margin-top:0;}"
+        ".doc-content h2{font-weight:700;color:rgba(255,255,255,0.85);margin-bottom:6px;margin-top:18px;"
+        "text-transform:uppercase;letter-spacing:0.8px;font-size:11px;}"
+        ".doc-content h3{font-size:13px;font-weight:700;color:rgba(255,255,255,0.85);margin-bottom:5px;margin-top:14px;}"
+        ".doc-content p{margin-bottom:12px;}"
+        ".doc-content ul{margin-left:16px;margin-bottom:12px;}"
+        ".doc-content li{margin-bottom:5px;}"
+        ".doc-content strong{color:#fff;font-weight:600;}"
+        ".doc-content hr{border:none;border-top:1px solid rgba(255,255,255,0.08);margin:18px 0;}"
+        "</style>"
+        + body_html
+        + "</div>"
+        # Footer
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:14px 24px;border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0;'>"
+        f"<span style='font-size:11px;color:rgba(255,255,255,0.25);font-family:monospace;'>{file_display}</span>"
+        f"<button onclick=\"openFile('{encoded_path}')\" "
+        "style='display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.07);"
+        "color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.12);padding:9px 18px;"
+        "border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;'>↗ Open in editor</button>"
+        "</div>"
+        "</div>"
+    )
+
+
+def _render_material_screen_overlay(m, abs_path):
+    """Overlay HTML for an HTML screen design file."""
+    name = m["name"]
+    phase = m["phase_name"]
+    file_display = m["file_path"]
+
+    try:
+        ctime = os.path.getctime(abs_path)
+        created = datetime.fromtimestamp(ctime).strftime("%b %-d, %Y")
+    except OSError:
+        created = "Unknown"
+
+    # Derive human-readable description from filename
+    fname = os.path.basename(abs_path)  # e.g. sprint-02-project-detail.html
+    stem = re.sub(r'\.html$', '', fname)
+    parts = stem.split('-')
+    # strip leading "sprint" + number, rest is the description
+    if len(parts) >= 3 and parts[0] == "sprint":
+        desc_parts = parts[2:]
+    else:
+        desc_parts = parts
+    screen_desc = ' '.join(p.capitalize() for p in desc_parts)
+    screen_label = f"Sprint {parts[1].zfill(2)} — {screen_desc}" if len(parts) >= 3 else name
+
+    encoded_path = abs_path.replace("'", "\\'")
+
+    def field(label, value, mono=False):
+        mono_style = "font-family:monospace;" if mono else ""
+        return (
+            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:7px;padding:10px 12px;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.25);margin-bottom:4px;"
+            f"text-transform:uppercase;letter-spacing:0.8px;font-weight:600;'>{label}</div>"
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.65);line-height:1.4;{mono_style}'>{value}</div>"
+            f"</div>"
+        )
+
+    return (
+        "<div style='background:#1A2035;border:1px solid rgba(255,255,255,0.1);border-radius:14px;"
+        "width:680px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;'>"
+        # Header
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;'>"
+        "<div style='display:flex;align-items:center;gap:10px;'>"
+        "<span style='font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;"
+        "background:rgba(37,99,235,0.2);color:#93C5FD;'>HTML Screen</span>"
+        f"<span style='font-size:15px;font-weight:700;color:#fff;'>{screen_label}</span>"
+        "</div>"
+        "<button onclick='closeOverlay()' style='background:none;border:none;color:rgba(255,255,255,0.4);"
+        "font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px;'>✕</button>"
+        "</div>"
+        # Body
+        "<div style='padding:20px 24px;overflow-y:auto;flex:1;'>"
+        # Screen thumb placeholder
+        "<div style='width:100%;aspect-ratio:16/9;background:rgba(255,255,255,0.03);"
+        "border:1px solid rgba(255,255,255,0.08);border-radius:10px;display:flex;"
+        "align-items:center;justify-content:center;margin-bottom:20px;"
+        "color:rgba(255,255,255,0.15);font-size:13px;'>"
+        "Screen preview not available — open in browser to view"
+        "</div>"
+        # Metadata grid
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;'>"
+        + field("Phase", phase)
+        + field("Created", created)
+        + field("Type", "Full-fidelity design screen")
+        + field("File", file_display, mono=True)
+        + "</div>"
+        + "</div>"
+        # Footer
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:14px 24px;border-top:1px solid rgba(255,255,255,0.07);flex-shrink:0;'>"
+        f"<span style='font-size:11px;color:rgba(255,255,255,0.25);font-family:monospace;'>{file_display}</span>"
+        f"<button onclick=\"openFile('{encoded_path}')\" "
+        "style='display:flex;align-items:center;gap:8px;background:#2563EB;"
+        "color:#fff;border:none;padding:9px 18px;border-radius:8px;"
+        "font-size:13px;font-weight:600;cursor:pointer;'>↗ Open in browser</button>"
+        "</div>"
+        "</div>"
+    )
+
+
+def _backlog_tab_html(all_phases, all_deliverables, all_slices, phase_counts, project_id):
+    """Render the Backlog tab — all phases, deliverables, and slices across the project (SL-019)."""
+
+    # Status badge colors (shared with Progress tab)
+    _STATUS_STYLES = {
+        "Done":        ("rgba(13,148,136,0.2)",  "#5EEAD4"),
+        "In Progress": ("rgba(37,99,235,0.2)",   "#93C5FD"),
+        "Active":      ("rgba(37,99,235,0.2)",   "#93C5FD"),
+        "In Test":     ("rgba(124,58,237,0.2)",  "#C4B5FD"),
+        "In QA":       ("rgba(180,83,9,0.15)",   "#FCD34D"),
+        "Ready":       ("rgba(255,255,255,0.07)","rgba(255,255,255,0.4)"),
+        "Planning":    ("rgba(255,255,255,0.07)","rgba(255,255,255,0.4)"),
+        "Upcoming":    ("rgba(255,255,255,0.07)","rgba(255,255,255,0.4)"),
+        "Accepted":    ("rgba(13,148,136,0.2)",  "#5EEAD4"),
+        "Defined":     ("rgba(255,255,255,0.07)","rgba(255,255,255,0.4)"),
+    }
+
+    _DIM_PHASES   = {"Planning", "Upcoming", "Not Started"}
+    _DIM_DELIVS   = {"Planning", "Upcoming"}
+    _DIM_SLICES   = {"Planning", "Upcoming"}
+
+    def section_header(label, count, bg, color):
+        return (
+            "<div style='display:flex;align-items:center;justify-content:space-between;"
+            "margin-bottom:12px;margin-top:28px;'>"
+            f"<span style='font-size:11px;font-weight:700;text-transform:uppercase;"
+            f"letter-spacing:1.5px;color:rgba(255,255,255,0.35);'>{label}</span>"
+            f"<span style='font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;"
+            f"background:{bg};color:{color};'>{count} total</span>"
+            "</div>"
+        )
+
+    def phase_num_from_name(name):
+        parts = name.split(" ")
+        return parts[1] if len(parts) > 1 else name
+
+    # ── Phases ──────────────────────────────────────────────────────────
+    phase_rows_html = []
+    for row in all_phases:
+        name   = row["name"]
+        status = row["status"] or "Planning"
+        pnum   = phase_num_from_name(name)
+        counts = phase_counts.get(pnum, {"total": 0, "done": 0})
+        total  = counts["total"]
+        done   = counts["done"]
+        pct    = int(done / total * 100) if total > 0 else 0
+        meta   = f"{done} of {total} Done" if total > 0 else "No slices"
+        dim    = status in _DIM_PHASES
+        opacity = "opacity:0.5;" if dim else ""
+        icon   = "○" if dim else "▶"
+        icon_opacity = "opacity:0.35;" if dim else ""
+        name_color = "rgba(255,255,255,0.4)" if dim else "rgba(255,255,255,0.85)"
+        st_bg, st_color = _STATUS_STYLES.get(status, _STATUS_STYLES["Planning"])
+        name_esc = name.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        phase_rows_html.append(
+            f"<div onclick='openPhaseOverlay({project_id},{row['id']})' "
+            f"style='{opacity}display:flex;align-items:center;gap:14px;padding:14px 16px;"
+            f"background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:9px;cursor:pointer;margin-bottom:6px;' "
+            f"onmouseover='this.style.background=\"rgba(255,255,255,0.07)\"' "
+            f"onmouseout='this.style.background=\"rgba(255,255,255,0.04)\"'>"
+            f"<div style='{icon_opacity}width:28px;height:28px;border-radius:7px;"
+            f"background:rgba(255,255,255,0.05);display:flex;align-items:center;"
+            f"justify-content:center;font-size:12px;flex-shrink:0;'>{icon}</div>"
+            f"<span style='flex:1;font-size:13px;font-weight:500;color:{name_color};'>{name_esc}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.3);flex-shrink:0;'>{meta}</span>"
+            f"<div style='width:80px;height:4px;background:rgba(255,255,255,0.08);"
+            f"border-radius:2px;overflow:hidden;flex-shrink:0;'>"
+            f"<div style='width:{pct}%;height:100%;background:#0D9488;border-radius:2px;'></div></div>"
+            f"<span style='font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+            f"background:{st_bg};color:{st_color};flex-shrink:0;width:80px;"
+            f"text-align:center;box-sizing:border-box;'>{status}</span>"
+            f"</div>"
+        )
+
+    # ── Deliverables ─────────────────────────────────────────────────────
+    deliv_rows_html = []
+    for row in all_deliverables:
+        did    = row["deliverable_id"]
+        dname  = row["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        status = row["status"] or "Defined"
+        phase  = row["phase"] or ""
+        phase_label = f"Phase {phase}" if phase else "—"
+        dim    = status in _DIM_DELIVS
+        opacity = "opacity:0.5;" if dim else ""
+        st_bg, st_color = _STATUS_STYLES.get(status, _STATUS_STYLES["Defined"])
+        deliv_rows_html.append(
+            f"<div onclick='openDeliverableOverlay({project_id},\"{did}\")' "
+            f"style='{opacity}display:flex;align-items:center;gap:14px;padding:12px 16px;"
+            f"background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:9px;cursor:pointer;margin-bottom:6px;' "
+            f"onmouseover='this.style.background=\"rgba(255,255,255,0.07)\"' "
+            f"onmouseout='this.style.background=\"rgba(255,255,255,0.04)\"'>"
+            f"<div style='width:28px;height:28px;border-radius:7px;"
+            f"background:rgba(37,99,235,0.12);display:flex;align-items:center;"
+            f"justify-content:center;font-size:12px;flex-shrink:0;'>⊞</div>"
+            f"<span style='flex:1;font-size:13px;color:rgba(255,255,255,0.85);font-weight:500;'>{dname}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.3);flex-shrink:0;'>{phase_label}</span>"
+            f"<span style='font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+            f"background:{st_bg};color:{st_color};flex-shrink:0;'>{status}</span>"
+            f"</div>"
+        )
+
+    # ── Slices ───────────────────────────────────────────────────────────
+    slice_rows_html = []
+    for row in all_slices:
+        sid    = row["slice_id"]
+        sname  = row["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        status = row["status"] or "Ready"
+        dname  = (row["deliverable_name"] or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        dim    = status in _DIM_SLICES
+        opacity = "opacity:0.5;" if dim else ""
+        st_bg, st_color = _STATUS_STYLES.get(status, _STATUS_STYLES["Ready"])
+
+        review_url = row["review_url"]
+        review_btn = ""
+        if status == "Done" and review_url:
+            url_esc = review_url.replace("&", "&amp;").replace('"', "&quot;")
+            review_btn = (
+                f"<a href='{url_esc}' target='_blank' onclick='event.stopPropagation()' "
+                f"style='display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;"
+                f"padding:4px 10px;border-radius:5px;border:1px solid rgba(13,148,136,0.3);"
+                f"color:#5EEAD4;background:rgba(13,148,136,0.1);text-decoration:none;flex-shrink:0;' "
+                f"onmouseover='this.style.background=\"rgba(13,148,136,0.2)\"' "
+                f"onmouseout='this.style.background=\"rgba(13,148,136,0.1)\"'>▶ Review</a>"
+            )
+
+        slice_rows_html.append(
+            f"<div onclick='openSliceOverlay({project_id},\"{sid}\")' "
+            f"style='{opacity}display:flex;align-items:center;gap:14px;padding:12px 16px;"
+            f"background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:9px;cursor:pointer;' "
+            f"onmouseover='this.style.background=\"rgba(255,255,255,0.07)\"' "
+            f"onmouseout='this.style.background=\"rgba(255,255,255,0.04)\"'>"
+            f"<span style='font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);"
+            f'font-family:"SF Mono","Fira Code",monospace;'
+            f"width:50px;flex-shrink:0;'>{sid}</span>"
+            f"<span style='flex:1;font-size:13px;color:rgba(255,255,255,0.85);font-weight:500;'>{sname}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.3);flex-shrink:0;"
+            f"max-width:180px;text-align:right;'>{dname}</span>"
+            f"<span style='font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+            f"background:{st_bg};color:{st_color};flex-shrink:0;width:86px;"
+            f"text-align:center;box-sizing:border-box;'>{status}</span>"
+            + review_btn
+            + "</div>"
+        )
+
+    phases_section = (
+        section_header("Phases", len(all_phases), "rgba(13,148,136,0.15)", "#5EEAD4")
+        + "".join(phase_rows_html)
+    )
+    delivs_section = (
+        section_header("Deliverables", len(all_deliverables), "rgba(124,58,237,0.15)", "#C4B5FD")
+        + "".join(deliv_rows_html)
+    )
+    slices_section = (
+        section_header("All Slices", len(all_slices), "rgba(37,99,235,0.15)", "#93C5FD")
+        + "<div style='display:flex;flex-direction:column;gap:6px;'>"
+        + "".join(slice_rows_html)
+        + "</div>"
+    )
+
+    return (
+        "<div style='margin-top:-4px;'>"
+        + phases_section
+        + delivs_section
+        + slices_section
+        + "</div>"
+    )
+
+
 def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id):
     """Render the Progress tab — phase summary card + deliverables list + slice list (SL-018)."""
 
@@ -1796,14 +2284,46 @@ def project_detail(name):
             (project_id, phase_num)
         ).fetchall()
 
+    # Backlog tab data
+    all_phases = conn.execute(
+        "SELECT id, name, status FROM phases WHERE project_id=? ORDER BY name",
+        (project_id,)
+    ).fetchall()
+    all_deliverables = conn.execute(
+        "SELECT deliverable_id, name, status, phase FROM deliverables "
+        "WHERE project_id=? ORDER BY phase, deliverable_id",
+        (project_id,)
+    ).fetchall()
+    all_slices_backlog = conn.execute(
+        "SELECT s.slice_id, s.name, s.status, s.review_url, "
+        "COALESCE(d.name, s.deliverable_ref) AS deliverable_name "
+        "FROM slices s "
+        "LEFT JOIN deliverables d ON d.project_id=s.project_id AND d.deliverable_id=s.deliverable_ref "
+        "WHERE s.project_id=? ORDER BY s.slice_id",
+        (project_id,)
+    ).fetchall()
+    phase_slice_counts_all = {}
+    for row in conn.execute(
+        "SELECT phase, COUNT(*) AS total, "
+        "SUM(CASE WHEN status='Done' THEN 1 ELSE 0 END) AS done "
+        "FROM slices WHERE project_id=? GROUP BY phase",
+        (project_id,)
+    ).fetchall():
+        phase_slice_counts_all[row["phase"]] = {
+            "total": row["total"], "done": row["done"] or 0
+        }
+
+    materials = conn.execute(
+        "SELECT id, phase_name, name, type, file_path FROM materials "
+        "WHERE project_id=? ORDER BY phase_name, name",
+        (project_id,)
+    ).fetchall()
+
     backlog_count = conn.execute(
         "SELECT COUNT(*) FROM slices WHERE project_id=?",
         (project_id,)
     ).fetchone()[0]
-    materials_count = conn.execute(
-        "SELECT COUNT(*) FROM materials WHERE project_id=?",
-        (project_id,)
-    ).fetchone()[0]
+    materials_count = len(materials)
     dc_count = (
         conn.execute("SELECT COUNT(*) FROM decisions WHERE project_id=?", (project_id,)).fetchone()[0]
         + conn.execute("SELECT COUNT(*) FROM changes WHERE project_id=?", (project_id,)).fetchone()[0]
@@ -1885,15 +2405,17 @@ def project_detail(name):
     action_html   = _action_tab_html(
         blocked_rows, flag_items, flagged_slices, question_rows, project_id
     )
-    progress_html = _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id)
+    progress_html  = _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id)
+    backlog_html   = _backlog_tab_html(all_phases, all_deliverables, all_slices_backlog, phase_slice_counts_all, project_id)
+    materials_html = _materials_tab_html(materials)
 
     content = (
         "<div style='padding:32px 40px;flex:1;'>"
         + tab_panel("action",    action_html,    active=True)
         + tab_panel("progress",  progress_html)
-        + tab_panel("backlog",   f"<p style='{ph}'>Backlog view arrives in unit of work SL-017.</p>")
-        + tab_panel("materials", f"<p style='{ph}'>Materials view arrives in unit of work SL-018.</p>")
-        + tab_panel("decisions", f"<p style='{ph}'>Decisions &amp; Changes view arrives in unit of work SL-019.</p>")
+        + tab_panel("backlog",   backlog_html)
+        + tab_panel("materials", materials_html)
+        + tab_panel("decisions", f"<p style='{ph}'>Decisions &amp; Changes view arrives in a future unit of work.</p>")
         + "</div>"
     )
 
@@ -2043,6 +2565,33 @@ def overlay_phase(project_id, phase_db_id):
         from_project = from_path[len("/project/"):]
 
     return _render_phase_overlay(ph, counts, deliverables, proj["name"], from_project=from_project)
+
+
+@app.route("/overlay/material/<int:material_id>")
+def overlay_material(material_id):
+    conn = get_conn()
+    m = conn.execute(
+        "SELECT m.*, p.path AS project_path FROM materials m "
+        "JOIN projects p ON p.id = m.project_id "
+        "WHERE m.id = ?",
+        (material_id,)
+    ).fetchone()
+    conn.close()
+    if not m:
+        return "Material not found", 404
+    abs_path = os.path.join(m["project_path"], m["file_path"])
+    if m["type"] == "Design screen":
+        return _render_material_screen_overlay(m, abs_path)
+    return _render_material_doc_overlay(m, abs_path)
+
+
+@app.route("/open-file", methods=["POST"])
+def open_file():
+    data = request.get_json(silent=True) or {}
+    path = data.get("path", "")
+    if path:
+        subprocess.Popen(["open", path])
+    return "", 204
 
 
 if __name__ == "__main__":
