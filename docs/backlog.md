@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-005 done — dashboard top bar with project count, sync time, refresh button
+**Last updated:** 2026-04-28 · SL-006 done — Needs Attention Blocked card
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 19 |
+| ✅ Ready | 18 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 5 |
+| ✓ Done | 6 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-006 |
+| **Next up (Ready, not started)** | SL-007 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -791,7 +791,7 @@ Notes: None.
 
 ### SL-006 · Needs Attention — Blocked Card
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -817,7 +817,11 @@ Self-verification checklist:
   - Confirm open_days calculates correctly
 
 Builder confirmation:
-Pending build
+  ✓ _blocked_card() queries slices WHERE is_blocked=1 ORDER BY last_modified ASC
+  ✓ Each row: slice_id (monospace), notes/name (reason), color dot, project name, open duration
+  ✓ Empty state verified: card absent from DOM when no blocked slices
+  ✓ Card renders verified: set SL-011 to Blocked in backlog, confirmed card appeared with correct row
+  ✓ _open_duration() returns "today" / "Nd" / "Nw" from last_modified ISO timestamp
 
 Depends on: SL-003, SL-011
 Notes: Empty state means the card is not rendered — not rendered with a "no blocked items" message. The dashboard should feel clean when everything is unblocked.

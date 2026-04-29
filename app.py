@@ -10,11 +10,13 @@ SL-004: persistent sidebar — project list, color dots, recency labels,
         navigation. Layout wrapper used by all routes.
 SL-005: dashboard top bar — project count, last-synced relative time,
         refresh button (/sync POST route).
+SL-006: Needs Attention — Blocked card. Red-tinted card for is_blocked
+        slices; absent from DOM when no blocked slices exist.
 """
 
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Flask, redirect, request, url_for
 
 from db import get_conn, init_db
@@ -192,9 +194,74 @@ def _page(sidebar_html, main_html, title="Solo Companion"):
 # ── Helpers ──────────────────────────────────────────────────────────────
 
 def _get_active_projects(conn):
+
     return conn.execute(
         "SELECT id, name, path, is_active FROM projects WHERE is_active = 1 ORDER BY name"
     ).fetchall()
+
+
+def _open_duration(iso_ts):
+    """Return human duration string from an ISO timestamp to now."""
+    if not iso_ts:
+        return "?"
+    try:
+        age = datetime.now(timezone.utc) - datetime.fromisoformat(iso_ts)
+        days = age.days
+        if days == 0:
+            return "today"
+        if days < 7:
+            return f"{days}d"
+        return f"{int(days / 7)}w"
+    except ValueError:
+        return "?"
+
+
+def _blocked_card(conn, projects_by_id):
+    """Render the Blocked needs-attention card, or '' if no blocked slices."""
+    rows = conn.execute(
+        "SELECT slice_id, name, notes, last_modified, project_id "
+        "FROM slices WHERE is_blocked = 1 ORDER BY last_modified ASC"
+    ).fetchall()
+
+    if not rows:
+        return ""
+
+    item_html = []
+    for r in rows:
+        proj = projects_by_id.get(r["project_id"], {})
+        proj_name = proj.get("name", "unknown")
+        color = _project_color(proj_name)
+        duration = _open_duration(r["last_modified"])
+        reason = (r["notes"] or "").strip()
+        if len(reason) > 80:
+            reason = reason[:77] + "…"
+        item_html.append(
+            f"<div style='padding:10px 16px;display:flex;align-items:center;gap:12px;"
+            f"border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;'>"
+            f"<span style='font-family:SF Mono,monospace;font-size:11px;"
+            f"color:rgba(255,255,255,0.4);min-width:56px;'>{r['slice_id']}</span>"
+            f"<span style='flex:1;font-size:12px;color:rgba(255,255,255,0.7);'>"
+            f"{reason or r['name']}</span>"
+            f"<span style='display:flex;align-items:center;gap:5px;flex-shrink:0;'>"
+            f"<span style='width:6px;height:6px;border-radius:50%;background:{color};'></span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.35);white-space:nowrap;'>"
+            f"{proj_name} · {duration}</span>"
+            f"</span></div>"
+        )
+
+    count = len(rows)
+    return (
+        "<div style='background:rgba(220,38,38,0.07);border:1px solid rgba(220,38,38,0.2);"
+        "border-radius:10px;margin-bottom:16px;overflow:hidden;'>"
+        "<div style='padding:10px 16px;border-bottom:1px solid rgba(220,38,38,0.15);"
+        "display:flex;align-items:center;gap:8px;'>"
+        "<span style='color:#EF4444;font-size:13px;font-weight:600;'>Blocked</span>"
+        f"<span style='background:rgba(220,38,38,0.2);color:#EF4444;font-size:11px;"
+        f"padding:1px 7px;border-radius:10px;font-weight:600;'>{count}</span>"
+        "</div>"
+        + "".join(item_html)
+        + "</div>"
+    )
 
 
 # ── Routes ───────────────────────────────────────────────────────────────
@@ -216,6 +283,8 @@ def dashboard():
         }
 
     last_synced = get_last_synced()
+    projects_by_id = {p["id"]: dict(p) for p in projects}
+    blocked = _blocked_card(conn, projects_by_id)
     conn.close()
 
     project_count = len(projects)
@@ -260,6 +329,7 @@ def dashboard():
 
     main_html = (
         top_bar
+        + blocked
         + "".join(project_blocks)
     )
 
