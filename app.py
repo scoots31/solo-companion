@@ -182,8 +182,8 @@ def _sidebar_html(projects, active_name=None):
 def _page(sidebar_html, main_html, title="Solo Companion"):
     overlay_js = (
         "<div id='overlay-backdrop' onclick='closeOverlay()' "
-        "style='display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);"
-        "z-index:200;justify-content:flex-end;'>"
+        "style='display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);"
+        "backdrop-filter:blur(2px);z-index:200;justify-content:center;align-items:center;'>"
         "<div id='overlay-root' onclick='event.stopPropagation()'></div>"
         "</div>"
         "<script>"
@@ -620,7 +620,7 @@ def _ol_gate(label, confirmed, detail=None):
 
 
 def _render_slice_overlay(s, proj_name, from_project=None):
-    """Build the full slice overlay panel HTML."""
+    """Build the full slice overlay panel HTML — centered floating card per sprint-01-dashboard.html."""
     color = _project_color(proj_name)
     status = s["status"] or "—"
     is_done = status == "Done"
@@ -631,111 +631,202 @@ def _render_slice_overlay(s, proj_name, from_project=None):
     builder_conf = _decode_list(s["builder_confirmation"])
     references = _decode_list(s["references_list"])
 
-    # Builder confirmation gate: non-empty and not the placeholder
     builder_confirmed = bool(builder_conf) and builder_conf[0] != "Pending build"
 
-    # Header
-    is_same_project = from_project and from_project == proj_name
+    # Footer button
     btn_href = f"/project/{proj_name}#slices"
+    is_same_project = from_project and from_project == proj_name
     if is_same_project:
         footer_btn = (
             "<button disabled style='background:rgba(255,255,255,0.05);border:1px solid "
-            "rgba(255,255,255,0.1);color:rgba(255,255,255,0.3);font-size:13px;padding:10px 20px;"
-            "border-radius:8px;cursor:not-allowed;font-family:-apple-system,sans-serif;'>"
+            "rgba(255,255,255,0.1);color:rgba(255,255,255,0.3);font-size:13px;padding:9px 18px;"
+            "border-radius:8px;cursor:not-allowed;font-family:-apple-system,sans-serif;font-weight:600;'>"
             "Already on this project</button>"
         )
     else:
         footer_btn = (
-            f"<a href='{btn_href}' style='display:inline-block;background:rgba(255,255,255,0.08);"
-            f"border:1px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.85);font-size:13px;"
-            f"padding:10px 20px;border-radius:8px;text-decoration:none;"
-            f"font-family:-apple-system,sans-serif;'>Take me to this project →</a>"
+            f"<a href='{btn_href}' style='display:inline-flex;align-items:center;gap:8px;"
+            f"background:#2563EB;color:#fff;font-size:13px;padding:9px 18px;border-radius:8px;"
+            f"text-decoration:none;font-family:-apple-system,sans-serif;font-weight:600;'>"
+            f"Take me to this project →</a>"
         )
 
-    blocked_badge = (
-        "<span style='background:rgba(220,38,38,0.2);color:#EF4444;font-size:10px;"
-        "padding:2px 7px;border-radius:8px;margin-left:6px;'>Blocked</span>"
-        if s["is_blocked"] else ""
+    # Field box — used in 2-col grids
+    def field_box(label, value, mono=False):
+        val_style = 'font-family:"SF Mono","Fira Code",monospace;font-size:11px;' if mono else "font-size:12px;"
+        escaped = (value or "—").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return (
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:10px 12px;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;"
+            f"letter-spacing:0.08em;font-weight:600;margin-bottom:4px;'>{label}</div>"
+            f"<div style='{val_style}color:rgba(255,255,255,0.8);font-weight:500;line-height:1.4;'>"
+            f"{escaped}</div>"
+            f"</div>"
+        )
+
+    # Full-width prose field
+    def full_field(text):
+        if not text:
+            return ""
+        escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return (
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:10px 12px;'>"
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;'>"
+            f"{escaped.replace(chr(10), '<br>')}</div>"
+            f"</div>"
+        )
+
+    # Section: label above content
+    def section(label, body):
+        if not body:
+            return ""
+        return (
+            f"<div style='margin-bottom:18px;'>"
+            f"<div style='font-size:10px;font-weight:700;text-transform:uppercase;"
+            f"letter-spacing:0.1em;color:rgba(255,255,255,0.25);margin-bottom:8px;'>{label}</div>"
+            f"{body}"
+            f"</div>"
+        )
+
+    # Bullet list in a field box
+    def bullet_field(items):
+        if not items:
+            return ""
+        bullets = "".join(
+            f"<li style='font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:4px;"
+            f"line-height:1.5;'>"
+            f"{item.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')}</li>"
+            for item in items
+        )
+        return (
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:10px 16px;'>"
+            f"<ul style='margin:0;padding-left:16px;'>{bullets}</ul></div>"
+        )
+
+    # Status pill colors matching design
+    _pill_colors = {
+        "In Progress": ("#93C5FD", "rgba(37,99,235,0.2)"),
+        "In QA":       ("#C4B5FD", "rgba(124,58,237,0.2)"),
+        "In Test":     ("#5EEAD4", "rgba(13,148,136,0.2)"),
+        "Ready":       ("rgba(255,255,255,0.5)", "rgba(255,255,255,0.08)"),
+        "Blocked":     ("#FDA4AF", "rgba(190,18,60,0.25)"),
+        "Done":        ("#86EFAC", "rgba(21,128,61,0.2)"),
+    }
+    stc, sbg = _pill_colors.get(status, ("rgba(255,255,255,0.4)", "rgba(255,255,255,0.06)"))
+    status_pill_html = (
+        f"<span style='margin-left:auto;font-size:11px;font-weight:600;padding:3px 10px;"
+        f"border-radius:20px;background:{sbg};color:{stc};'>{status}</span>"
     )
-    flagged_badge = (
-        "<span style='background:rgba(217,119,6,0.2);color:#F59E0B;font-size:10px;"
-        "padding:2px 7px;border-radius:8px;margin-left:6px;'>Flagged</span>"
-        if s["is_flagged"] else ""
+
+    # Overlay header title — slice_id · name, truncated if needed
+    overlay_title = f"{s['slice_id']} · {s['name']}"
+    if len(overlay_title) > 52:
+        overlay_title = overlay_title[:49] + "…"
+
+    # Details grid (2-col)
+    details_html = (
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px;'>"
+        + field_box("Deliverable", s["deliverable_ref"])
+        + field_box("Phase", f"Phase {s['phase']}" if s["phase"] else None)
+        + field_box("Slice ID", s["slice_id"], mono=True)
+        + field_box("Last updated", s["last_modified"], mono=True)
+        + "</div>"
+    )
+
+    # Four Anchors grid (2-col)
+    done_text = done_criteria[0] if done_criteria else None
+    if len(done_criteria) > 1:
+        done_text = f"{done_criteria[0]} (+{len(done_criteria)-1} more)"
+    anchors_html = (
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px;'>"
+        + field_box("Design anchor", s["design_anchor"])
+        + field_box("Data anchor", s["data_anchor"])
+        + field_box("Process anchor", s["process_anchor"])
+        + field_box("Done anchor", done_text)
+        + "</div>"
+    )
+
+    # Quality Gates grid (2-col)
+    def gate_field(label, confirmed, pending_text="Pending"):
+        val = "Confirmed" if confirmed else pending_text
+        val_color = "#22C55E" if confirmed else "rgba(255,255,255,0.3)"
+        return (
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:10px 12px;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;"
+            f"letter-spacing:0.08em;font-weight:600;margin-bottom:4px;'>{label}</div>"
+            f"<div style='font-size:12px;color:{val_color};font-weight:500;line-height:1.4;'>{val}</div>"
+            f"</div>"
+        )
+
+    review_text = s["review_url"] if s["review_url"] else "Available when Done"
+    gates_html = (
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px;'>"
+        + gate_field("Code review", is_done)
+        + gate_field("QA sign-off", is_qa)
+        + gate_field("Review link", bool(s["review_url"]), review_text)
+        + gate_field("Builder confirmation", builder_confirmed)
+        + "</div>"
     )
 
     return (
-        # Panel
-        "<div style='width:560px;max-width:90vw;height:100vh;background:#0D1424;"
-        "overflow-y:auto;padding:32px 28px;box-sizing:border-box;position:relative;'>"
+        # Floating card — centered by backdrop flex
+        "<div style='background:#152035;border:1px solid rgba(255,255,255,0.12);border-radius:14px;"
+        "width:600px;max-width:90vw;max-height:88vh;display:flex;flex-direction:column;"
+        "overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.6);'>"
 
-        # Close button
-        "<button onclick='closeOverlay()' style='position:absolute;top:20px;right:20px;"
-        "background:transparent;border:none;color:rgba(255,255,255,0.4);font-size:20px;"
-        "cursor:pointer;line-height:1;padding:4px;'>✕</button>"
+        # Header
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;'>"
+        "<div style='display:flex;align-items:center;gap:10px;min-width:0;'>"
+        "<span style='font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;"
+        "padding:3px 8px;border-radius:4px;background:rgba(37,99,235,0.2);color:#93C5FD;"
+        "flex-shrink:0;'>Slice</span>"
+        f"<span style='font-size:15px;font-weight:700;color:#fff;white-space:nowrap;"
+        f"overflow:hidden;text-overflow:ellipsis;'>{overlay_title}</span>"
+        "</div>"
+        "<button onclick='closeOverlay()' style='width:28px;height:28px;border-radius:6px;"
+        "border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);"
+        "color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;display:flex;"
+        "align-items:center;justify-content:center;flex-shrink:0;margin-left:12px;"
+        "font-family:-apple-system,sans-serif;line-height:1;'>✕</button>"
+        "</div>"
 
-        # Slice ID + status row
-        f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:8px;'>"
-        f"<span style='font-family:SF Mono,monospace;font-size:12px;"
-        f"color:rgba(255,255,255,0.4);'>{s['slice_id']}</span>"
-        f"{_status_pill(status)}{blocked_badge}{flagged_badge}"
+        # Body (scrollable)
+        "<div style='padding:24px;overflow-y:auto;flex:1;'>"
+
+        # Project row: dot · name · status pill
+        f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:20px;'>"
+        f"<div style='width:8px;height:8px;border-radius:50%;background:{color};flex-shrink:0;'></div>"
+        f"<span style='font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);"
+        f"font-family:\"SF Mono\",\"Fira Code\",monospace;'>{proj_name}</span>"
+        f"{status_pill_html}"
         f"</div>"
 
-        # Name
-        f"<h2 style='font-size:18px;font-weight:600;color:#EDE8E0;margin:0 0 10px;"
-        f"line-height:1.3;padding-right:32px;'>{s['name']}</h2>"
+        + section("Details", details_html)
+        + section("Plain language description", full_field(s["plain_description"]))
+        + section("Technical description", full_field(s["technical_description"]))
+        + section("Done criteria", bullet_field(done_criteria))
+        + section("Four Anchors", anchors_html)
+        + section("Quality Gates", gates_html)
+        + (section("Self-verification checklist", bullet_field(self_verif)) if self_verif else "")
+        + (section("References", bullet_field(references)) if references else "")
+        + (section("Depends on", full_field(s["depends_on"]))
+           if s["depends_on"] and s["depends_on"].lower() != "none" else "")
+        + (section("Notes", full_field(s["notes"])) if s["notes"] else "")
+        + (section("Distribution note", full_field(s["distribution_note"])) if s["distribution_note"] else "")
 
-        # Project · phase · deliverable
-        f"<div style='display:flex;align-items:center;gap:6px;margin-bottom:28px;'>"
-        f"<span style='width:8px;height:8px;border-radius:50%;background:{color};"
-        f"flex-shrink:0;display:inline-block;'></span>"
-        f"<span style='font-size:12px;color:rgba(255,255,255,0.45);'>"
-        f"{proj_name} · Phase {s['phase'] or '—'} · {s['deliverable_ref'] or '—'}</span>"
-        f"</div>"
-
-        # Plain language description
-        + _ol_section("Plain language description", _ol_text(s["plain_description"]))
-
-        # Technical description
-        + _ol_section("Technical description", _ol_text(s["technical_description"]))
-
-        # Four anchors
-        + _ol_section("Four anchors",
-            _ol_anchor_grid(s["design_anchor"], s["data_anchor"],
-                            s["process_anchor"], done_criteria))
-
-        # Done criteria (full list)
-        + _ol_section("Done criteria", _ol_list(done_criteria))
-
-        # Self-verification
-        + _ol_section("Self-verification checklist", _ol_list(self_verif))
-
-        # References
-        + _ol_section("References", _ol_list(references))
-
-        # Quality gates
-        + _ol_section("Quality gates",
-            _ol_gate("Code review", is_done)
-            + _ol_gate("QA sign-off", is_qa)
-            + _ol_gate("Builder confirmation", builder_confirmed,
-                       f"{len(builder_conf)} items" if builder_confirmed else None)
-            + _ol_gate("Review link", bool(s["review_url"]),
-                       s["review_url"] if s["review_url"] else None)
-        )
-
-        # Meta — depends on / notes / distribution note
-        + (
-            _ol_section("Depends on", _ol_text(s["depends_on"]))
-            if s["depends_on"] and s["depends_on"].lower() != "none" else ""
-        )
-        + _ol_section("Notes", _ol_text(s["notes"]))
-        + (
-            _ol_section("Distribution note", _ol_text(s["distribution_note"]))
-            if s["distribution_note"] else ""
-        )
+        + "</div>"
 
         # Footer
-        + f"<div style='margin-top:32px;padding-top:20px;"
-        f"border-top:1px solid rgba(255,255,255,0.07);'>{footer_btn}</div>"
+        + f"<div style='padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08);"
+        f"display:flex;align-items:center;justify-content:space-between;flex-shrink:0;'>"
+        f"<span style='font-size:11px;color:rgba(255,255,255,0.25);'>Slice · {proj_name}</span>"
+        f"{footer_btn}"
+        f"</div>"
 
         + "</div>"
     )
