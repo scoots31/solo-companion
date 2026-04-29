@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-020 + SL-021 done — Materials Tab (inline rendering + HTML screen overlay)
+**Last updated:** 2026-04-29 · SL-022 done — Decisions & Changes Tab. Phase 3 complete.
 **Project status:** Ready for Build
 
 ---
@@ -16,13 +16,13 @@
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 21 |
+| ✓ Done | 22 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-022 |
+| **Next up (Ready, not started)** | SL-023 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -1456,7 +1456,7 @@ Notes: File creation date used as "created" date — this may show the sync date
 
 ### SL-022 · Decisions & Changes Tab
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-08
 
@@ -1480,7 +1480,13 @@ Self-verification checklist:
   - Confirm was/became grid renders correctly for a change entry
 
 Builder confirmation:
-Pending build
+  ✓ Decisions section renders 7 entries with title, phase label (monospace), date, body, and Why: block (border-left treatment)
+  ✓ Changes section renders "No changes recorded" empty state — correct, no changes in SQLite for this project
+  ✓ Both sections ordered date DESC — verified against decisions table
+  ✓ Tab count badge shows 7 (decisions + changes combined)
+  ✓ Solo browser sign-off confirmed 2026-04-29
+
+Review URL: http://localhost:8710/project/solo-companion?tab=decisions
 
 Depends on: SL-003, SL-014
 Notes: None.
