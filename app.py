@@ -195,6 +195,14 @@ def _page(sidebar_html, main_html, title="Solo Companion"):
         "    document.getElementById('overlay-root').innerHTML=h;"
         "    document.getElementById('overlay-backdrop').style.display='flex';"
         "  });}"
+        "function openDeliverableOverlay(pid,did){"
+        "  var from=encodeURIComponent(window.location.pathname);"
+        "  fetch('/overlay/deliverable/'+pid+'/'+did+'?from='+from)"
+        "  .then(function(r){return r.text()})"
+        "  .then(function(h){"
+        "    document.getElementById('overlay-root').innerHTML=h;"
+        "    document.getElementById('overlay-backdrop').style.display='flex';"
+        "  });}"
         "function closeOverlay(){"
         "  document.getElementById('overlay-backdrop').style.display='none';"
         "  document.getElementById('overlay-root').innerHTML='';}"
@@ -309,7 +317,7 @@ def _status_pill(status):
         "In Progress": ("#3B82F6", "rgba(59,130,246,0.15)"),
         "In QA":       ("#8B5CF6", "rgba(139,92,246,0.15)"),
         "In Test":     ("#0D9488", "rgba(13,148,136,0.15)"),
-        "Ready":       ("rgba(255,255,255,0.4)", "rgba(255,255,255,0.06)"),
+        "Ready":       ("#7DD3FC", "rgba(14,165,233,0.12)"),
         "Blocked":     ("#EF4444", "rgba(220,38,38,0.15)"),
         "Done":        ("#22C55E", "rgba(34,197,94,0.12)"),
         "Defined":     ("rgba(255,255,255,0.4)", "rgba(255,255,255,0.06)"),
@@ -366,7 +374,7 @@ def _phases_bucket(conn, projects_by_id):
             f"<span style='width:8px;height:8px;border-radius:50%;background:{color};"
             f"flex-shrink:0;'></span>"
             f"<div style='flex:1;min-width:0;'>"
-            f"<div style='font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
+            f"<div style='font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
             f"{proj_name}</div>"
             f"<div style='font-size:13px;color:rgba(255,255,255,0.8);'>{ph['name']}</div>"
             f"</div>"
@@ -399,14 +407,20 @@ def _deliverables_bucket(conn, projects_by_id):
         proj = projects_by_id.get(d["project_id"], {})
         proj_name = proj.get("name", "unknown")
         color = _project_color(proj_name)
+        pid = d["project_id"]
+        did = d["deliverable_id"]
         rows.append(
-            f"<div style='padding:12px 16px;display:flex;align-items:center;gap:12px;"
-            f"border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;'>"
+            f"<div onclick='openDeliverableOverlay({pid},\"{did}\")' "
+            f"style='padding:12px 16px;display:flex;align-items:center;gap:12px;"
+            f"border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;"
+            f"transition:background 0.1s;' "
+            f"onmouseover='this.style.background=\"rgba(255,255,255,0.03)\"' "
+            f"onmouseout='this.style.background=\"transparent\"'>"
             f"<span style='width:8px;height:8px;border-radius:50%;background:{color};"
             f"flex-shrink:0;'></span>"
             f"<div style='flex:1;min-width:0;'>"
-            f"<div style='font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
-            f"{proj_name} · {d['deliverable_id']}</div>"
+            f"<div style='font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
+            f"{proj_name} · {did}</div>"
             f"<div style='font-size:13px;color:rgba(255,255,255,0.8);'>{d['name']}</div>"
             f"</div>"
             f"{_status_pill(d['status'])}"
@@ -455,7 +469,7 @@ def _slices_bucket(conn, projects_by_id):
             f"<span style='width:8px;height:8px;border-radius:50%;background:{color};"
             f"flex-shrink:0;'></span>"
             f"<div style='flex:1;min-width:0;'>"
-            f"<div style='font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
+            f"<div style='font-size:11px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
             f"{proj_name} · {sid}</div>"
             f"<div style='font-size:13px;color:rgba(255,255,255,0.8);'>{s['name']}</div>"
             f"</div>"
@@ -619,6 +633,190 @@ def _ol_gate(label, confirmed, detail=None):
     )
 
 
+def _render_deliverable_overlay(d, slices, proj_name, from_project=None):
+    """Build deliverable overlay panel HTML per sprint-01-dashboard.html deliverable overlay."""
+    color = _project_color(proj_name)
+    status = d["status"] or "—"
+
+    acceptance = _decode_list(d["acceptance_criteria"])
+    builder_conf = _decode_list(d["builder_confirmation"])
+    references = _decode_list(d["references_list"])
+    builder_confirmed = bool(builder_conf) and builder_conf[0] != "Pending build"
+
+    # Footer button
+    btn_href = f"/project/{proj_name}#progress"
+    is_same_project = from_project and from_project == proj_name
+    if is_same_project:
+        footer_btn = (
+            "<button disabled style='background:rgba(255,255,255,0.05);border:1px solid "
+            "rgba(255,255,255,0.1);color:rgba(255,255,255,0.3);font-size:13px;padding:9px 18px;"
+            "border-radius:8px;cursor:not-allowed;font-family:-apple-system,sans-serif;font-weight:600;'>"
+            "Already on this project</button>"
+        )
+    else:
+        footer_btn = (
+            f"<a href='{btn_href}' style='display:inline-flex;align-items:center;gap:8px;"
+            f"background:#2563EB;color:#fff;font-size:13px;padding:9px 18px;border-radius:8px;"
+            f"text-decoration:none;font-family:-apple-system,sans-serif;font-weight:600;'>"
+            f"Take me to this project →</a>"
+        )
+
+    def field_box(label, value):
+        escaped = (value or "—").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return (
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:10px 12px;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.3);text-transform:uppercase;"
+            f"letter-spacing:0.08em;font-weight:600;margin-bottom:4px;'>{label}</div>"
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.8);font-weight:500;line-height:1.4;'>"
+            f"{escaped}</div></div>"
+        )
+
+    def full_field(text):
+        if not text:
+            return ""
+        escaped = text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return (
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:10px 12px;'>"
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.8);line-height:1.6;'>"
+            f"{escaped.replace(chr(10), '<br>')}</div></div>"
+        )
+
+    def bullet_field(items):
+        if not items:
+            return ""
+        bullets = "".join(
+            f"<li style='font-size:12px;color:rgba(255,255,255,0.8);margin-bottom:4px;"
+            f"line-height:1.5;'>"
+            f"{item.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;')}</li>"
+            for item in items
+        )
+        return (
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:10px 16px;'>"
+            f"<ul style='margin:0;padding-left:16px;'>{bullets}</ul></div>"
+        )
+
+    def section(label, body):
+        if not body:
+            return ""
+        return (
+            f"<div style='margin-bottom:18px;'>"
+            f"<div style='font-size:10px;font-weight:700;text-transform:uppercase;"
+            f"letter-spacing:0.1em;color:rgba(255,255,255,0.25);margin-bottom:8px;'>{label}</div>"
+            f"{body}</div>"
+        )
+
+    _pill = {
+        "In Progress": ("#93C5FD", "rgba(37,99,235,0.2)"),
+        "In QA":       ("#C4B5FD", "rgba(124,58,237,0.2)"),
+        "In Test":     ("#5EEAD4", "rgba(13,148,136,0.2)"),
+        "Ready":       ("#7DD3FC", "rgba(14,165,233,0.12)"),
+        "Done":        ("#86EFAC", "rgba(21,128,61,0.2)"),
+        "Accepted":    ("#86EFAC", "rgba(21,128,61,0.2)"),
+        "Defined":     ("rgba(255,255,255,0.5)", "rgba(255,255,255,0.08)"),
+        "Blocked":     ("#FDA4AF", "rgba(190,18,60,0.25)"),
+    }
+    stc, sbg = _pill.get(status, ("rgba(255,255,255,0.4)", "rgba(255,255,255,0.06)"))
+    status_pill_html = (
+        f"<span style='margin-left:auto;font-size:11px;font-weight:600;padding:3px 10px;"
+        f"border-radius:20px;background:{sbg};color:{stc};'>{status}</span>"
+    )
+
+    # Slice list
+    def slice_row(s):
+        ss = s["status"] or "—"
+        sc, sb = _pill.get(ss, ("rgba(255,255,255,0.4)", "rgba(255,255,255,0.06)"))
+        name_esc = s["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        return (
+            f"<div style='display:flex;justify-content:space-between;align-items:center;"
+            f"padding:8px 12px;background:rgba(255,255,255,0.04);"
+            f"border:1px solid rgba(255,255,255,0.07);border-radius:7px;'>"
+            f"<span style='font-size:12px;color:rgba(255,255,255,0.7);"
+            f"font-family:\"SF Mono\",\"Fira Code\",monospace;'>{s['slice_id']} · {name_esc}</span>"
+            f"<span style='font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;"
+            f"background:{sb};color:{sc};white-space:nowrap;flex-shrink:0;margin-left:8px;'>"
+            f"{ss}</span></div>"
+        )
+
+    slices_html = (
+        f"<div style='display:flex;flex-direction:column;gap:6px;'>"
+        + "".join(slice_row(s) for s in slices)
+        + "</div>"
+    ) if slices else ""
+
+    # Builder confirmation
+    if builder_confirmed:
+        builder_html = full_field("Confirmed")
+    else:
+        builder_html = (
+            "<div style='background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            "border-radius:8px;padding:10px 12px;'>"
+            "<div style='font-size:12px;color:rgba(255,255,255,0.3);line-height:1.6;'>"
+            "Pending — all slices must reach Done before confirmation</div></div>"
+        )
+
+    details_html = (
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px;'>"
+        + field_box("Type", d["type"])
+        + field_box("Phase", f"Phase {d['phase']}" if d["phase"] else None)
+        + "</div>"
+    )
+
+    return (
+        "<div style='background:#152035;border:1px solid rgba(255,255,255,0.12);border-radius:14px;"
+        "width:600px;max-width:90vw;max-height:88vh;display:flex;flex-direction:column;"
+        "overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,0.6);'>"
+
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.08);flex-shrink:0;'>"
+        "<div style='display:flex;align-items:center;gap:10px;min-width:0;'>"
+        "<span style='font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;"
+        "padding:3px 8px;border-radius:4px;background:rgba(13,148,136,0.2);color:#5EEAD4;"
+        "flex-shrink:0;'>Deliverable</span>"
+        f"<span style='font-size:15px;font-weight:700;color:#fff;white-space:nowrap;"
+        f"overflow:hidden;text-overflow:ellipsis;'>{d['name']}</span>"
+        "</div>"
+        "<button onclick='closeOverlay()' style='width:28px;height:28px;border-radius:6px;"
+        "border:1px solid rgba(255,255,255,0.1);background:rgba(255,255,255,0.05);"
+        "color:rgba(255,255,255,0.5);font-size:14px;cursor:pointer;display:flex;"
+        "align-items:center;justify-content:center;flex-shrink:0;margin-left:12px;"
+        "font-family:-apple-system,sans-serif;line-height:1;'>✕</button>"
+        "</div>"
+
+        "<div style='padding:24px;overflow-y:auto;flex:1;'>"
+
+        f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:20px;'>"
+        f"<div style='width:8px;height:8px;border-radius:50%;background:{color};flex-shrink:0;'></div>"
+        f"<span style='font-size:12px;font-weight:600;color:rgba(255,255,255,0.5);"
+        f"font-family:\"SF Mono\",\"Fira Code\",monospace;'>{proj_name}</span>"
+        f"{status_pill_html}"
+        f"</div>"
+
+        + section("Details", details_html)
+        + section("Plain language description", full_field(d["plain_description"]))
+        + section("Technical description", full_field(d["technical_description"]))
+        + section("Acceptance criteria", bullet_field(acceptance))
+        + section("Slices", slices_html)
+        + section("Builder confirmation", builder_html)
+        + (section("References", bullet_field(references)) if references else "")
+        + (section("Depends on", full_field(d["depends_on"]))
+           if d["depends_on"] and d["depends_on"].lower() != "none" else "")
+        + (section("Notes", full_field(d["notes"])) if d["notes"] else "")
+
+        + "</div>"
+
+        + f"<div style='padding:16px 24px;border-top:1px solid rgba(255,255,255,0.08);"
+        f"display:flex;align-items:center;justify-content:space-between;flex-shrink:0;'>"
+        f"<span style='font-size:11px;color:rgba(255,255,255,0.25);'>Deliverable · {proj_name}</span>"
+        f"{footer_btn}"
+        f"</div>"
+
+        + "</div>"
+    )
+
+
 def _render_slice_overlay(s, proj_name, from_project=None):
     """Build the full slice overlay panel HTML — centered floating card per sprint-01-dashboard.html."""
     color = _project_color(proj_name)
@@ -711,7 +909,7 @@ def _render_slice_overlay(s, proj_name, from_project=None):
         "In Progress": ("#93C5FD", "rgba(37,99,235,0.2)"),
         "In QA":       ("#C4B5FD", "rgba(124,58,237,0.2)"),
         "In Test":     ("#5EEAD4", "rgba(13,148,136,0.2)"),
-        "Ready":       ("rgba(255,255,255,0.5)", "rgba(255,255,255,0.08)"),
+        "Ready":       ("#7DD3FC", "rgba(14,165,233,0.12)"),
         "Blocked":     ("#FDA4AF", "rgba(190,18,60,0.25)"),
         "Done":        ("#86EFAC", "rgba(21,128,61,0.2)"),
     }
@@ -943,6 +1141,34 @@ def overlay_slice(project_id, slice_id):
         from_project = from_path[len("/project/"):]
 
     return _render_slice_overlay(s, proj["name"], from_project=from_project)
+
+
+@app.route("/overlay/deliverable/<int:project_id>/<deliverable_id>")
+def overlay_deliverable(project_id, deliverable_id):
+    conn = get_conn()
+    d = conn.execute(
+        "SELECT * FROM deliverables WHERE project_id = ? AND deliverable_id = ?",
+        (project_id, deliverable_id)
+    ).fetchone()
+    proj = conn.execute(
+        "SELECT name FROM projects WHERE id = ?", (project_id,)
+    ).fetchone()
+    slices = conn.execute(
+        "SELECT slice_id, name, status FROM slices "
+        "WHERE project_id = ? AND deliverable_ref = ? ORDER BY slice_id",
+        (project_id, deliverable_id)
+    ).fetchall()
+    conn.close()
+
+    if not d or not proj:
+        return "<div style='padding:32px;color:rgba(255,255,255,0.5);'>Deliverable not found.</div>", 404
+
+    from_path = request.args.get("from", "")
+    from_project = None
+    if from_path.startswith("/project/"):
+        from_project = from_path[len("/project/"):]
+
+    return _render_deliverable_overlay(d, slices, proj["name"], from_project=from_project)
 
 
 if __name__ == "__main__":
