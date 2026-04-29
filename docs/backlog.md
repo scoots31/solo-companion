@@ -186,7 +186,7 @@ Notes: SL-023 (review link surfacing) can build as soon as Phase 3 is complete �
 
 ### Phase 5 · Activity Feed
 
-Status: Planning
+Status: Accepted
 
 Plain language description:
 The solo can open the Activity Feed and see a chronological log of what changed across all their projects — slices moving to Done, review links appearing, blocks opening and resolving, phase gates clearing — grouped by day. They can filter by project or event type. Clicking any event opens the existing slice, deliverable, or phase overlay. Review and Start & Review buttons appear inline on review-ready events.
@@ -218,7 +218,7 @@ Self-verification checklist:
   - Confirm empty state renders on a fresh sync with no prior history
 
 Builder confirmation:
-Pending build
+All 4 acceptance criteria verified 2026-04-29. Events table populated with 10 events across 4 live event types (slice_done, slice_in_progress, block_opened, deliverable_done). All 8 event type code paths implemented. Filter bar wired with AND logic across project dropdown and type chips. Slice/deliverable/phase overlay endpoints return 200 from feed context. Empty state copy present. Phase 5 accepted.
 
 Notes: Event timestamp uses file mtime (last_modified already in SQLite) — not sync-run time and not git history. See framework-improvements.md for the Option C upgrade path when per-slice accuracy is needed.
 
@@ -557,7 +557,7 @@ Notes: SL-023 builds as soon as Phase 3 is accepted. SL-024 waits on the framewo
 
 ### D-10 · Activity Feed
 
-Status: Defined
+Status: Accepted
 Type: Screen
 Phase: 5
 
@@ -582,7 +582,7 @@ Self-verification checklist:
   - Click one event of each type and confirm the correct overlay opens
 
 Builder confirmation:
-Pending build
+Accepted 2026-04-29. All 6 slices Done. Events table populated; diff logic fires on sync; feed renders day-grouped event cards with badges, project dots, accent strips; project dropdown and type chips filter correctly with AND logic; slice/deliverable/phase overlays open on click; rev-btn pattern reused for review_ready events; phase db_id stored at write time for overlay wiring. Solo sign-off confirmed.
 
 Slices: SL-025, SL-026, SL-027, SL-028, SL-029, SL-030
 Depends on: D-01 (sync layer), D-09 (review button pattern)
