@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-022 done — Decisions & Changes Tab. Phase 3 complete.
+**Last updated:** 2026-04-29 · SL-023 done — Review Link Surfacing (no new code — complete from SL-018/019)
 **Project status:** Ready for Build
 
 ---
@@ -16,13 +16,13 @@
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 22 |
+| ✓ Done | 23 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-023 |
+| **Next up (Ready, not started)** | SL-024 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -1495,7 +1495,7 @@ Notes: None.
 
 ### SL-023 · Review Link Surfacing
 
-Status: Ready
+Status: Done
 Phase: 4
 Deliverable: D-09
 
@@ -1522,10 +1522,16 @@ Self-verification checklist:
   - Confirm clicking Review opens the URL in a new tab
 
 Builder confirmation:
-Pending build
+  ✓ 25 Review buttons rendering across Progress and Backlog tabs — all Done slices with review_url populated
+  ✓ Review buttons absent on non-Done slices — confirmed by inspecting Ready slice rows
+  ✓ target='_blank' on all Review button anchors — opens URL in new browser tab
+  ✓ Dashboard Slices bucket only shows In Progress/In QA/In Test — Done slices don't appear there, no gap
+  ✓ No new code written — functionality complete as consequence of SL-018, SL-019, and retroactive review_url population (2026-04-29)
+
+Review URL: http://localhost:8710/project/solo-companion?tab=progress
 
 Depends on: SL-003, SL-018
-Notes: The framework curator change to solo-build is a separate workstream. This slice implements the companion's read side only. The companion works correctly once solo-build is updated to write the field — until then, no Review buttons will appear (graceful degradation, not an error).
+Notes: The framework curator change to solo-build is a separate workstream. This slice implements the companion's read side only. Review buttons now appear on all retroactively populated Done slices.
 
 ---
 
