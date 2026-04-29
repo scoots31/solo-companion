@@ -1,6 +1,6 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · Phase 5 design review Round 1 — SL-025 through SL-030 defined
-**Project status:** In Design Review (Phase 5)
+**Last updated:** 2026-04-29 · Phase 5 plan approved — 1 phase, 1 deliverable, 6 slices
+**Project status:** In Build (Phase 5)
 
 ---
 
@@ -186,7 +186,7 @@ Notes: SL-023 (review link surfacing) can build as soon as Phase 3 is complete �
 
 ### Phase 5 · Activity Feed
 
-Status: In Design Review
+Status: Planning
 
 Plain language description:
 The solo can open the Activity Feed and see a chronological log of what changed across all their projects — slices moving to Done, review links appearing, blocks opening and resolving, phase gates clearing — grouped by day. They can filter by project or event type. Clicking any event opens the existing slice, deliverable, or phase overlay. Review and Start & Review buttons appear inline on review-ready events.
@@ -557,7 +557,7 @@ Notes: SL-023 builds as soon as Phase 3 is accepted. SL-024 waits on the framewo
 
 ### D-10 · Activity Feed
 
-Status: In Design Review
+Status: Defined
 Type: Screen
 Phase: 5
 
@@ -1945,6 +1945,12 @@ Confirmed by: Solo
 Decision: review_url stored as a field in the slice record in backlog.md. The companion reads it; solo-build writes it.
 Reason: Single source of truth in the framework file. Companion stays read-only.
 Impact: SL-023 defined accordingly. Solo-build framework curator change required in a separate pass.
+Confirmed by: Solo
+
+### 2026-04-29 — Phase 5 build plan approved (1 phase, 1 deliverable, 6 slices)
+Decision: Phase 5 Activity Feed plan locked. Build sequence: SL-025 (events table + sync diff) → SL-026 (feed page shell) → SL-027 (feed rendering) → SL-028/SL-029/SL-030 (filter bar, review buttons, overlay wiring). Risk order drives SL-025 first — everything reads from the events table.
+Reason: Tracer-bullet sequencing. SL-025 proves the riskiest assumption (schema + diff logic) before any UI renders. SL-026 confirms the route and layout independently. SL-027 proves real events read and render. SL-028/029/030 are peer slices with no dependencies between them.
+Impact: Phase 5 status → Planning. D-10 status → Defined.
 Confirmed by: Solo
 
 ### 2026-04-28 — Build plan approved (4 phases, 9 deliverables, 24 slices)
