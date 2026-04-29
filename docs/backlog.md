@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-006 done — Needs Attention Blocked card
+**Last updated:** 2026-04-28 · SL-007 done — Needs Attention Flagged card
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 18 |
+| ✅ Ready | 17 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 6 |
+| ✓ Done | 7 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-007 |
+| **Next up (Ready, not started)** | SL-008 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -830,7 +830,7 @@ Notes: Empty state means the card is not rendered — not rendered with a "no bl
 
 ### SL-007 · Needs Attention — Flagged Card
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -856,7 +856,11 @@ Self-verification checklist:
   - Confirm card is absent when flags table is empty
 
 Builder confirmation:
-Pending build
+  ✓ _flagged_card() unions flags table + slices WHERE is_flagged=1 (covers both derivation sources)
+  ✓ Each row: reason text, slice_id badge (if object_type=slice), project color dot + name
+  ✓ Empty state verified: card absent from DOM when flags table empty and no flagged slices
+  ✓ Card renders verified: added Open right now item to handoff.md, confirmed card appeared with correct row
+  ✓ Amber theme (#F59E0B / rgba(217,119,6)) distinct from red blocked card
 
 Depends on: SL-003, SL-011
 Notes: "Outstanding questions" items appear in the questions table and surface on the project detail Action tab, not in the Flagged card on the dashboard. The dashboard Flagged card shows stale progress and open handoff items only.

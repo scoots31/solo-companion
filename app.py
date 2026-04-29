@@ -12,6 +12,8 @@ SL-005: dashboard top bar — project count, last-synced relative time,
         refresh button (/sync POST route).
 SL-006: Needs Attention — Blocked card. Red-tinted card for is_blocked
         slices; absent from DOM when no blocked slices exist.
+SL-007: Needs Attention — Flagged card. Amber-tinted card for flags
+        table items + is_flagged slices; absent when nothing flagged.
 """
 
 import os
@@ -264,6 +266,63 @@ def _blocked_card(conn, projects_by_id):
     )
 
 
+def _flagged_card(conn, projects_by_id):
+    """Render the Flagged needs-attention card, or '' if nothing flagged."""
+    # Union: handoff open-right-now items (flags table) + stale in-progress slices
+    rows = conn.execute("""
+        SELECT f.text AS reason, f.object_type, f.object_id, f.project_id
+        FROM flags f
+        UNION ALL
+        SELECT s.flagged_reason, 'slice', s.slice_id, s.project_id
+        FROM slices s WHERE s.is_flagged = 1
+        ORDER BY project_id
+    """).fetchall()
+
+    if not rows:
+        return ""
+
+    item_html = []
+    for r in rows:
+        proj = projects_by_id.get(r["project_id"], {})
+        proj_name = proj.get("name", "unknown")
+        color = _project_color(proj_name)
+        reason = (r["reason"] or "").strip()
+        if len(reason) > 80:
+            reason = reason[:77] + "…"
+        obj_label = ""
+        if r["object_type"] == "slice" and r["object_id"]:
+            obj_label = (
+                f"<span style='font-family:SF Mono,monospace;font-size:10px;"
+                f"color:rgba(255,255,255,0.35);margin-left:6px;'>{r['object_id']}</span>"
+            )
+        item_html.append(
+            f"<div style='padding:10px 16px;display:flex;align-items:center;gap:12px;"
+            f"border-bottom:1px solid rgba(255,255,255,0.04);cursor:pointer;'>"
+            f"<span style='flex:1;font-size:12px;color:rgba(255,255,255,0.7);'>"
+            f"{reason}</span>"
+            f"{obj_label}"
+            f"<span style='display:flex;align-items:center;gap:5px;flex-shrink:0;'>"
+            f"<span style='width:6px;height:6px;border-radius:50%;background:{color};'></span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.35);white-space:nowrap;'>"
+            f"{proj_name}</span>"
+            f"</span></div>"
+        )
+
+    count = len(rows)
+    return (
+        "<div style='background:rgba(217,119,6,0.07);border:1px solid rgba(217,119,6,0.2);"
+        "border-radius:10px;margin-bottom:16px;overflow:hidden;'>"
+        "<div style='padding:10px 16px;border-bottom:1px solid rgba(217,119,6,0.15);"
+        "display:flex;align-items:center;gap:8px;'>"
+        "<span style='color:#F59E0B;font-size:13px;font-weight:600;'>Flagged</span>"
+        f"<span style='background:rgba(217,119,6,0.2);color:#F59E0B;font-size:11px;"
+        f"padding:1px 7px;border-radius:10px;font-weight:600;'>{count}</span>"
+        "</div>"
+        + "".join(item_html)
+        + "</div>"
+    )
+
+
 # ── Routes ───────────────────────────────────────────────────────────────
 
 @app.route("/")
@@ -285,6 +344,7 @@ def dashboard():
     last_synced = get_last_synced()
     projects_by_id = {p["id"]: dict(p) for p in projects}
     blocked = _blocked_card(conn, projects_by_id)
+    flagged = _flagged_card(conn, projects_by_id)
     conn.close()
 
     project_count = len(projects)
@@ -330,6 +390,7 @@ def dashboard():
     main_html = (
         top_bar
         + blocked
+        + flagged
         + "".join(project_blocks)
     )
 

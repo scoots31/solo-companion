@@ -24,7 +24,7 @@ SL-003 — Sync layer:
 
 ## Open right now
 
-Nothing blocked. SL-004 is next.
+Nothing blocked. SL-007 is next.
 
 ## Outstanding questions needing outside input
 
