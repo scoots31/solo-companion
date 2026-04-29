@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-025 Done
+**Last updated:** 2026-04-29 · SL-026 Done
 **Project status:** In Build (Phase 5)
 
 ---
@@ -10,20 +10,21 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 4 |
-| ✅ Ready | 1 |
+| ✅ Ready | 0 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 25 |
+| ✓ Done | 26 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-026 |
-| **Blocked — waiting on** | SL-027–030 (depend on SL-025 — now unblocked) |
+| **Currently in build** | SL-027 |
+| **Next up (Ready, not started)** | — |
+| **Blocked — waiting on** | SL-028–030 (depend on SL-027) |
 | **Open spikes** | — |
 
 ---
@@ -1695,7 +1696,8 @@ Notes: Snapshot approach — read all slice statuses from SQLite before the sync
 
 ### SL-026 · Activity Feed Page Shell
 
-Status: Ready
+Status: Done
+Review URL: None — infrastructure slice
 Phase: 5
 Deliverable: D-10
 
@@ -1722,7 +1724,7 @@ Self-verification checklist:
   - Confirm empty state is visible when events table is empty
 
 Builder confirmation:
-Pending build
+Done — /feed renders full page shell: top bar, filter bar (project chips + 8 event type chips), empty state and placeholder wired to event count. Refresh stays on feed. 2026-04-29.
 
 Depends on: none (shell can build before events exist)
 Notes: The empty state copy is: "Events start appearing once you sync after changes have been made." Filter bar JS is wired in SL-028 — for this slice, chips render but don't filter yet.

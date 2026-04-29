@@ -2602,21 +2602,122 @@ def project_detail(name):
 def activity_feed():
     conn = get_conn()
     projects = _get_active_projects(conn)
+    event_count = conn.execute("SELECT COUNT(*) AS n FROM events").fetchone()["n"]
     conn.close()
 
-    main_html = (
-        "<h1 style='font-size:20px;font-weight:600;margin:0 0 6px;'>Activity Feed</h1>"
-        "<p style='font-size:13px;color:rgba(255,255,255,0.4);margin:0;'>"
-        "Activity feed arrives in Phase 3.</p>"
+    last_synced = get_last_synced()
+    synced_label = _relative_synced(last_synced)
+
+    # ── Top bar ─────────────────────────────────────────────────────────
+    top_bar = (
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:18px 40px;border-bottom:1px solid rgba(255,255,255,0.07);"
+        "background:rgba(0,0,0,0.2);position:sticky;top:0;z-index:5;flex-shrink:0;'>"
+        "<span style='font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.3px;'>Activity Feed</span>"
+        "<div style='display:flex;align-items:center;gap:12px;'>"
+        f"<span style='font-size:11px;color:rgba(255,255,255,0.3);"
+        f'font-family:"SF Mono","Fira Code",monospace;'
+        f"'>synced {synced_label}</span>"
+        "<form method='POST' action='/sync' style='margin:0;'>"
+        "<button type='submit' style='display:flex;align-items:center;gap:6px;"
+        "background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);"
+        "color:rgba(255,255,255,0.6);padding:6px 14px;border-radius:6px;font-size:12px;"
+        "font-weight:500;cursor:pointer;font-family:-apple-system,sans-serif;'>↻ Refresh</button>"
+        "</form>"
+        "</div>"
+        "</div>"
     )
 
+    # ── Project filter chips ─────────────────────────────────────────────
+    chip_style = (
+        "display:flex;align-items:center;gap:8px;"
+        "background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);"
+        "border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;"
+        "color:rgba(255,255,255,0.7);cursor:pointer;transition:all 0.15s;"
+    )
+    project_chips = f"<div style='display:flex;align-items:center;gap:8px;' id='proj-chips'>"
+    project_chips += (
+        f"<span style='{chip_style}' class='proj-chip active-chip' data-project='all'>"
+        "<span style='width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);display:inline-block;'></span>"
+        "All projects</span>"
+    )
+    for p in projects:
+        color = _project_color(p["name"])
+        name_esc = p["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        project_chips += (
+            f"<span style='{chip_style}' class='proj-chip' data-project='{name_esc}'>"
+            f"<span style='width:6px;height:6px;border-radius:50%;background:{color};display:inline-block;'></span>"
+            f"{name_esc}</span>"
+        )
+    project_chips += "</div>"
+
+    # ── Event type chips ─────────────────────────────────────────────────
+    type_chip_base = (
+        "font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;"
+        "background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);"
+        "color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.15s;"
+    )
+    type_chip_active = (
+        "font-size:11px;font-weight:600;padding:4px 12px;border-radius:20px;"
+        "background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.3);"
+        "color:#93C5FD;cursor:pointer;transition:all 0.15s;"
+    )
+    EVENT_TYPE_CHIPS = [
+        ("all",              "All"),
+        ("slice_done",       "Done"),
+        ("review_ready",     "Review ready"),
+        ("flag_raised",      "Flagged"),
+        ("slice_in_progress","In Progress"),
+        ("gate_cleared",     "Gate cleared"),
+        ("block_opened",     "Block opened"),
+        ("block_resolved",   "Block resolved"),
+        ("deliverable_done", "Deliverable done"),
+    ]
+    type_chips = "<div style='display:flex;align-items:center;gap:6px;flex-wrap:wrap;' id='type-chips'>"
+    for val, label in EVENT_TYPE_CHIPS:
+        s = type_chip_active if val == "all" else type_chip_base
+        type_chips += f"<span style='{s}' class='type-chip' data-type='{val}'>{label}</span>"
+    type_chips += "</div>"
+
+    # ── Filter bar ───────────────────────────────────────────────────────
+    filter_bar = (
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:12px 40px;border-bottom:1px solid rgba(255,255,255,0.06);"
+        "background:rgba(0,0,0,0.1);gap:16px;flex-wrap:wrap;'>"
+        + project_chips
+        + type_chips
+        + "</div>"
+    )
+
+    # ── Feed content ─────────────────────────────────────────────────────
+    if event_count == 0:
+        feed_body = (
+            "<div style='display:flex;flex-direction:column;align-items:center;"
+            "justify-content:center;padding:80px 40px;text-align:center;'>"
+            "<div style='font-size:32px;margin-bottom:16px;opacity:0.3;'>◎</div>"
+            "<p style='font-size:14px;color:rgba(255,255,255,0.35);max-width:340px;line-height:1.6;'>"
+            "Events start appearing once you sync after changes have been made.</p>"
+            "</div>"
+        )
+    else:
+        feed_body = (
+            "<div style='padding:28px 40px 60px;max-width:820px;'>"
+            "<p style='font-size:13px;color:rgba(255,255,255,0.35);'>Feed entries render in the next build step.</p>"
+            "</div>"
+        )
+
+    main_html = top_bar + filter_bar + feed_body
+
     sidebar = _sidebar_html(projects)
-    return _page(sidebar, main_html, title="Solo Companion — Activity Feed")
+    return _page(sidebar, main_html, title="Solo Companion — Activity Feed", padded=False)
 
 
 @app.route("/sync", methods=["POST"])
 def sync():
     discover_projects()
+    referrer = request.referrer or ""
+    if "/feed" in referrer:
+        return redirect(url_for("activity_feed"))
     return redirect(url_for("dashboard"))
 
 
