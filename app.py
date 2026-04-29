@@ -2628,7 +2628,31 @@ def _event_desc(event_type, name):
     return t.get(event_type, f"{bold}")
 
 
-def _render_event_card(ev, dt_local):
+def _render_event_action(ev, proj_meta):
+    """Return action slot HTML for an event card. Only review_ready gets a button."""
+    if ev["event_type"] != "review_ready":
+        return "<div style='flex-shrink:0;display:flex;align-items:center;'></div>"
+    review_url = ev["review_url"] or ""
+    if not review_url.startswith("http"):
+        return "<div style='flex-shrink:0;display:flex;align-items:center;'></div>"
+    meta = (proj_meta or {}).get(ev["project_id"], {})
+    app_port = meta.get("app_port") or ""
+    pname_esc = (ev["project_name"] or "").replace("'", "\\'")
+    url_esc = review_url.replace("&", "&amp;").replace('"', "&quot;")
+    port_attr = f" data-port='{app_port}'" if app_port else ""
+    return (
+        f"<div style='flex-shrink:0;display:flex;align-items:center;'>"
+        f"<button class='rev-btn' data-url='{url_esc}' data-project='{pname_esc}'"
+        f"{port_attr} data-state='dead' onclick='handleReview(this,event)' "
+        f"style='display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;"
+        f"padding:4px 10px;border-radius:5px;border:1px solid rgba(245,158,11,0.3);"
+        f"color:#F59E0B;background:rgba(245,158,11,0.1);flex-shrink:0;cursor:pointer;"
+        f"font-family:-apple-system,sans-serif;'>&#9654; Start &amp; Review</button>"
+        f"</div>"
+    )
+
+
+def _render_event_card(ev, dt_local, proj_meta=None):
     import time as _time
     event_type  = ev["event_type"] or "slice_done"
     object_type = ev["object_type"] or "slice"
@@ -2653,11 +2677,15 @@ def _render_event_card(ev, dt_local):
     elif object_type == "deliverable":
         onclick = f"openDeliverableOverlay({project_id},'{oid_esc}')"
     else:
-        # phase overlay wired in SL-030
-        onclick = f"openPhaseOverlay({project_id},0)"
+        # object_id stores the integer phase db id (stored at event-write time)
+        try:
+            phase_db_id = int(object_id)
+        except (ValueError, TypeError):
+            phase_db_id = 0
+        onclick = f"openPhaseOverlay({project_id},{phase_db_id})"
 
     return (
-        f"<div style='display:flex;align-items:flex-start;gap:14px;"
+        f"<div class='event' style='display:flex;align-items:flex-start;gap:14px;"
         f"padding:14px 16px 14px 20px;border-radius:10px;"
         f"border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.03);"
         f"margin-bottom:8px;cursor:pointer;position:relative;transition:background 0.15s;'"
@@ -2688,15 +2716,15 @@ def _render_event_card(ev, dt_local):
         f"<div style='font-size:13px;color:rgba(255,255,255,0.8);line-height:1.5;'>{desc_html}</div>"
         f"<div style='font-size:10px;color:rgba(255,255,255,0.3);"
         f'font-family:"SF Mono","Fira Code",monospace;'
-        f"margin-top:5px;'>{oid_esc}</div>"
+        f"margin-top:5px;'>{object_name.replace('&','&amp;').replace('<','&lt;').replace('>','&gt;') if object_type == 'phase' else oid_esc}</div>"
         f"</div>"
-        # action slot — filled by SL-029
-        f"<div style='flex-shrink:0;display:flex;align-items:center;'></div>"
+        # action slot — rev-btn for review_ready (SL-029)
+        + _render_event_action(ev, proj_meta) +
         f"</div>"
     )
 
 
-def _render_feed_events(events):
+def _render_feed_events(events, proj_meta=None):
     from datetime import datetime, timezone, timedelta
     import time as _time
     local_offset = timedelta(seconds=-(_time.altzone if _time.daylight else _time.timezone))
@@ -2733,7 +2761,7 @@ def _render_feed_events(events):
             "</div>"
         )
         for ev, dt_local in days[date]:
-            html += _render_event_card(ev, dt_local)
+            html += _render_event_card(ev, dt_local, proj_meta)
         html += "</div>"
 
     html += "</div>"
@@ -2747,7 +2775,11 @@ def activity_feed():
     events = conn.execute(
         "SELECT * FROM events ORDER BY event_ts DESC"
     ).fetchall()
+    proj_ports = conn.execute(
+        "SELECT id, app_port FROM projects WHERE is_active = 1"
+    ).fetchall()
     conn.close()
+    proj_meta = {r["id"]: {"app_port": r["app_port"]} for r in proj_ports}
     event_count = len(events)
 
     last_synced = get_last_synced()
@@ -2861,7 +2893,7 @@ def activity_feed():
             "</div>"
         )
     else:
-        feed_body = _render_feed_events(events)
+        feed_body = _render_feed_events(events, proj_meta)
 
     feed_js = (
         "<script>"

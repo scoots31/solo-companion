@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-028 Done
+**Last updated:** 2026-04-29 · SL-030 Done
 **Project status:** In Build (Phase 5)
 
 ---
@@ -10,20 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 2 |
+| ✅ Ready | 0 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 28 |
+| ✓ Done | 30 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-028, SL-029, SL-030 |
+| **Next up** | D-10 QA → Phase 5 test |
 | **Blocked — waiting on** | — |
 | **Open spikes** | — |
 
@@ -1807,7 +1806,7 @@ Notes: Filter is AND logic — project AND type, not OR. If no type chip is acti
 
 ### SL-029 · Inline Review Buttons on Review-Ready Events
 
-Status: Ready
+Status: Done
 Phase: 5
 Deliverable: D-10
 
@@ -1833,7 +1832,7 @@ Self-verification checklist:
   - Confirm clicking Review opens the correct URL
 
 Builder confirmation:
-Pending build
+_render_event_action() helper added — returns rev-btn for review_ready events with review_url, empty action slot div for all others. proj_meta dict (project_id → app_port) built in activity_feed(), passed through _render_feed_events() → _render_event_card() → _render_event_action(). Fixed pre-existing filter bug: event cards were missing class='event' required by the .event[data-project] selector — added to _render_event_card div. 2026-04-29.
 
 Depends on: SL-025, SL-027
 Notes: Reuses the existing rev-btn class and JS entirely — no new JS functions needed. The DOMContentLoaded listener in _page() already scans for .rev-btn elements across the full page.
@@ -1842,7 +1841,7 @@ Notes: Reuses the existing rev-btn class and JS entirely — no new JS functions
 
 ### SL-030 · Event Click → Existing Overlay
 
-Status: Ready
+Status: Done
 Phase: 5
 Deliverable: D-10
 
@@ -1868,7 +1867,7 @@ Self-verification checklist:
   - Confirm clicking the review button does not trigger the overlay open
 
 Builder confirmation:
-Pending build
+In _write_events() in sync.py, gate_cleared events now store the integer phase db id (from phases table) as object_id (string) and the human-readable phase name as object_name. In _render_event_card() in app.py, phase events parse object_id as int for openPhaseOverlay(project_id, phase_db_id). Card footer tag shows object_name (phase name) instead of object_id for phase events. event.stopPropagation() already present on rev-btn via handleReview(). 2026-04-29.
 
 Depends on: SL-027
 Notes: The existing overlay JS functions are already in _page() — no additions needed. The phase_db_id must be stored in the events table at write time (not looked up at render time) since it's an internal SQLite id, not the phase name.

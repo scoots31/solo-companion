@@ -545,12 +545,15 @@ def _write_events(c, project_id, project_name, before_slices, before_del_done,
             _insert("deliverable_done", "deliverable", del_id, del_id)
 
     # gate_cleared: a phase transitioned to Done
-    new_phases = {r["name"]: r["status"] for r in c.execute(
-        "SELECT name, status FROM phases WHERE project_id = ?", (project_id,)
-    ).fetchall()}
-    for phase_name, new_pstatus in new_phases.items():
-        if new_pstatus == "Done" and before_phases.get(phase_name) != "Done":
-            _insert("gate_cleared", "phase", phase_name, phase_name)
+    new_phases = {r["name"]: {"status": r["status"], "id": r["id"]}
+                  for r in c.execute(
+                      "SELECT id, name, status FROM phases WHERE project_id = ?",
+                      (project_id,),
+                  ).fetchall()}
+    for phase_name, pdata in new_phases.items():
+        if pdata["status"] == "Done" and before_phases.get(phase_name) != "Done":
+            # Store the integer db id as object_id so the overlay can open directly
+            _insert("gate_cleared", "phase", str(pdata["id"]), phase_name)
 
 
 # ── Handoff section reader ──────────────────────────────────────────────
