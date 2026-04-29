@@ -8,12 +8,14 @@ SL-003: full content sync — phases, deliverables, slices with every field
         flags.
 SL-004: persistent sidebar — project list, color dots, recency labels,
         navigation. Layout wrapper used by all routes.
+SL-005: dashboard top bar — project count, last-synced relative time,
+        refresh button (/sync POST route).
 """
 
 import os
 import time
 from datetime import datetime
-from flask import Flask, request
+from flask import Flask, redirect, request, url_for
 
 from db import get_conn, init_db
 from sync import discover_projects, get_last_synced
@@ -81,6 +83,27 @@ def _format_synced(iso_ts):
         return datetime.fromisoformat(iso_ts).astimezone().strftime("%-I:%M %p").lower()
     except ValueError:
         return iso_ts
+
+
+def _relative_synced(iso_ts):
+    """Return relative time string for a last_synced ISO timestamp."""
+    if not iso_ts:
+        return "never"
+    try:
+        ts = datetime.fromisoformat(iso_ts).timestamp()
+    except ValueError:
+        return iso_ts
+    age = time.time() - ts
+    if age < 60:
+        return "just now"
+    if age < 3600:
+        return f"{int(age / 60)}m ago"
+    if age < 86400:
+        return f"{int(age / 3600)}h ago"
+    days = int(age / 86400)
+    if days < 7:
+        return f"{days}d ago"
+    return f"{int(days / 7)}w ago"
 
 
 # ── Sidebar HTML ─────────────────────────────────────────────────────────
@@ -195,14 +218,29 @@ def dashboard():
     last_synced = get_last_synced()
     conn.close()
 
-    # Summary line
-    summary = (
-        f"<p style='font-size:12px;color:rgba(255,255,255,0.45);margin:0 0 24px;'>"
-        f"{len(projects)} active project{'s' if len(projects) != 1 else ''} "
-        f"· last synced {_format_synced(last_synced)}</p>"
+    project_count = len(projects)
+    synced_label = _relative_synced(last_synced)
+
+    # Top bar — project count, last synced, refresh button
+    top_bar = (
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "margin-bottom:32px;'>"
+        "<div>"
+        "<h1 style='font-size:20px;font-weight:600;margin:0 0 4px;'>Dashboard</h1>"
+        f"<p style='font-size:12px;color:rgba(255,255,255,0.4);margin:0;'>"
+        f"{project_count} active project{'s' if project_count != 1 else ''} "
+        f"· synced {synced_label}</p>"
+        "</div>"
+        "<form method='POST' action='/sync' style='margin:0;'>"
+        "<button type='submit' style='background:rgba(255,255,255,0.07);border:1px solid "
+        "rgba(255,255,255,0.12);color:rgba(255,255,255,0.75);font-size:12px;padding:6px 14px;"
+        "border-radius:6px;cursor:pointer;font-family:-apple-system,sans-serif;'>"
+        "↻ Refresh</button>"
+        "</form>"
+        "</div>"
     )
 
-    # Per-project count blocks
+    # Per-project count blocks (sync verification — placeholder until SL-006+)
     project_blocks = []
     for p in projects:
         counts = rows_per_project.get(p["name"], {})
@@ -221,10 +259,7 @@ def dashboard():
         )
 
     main_html = (
-        "<h1 style='font-size:20px;font-weight:600;margin:0 0 6px;'>Dashboard</h1>"
-        "<p style='font-size:13px;color:rgba(255,255,255,0.4);margin:0 0 24px;'>"
-        "Foundation complete (SL-001–003). Dashboard UI arrives in SL-005 onwards.</p>"
-        + summary
+        top_bar
         + "".join(project_blocks)
     )
 
@@ -263,6 +298,12 @@ def activity_feed():
 
     sidebar = _sidebar_html(projects)
     return _page(sidebar, main_html, title="Solo Companion — Activity Feed")
+
+
+@app.route("/sync", methods=["POST"])
+def sync():
+    discover_projects()
+    return redirect(url_for("dashboard"))
 
 
 if __name__ == "__main__":

@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-004 done — sidebar with project list, color dots, recency, navigation
+**Last updated:** 2026-04-28 · SL-005 done — dashboard top bar with project count, sync time, refresh button
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 20 |
+| ✅ Ready | 19 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 4 |
+| ✓ Done | 5 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-005 |
+| **Next up (Ready, not started)** | SL-006 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -755,7 +755,7 @@ Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not buil
 
 ### SL-005 · Dashboard Top Bar
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -779,7 +779,10 @@ Self-verification checklist:
   - Confirm last synced timestamp updates on each refresh click
 
 Builder confirmation:
-Pending build
+  ✓ Top bar renders: page title, active project count, relative sync time, Refresh button
+  ✓ _relative_synced() returns "just now" / "Xm ago" / "Xh ago" / "Xd ago" / "Xw ago" / "never"
+  ✓ POST /sync triggers discover_projects() and redirects 302 to / — confirmed via curl
+  ✓ Sync timestamp updates after each refresh click
 
 Depends on: SL-002, SL-003
 Notes: None.
