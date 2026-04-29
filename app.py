@@ -1969,7 +1969,7 @@ def _backlog_tab_html(all_phases, all_deliverables, all_slices, phase_counts, pr
 
         review_url = row["review_url"]
         review_btn = ""
-        if status == "Done" and review_url:
+        if status == "Done" and review_url and review_url.startswith("http"):
             url_esc  = review_url.replace("&", "&amp;").replace('"', "&quot;")
             pname_esc = proj_name.replace("'", "\\'")
             port_attr = f" data-port='{app_port}'" if app_port else ""
@@ -2198,7 +2198,7 @@ def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phas
 
         review_url = row["review_url"]
         review_btn = ""
-        if status == "Done" and review_url:
+        if status == "Done" and review_url and review_url.startswith("http"):
             url_esc   = review_url.replace("&", "&amp;").replace('"', "&quot;")
             pname_esc = proj_name.replace("'", "\\'")
             port_attr = f" data-port='{app_port}'" if app_port else ""

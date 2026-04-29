@@ -110,7 +110,7 @@ Notes: None.
 
 ### Phase 3 · Project Detail
 
-Status: In Progress
+Status: Done
 
 Plain language description:
 The solo can navigate to any project and see everything about it across five tabs — what needs action, full progress with all slices and deliverables, the complete backlog across all phases, every framework document, and the full decision and change history. The companion replaces every orientation question the solo would otherwise ask the framework.
@@ -148,7 +148,7 @@ Notes: None.
 
 ### Phase 4 · Review Flow
 
-Status: Planning
+Status: Done
 
 Plain language description:
 When a slice ships and the framework serves the built UI, a Review button appears on that slice in the companion app. The solo clicks it and sees the finished work in the browser. If the app is stopped, Start & Review starts it first. No terminal required.
@@ -479,7 +479,7 @@ Notes: None.
 
 ### D-09 · Review Flow
 
-Status: Defined
+Status: Accepted
 Type: Logic
 Phase: 4
 
@@ -504,7 +504,7 @@ Self-verification checklist:
   - Confirm error page renders correctly when app fails to start within 10 seconds
 
 Builder confirmation:
-Pending build
+Accepted 2026-04-29. Criteria verified: Review buttons render on Done slices with http review_url only (None/non-http values suppressed); port-alive check upgrades amber Start & Review to teal Review after load; /start-and-review starts app and returns ok:true on success. QA bug found and fixed: literal "None" review_url values were rendering buttons — fixed to require http prefix. Solo sign-off confirmed.
 
 Slices: SL-023, SL-024
 References:
