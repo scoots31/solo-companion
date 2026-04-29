@@ -1414,6 +1414,91 @@ def _action_tab_html(blocked_rows, flag_items, flagged_slices, question_rows, pr
     return "".join(sections)
 
 
+# ── SL-022: Decisions & Changes tab ──────────────────────────────────────
+
+def _decisions_tab_html(decisions, changes):
+    """Render the Decisions & Changes tab — two sections, most recent first (SL-022)."""
+
+    def _esc(s):
+        return (s or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+    def _sec_header(label, count, bg, color, top=False):
+        mt = "margin-top:0;" if top else "margin-top:28px;"
+        return (
+            f"<div style='display:flex;align-items:center;justify-content:space-between;"
+            f"margin-bottom:12px;{mt}'>"
+            f"<span style='font-size:11px;font-weight:700;text-transform:uppercase;"
+            f"letter-spacing:1.5px;color:rgba(255,255,255,0.35);'>{label}</span>"
+            f"<span style='font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;"
+            f"background:{bg};color:{color};'>{count} {'active' if label == 'Decisions' else 'logged'}</span>"
+            f"</div>"
+        )
+
+    # Decisions section
+    decision_entries = []
+    for d in decisions:
+        why_html = (
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.4);"
+            f"background:rgba(255,255,255,0.03);border-left:2px solid rgba(255,255,255,0.1);"
+            f"padding:8px 12px;border-radius:0 6px 6px 0;line-height:1.5;margin-top:8px;'>"
+            f"<strong style='color:rgba(255,255,255,0.5);'>Why:</strong> {_esc(d['why'])}"
+            f"</div>"
+        ) if d["why"] else ""
+
+        decision_entries.append(
+            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:10px;padding:18px 20px;margin-bottom:10px;'>"
+            f"<div style='display:flex;align-items:flex-start;justify-content:space-between;"
+            f"margin-bottom:10px;gap:12px;'>"
+            f"<div style='font-size:14px;font-weight:600;color:#fff;'>{_esc(d['title'])}</div>"
+            f"<div style='display:flex;align-items:center;gap:8px;flex-shrink:0;'>"
+            f"<span style='font-size:10px;color:rgba(255,255,255,0.3);font-family:monospace;'>{_esc(d['phase'])}</span>"
+            f"<span style='font-size:10px;color:rgba(255,255,255,0.2);'>{_esc(d['date'])}</span>"
+            f"</div></div>"
+            f"<div style='font-size:13px;color:rgba(255,255,255,0.6);line-height:1.6;margin-bottom:{'0' if not d['why'] else '10px'};'>{_esc(d['body'])}</div>"
+            + why_html
+            + "</div>"
+        )
+
+    # Changes section
+    change_entries = []
+    for c in changes:
+        change_entries.append(
+            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(180,83,9,0.2);"
+            f"border-radius:10px;padding:18px 20px;margin-bottom:10px;'>"
+            f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;'>"
+            f"<div style='font-size:14px;font-weight:600;color:#fff;'>{_esc(c['title'])}</div>"
+            f"<span style='font-size:10px;color:rgba(255,255,255,0.2);'>{_esc(c['date'])}</span>"
+            f"</div>"
+            f"<div style='display:grid;grid-template-columns:1fr 1fr;gap:10px;'>"
+            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:7px;padding:10px 12px;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.25);margin-bottom:4px;"
+            f"text-transform:uppercase;letter-spacing:0.8px;font-weight:600;'>Was</div>"
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.65);line-height:1.4;'>{_esc(c['was_value'])}</div>"
+            f"</div>"
+            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:7px;padding:10px 12px;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.25);margin-bottom:4px;"
+            f"text-transform:uppercase;letter-spacing:0.8px;font-weight:600;'>Became</div>"
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.65);line-height:1.4;'>{_esc(c['became_value'])}</div>"
+            f"</div></div></div>"
+        )
+
+    if not decisions and not changes:
+        return "<p style='font-size:13px;color:rgba(255,255,255,0.25);margin:0;'>No decisions or changes recorded yet.</p>"
+
+    out = _sec_header("Decisions", len(decisions), "rgba(37,99,235,0.15)", "#93C5FD", top=True)
+    out += "".join(decision_entries) if decision_entries else (
+        "<p style='font-size:13px;color:rgba(255,255,255,0.25);margin:0 0 16px;'>No decisions recorded.</p>"
+    )
+    out += _sec_header("Changes", len(changes), "rgba(180,83,9,0.15)", "#FCD34D")
+    out += "".join(change_entries) if change_entries else (
+        "<p style='font-size:13px;color:rgba(255,255,255,0.25);margin:0;'>No changes recorded.</p>"
+    )
+    return out
+
+
 # ── SL-020: Materials tab ─────────────────────────────────────────────────
 
 _MATERIAL_ICONS = {
@@ -2324,10 +2409,17 @@ def project_detail(name):
         (project_id,)
     ).fetchone()[0]
     materials_count = len(materials)
-    dc_count = (
-        conn.execute("SELECT COUNT(*) FROM decisions WHERE project_id=?", (project_id,)).fetchone()[0]
-        + conn.execute("SELECT COUNT(*) FROM changes WHERE project_id=?", (project_id,)).fetchone()[0]
-    )
+    decisions = conn.execute(
+        "SELECT title, phase, date, body, why FROM decisions "
+        "WHERE project_id=? ORDER BY date DESC",
+        (project_id,)
+    ).fetchall()
+    changes = conn.execute(
+        "SELECT title, date, was_value, became_value FROM changes "
+        "WHERE project_id=? ORDER BY date DESC",
+        (project_id,)
+    ).fetchall()
+    dc_count = len(decisions) + len(changes)
 
     last_synced = get_last_synced()
     synced_label = _relative_synced(last_synced)
@@ -2408,6 +2500,7 @@ def project_detail(name):
     progress_html  = _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id)
     backlog_html   = _backlog_tab_html(all_phases, all_deliverables, all_slices_backlog, phase_slice_counts_all, project_id)
     materials_html = _materials_tab_html(materials)
+    dc_html        = _decisions_tab_html(decisions, changes)
 
     content = (
         "<div style='padding:32px 40px;flex:1;'>"
@@ -2415,7 +2508,7 @@ def project_detail(name):
         + tab_panel("progress",  progress_html)
         + tab_panel("backlog",   backlog_html)
         + tab_panel("materials", materials_html)
-        + tab_panel("decisions", f"<p style='{ph}'>Decisions &amp; Changes view arrives in a future unit of work.</p>")
+        + tab_panel("decisions", dc_html)
         + "</div>"
     )
 
