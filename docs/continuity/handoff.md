@@ -1,17 +1,23 @@
-# Project Handoff — 2026-04-28
+# Project Handoff — 2026-04-29
 
 **Current phase:** Phase 3 — Project Detail
-**Overall status:** Phase 1 (Foundation) and Phase 2 (Dashboard) complete. SL-001–SL-017 Done. Progress tab has phase summary card + deliverables list. Moving to SL-018 (Progress Tab — Slice List).
+**Overall status:** Phase 1 (Foundation) and Phase 2 (Dashboard) complete. SL-001–SL-018 Done. Progress tab is fully built. Moving to SL-019 (Backlog Tab).
 
 ## Where we are
 
-Phase 1 (Foundation) and Phase 2 (Dashboard) are complete. Phase 3 (Project Detail) is underway — Action tab and most of Progress tab built.
+Phase 1 (Foundation) and Phase 2 (Dashboard) are complete. Phase 3 (Project Detail) is underway — Action tab and full Progress tab built.
 
 **Phase 1 — Foundation (Done):** SL-001/002/003. Server, sync, SQLite fully populated.
 **Phase 2 — Dashboard (Done):** SL-004–SL-013. Sidebar, top bar, Needs Attention cards, three dashboard buckets, all three overlay types (Slice, Deliverable, Phase).
-**Phase 3 — Project Detail (In Progress):** SL-014–SL-017 Done. Routing, breadcrumb, phase pill, tab bar, Action tab, Progress tab phase summary card, Progress tab deliverables section.
+**Phase 3 — Project Detail (In Progress):** SL-014–SL-018 Done. Routing, breadcrumb, phase pill, tab bar, Action tab, full Progress tab (phase summary card, deliverables, slice list).
 
 ## What was just completed
+
+SL-018 — Progress Tab: Slice List:
+- All 9 Phase 3 slices render with ID, name, deliverable name, and status badge
+- Row click opens slice overlay (SL-011) with "Already on this project" footer
+- Review button logic in place — renders on Done slices with review_url (none populated yet, Phase 4)
+- Slice count badge in "All Slices" section header
 
 SL-017 — Progress Tab: Deliverables Section:
 - 5 deliverables render for Phase 3 (D-04 through D-08)
@@ -31,7 +37,7 @@ SL-015 — Action Tab:
 
 ## Open right now
 
-Nothing blocked. SL-018 is next.
+Nothing blocked. SL-019 is next.
 
 ## Outstanding questions needing outside input
 
@@ -42,13 +48,12 @@ player-evaluation is currently excluded from Solo Companion (`is_active=0`) beca
 
 ## Next session picks up at
 
-**SL-018 — Progress Tab: Slice List.** Spec:
-- Full list of slices for the current phase: slice_id, name, deliverable name, status badge
-- Each row clickable → opens slice overlay (SL-011)
-- Done slices with review_url: render "▶ Review" button (opens URL in new tab, stopPropagation)
-- Done slices with review_url but app not running: "Start & Review" amber button (SL-024 flow)
-- Design anchor: sprint-02-project-detail.html — Progress tab, slice list, review button
-- Done criteria: all slices for current phase render correctly; row click opens overlay
+**SL-019 — Backlog Tab.** Spec:
+- Three sections: Phases (all phases, ordered by sequence), Deliverables (all phases, ordered by phase then name), Slices (all slices, ordered by slice_id)
+- Upcoming items (status Planning/Upcoming) rendered at 50% opacity
+- All rows clickable — opens appropriate overlay type
+- Design anchor: sprint-02-project-detail.html — Backlog tab, all three sections
+- Done criteria: all phases/deliverables/slices render; upcoming items dimmed; each overlay type opens correctly
 
 ## Key context to carry
 

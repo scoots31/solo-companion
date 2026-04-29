@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-017 done — Progress tab: Deliverables Section
+**Last updated:** 2026-04-29 · SL-018 done — Progress tab: Slice List
 **Project status:** Ready for Build
 
 ---
@@ -16,13 +16,13 @@
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 17 |
+| ✓ Done | 18 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-018 |
+| **Next up (Ready, not started)** | SL-019 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -1241,7 +1241,7 @@ Notes: Deliverable status is derived at render time from slices, not from delive
 
 ### SL-018 · Progress Tab — Slice List
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-05
 
@@ -1268,10 +1268,15 @@ Self-verification checklist:
   - Confirm Start & Review button appears when port check fails
 
 Builder confirmation:
-Pending build
+  ✓ Slice list renders for all 9 Phase 3 slices (SL-014–SL-022) with correct ID, name, deliverable, and status
+  ✓ Done slices (SL-014–SL-017) show teal badge; Ready slices (SL-018–SL-022) show muted badge
+  ✓ Row click opens slice overlay with "Already on this project" footer — verified SL-018 overlay
+  ✓ Review button absent (no review_url in SQLite yet — correct, Phase 4 wires this)
+  ✓ Section header shows "9 in phase" count
+  ✓ Solo browser sign-off confirmed 2026-04-29
 
 Depends on: SL-003, SL-011, SL-017, SL-024
-Notes: Port check for "is the app running" is a synchronous GET to the app's port from tech-context.md. Timeout 500ms. If the port is not responding, Show Start & Review. SL-024 handles the start command execution.
+Notes: Port check for "is the app running" is a synchronous GET to the app's port from tech-context.md. Timeout 500ms. If the port is not responding, Show Start & Review. SL-024 handles the start command execution. Review button deferred — no review_url populated until Phase 4 framework curator change lands.
 
 ---
 

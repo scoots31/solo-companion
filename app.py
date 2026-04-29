@@ -1401,8 +1401,8 @@ def _action_tab_html(blocked_rows, flag_items, flagged_slices, question_rows, pr
     return "".join(sections)
 
 
-def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, project_id):
-    """Render the Progress tab — phase summary card + deliverables list + placeholder for SL-018."""
+def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id):
+    """Render the Progress tab — phase summary card + deliverables list + slice list (SL-018)."""
 
     ph = "font-size:13px;color:rgba(255,255,255,0.25);margin:0;"
 
@@ -1555,12 +1555,84 @@ def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, proj
         if deliverable_rows else ""
     )
 
+    # ── Slice status badge colors ────────────────────────────────────────
+    _STATUS_STYLES = {
+        "Done":        ("rgba(13,148,136,0.2)",  "#5EEAD4"),
+        "In Progress": ("rgba(37,99,235,0.2)",   "#93C5FD"),
+        "In Test":     ("rgba(124,58,237,0.2)",  "#C4B5FD"),
+        "In QA":       ("rgba(180,83,9,0.15)",   "#FCD34D"),
+        "Ready":       ("rgba(255,255,255,0.07)","rgba(255,255,255,0.4)"),
+    }
+
+    def slice_row_html(row):
+        sid    = row["slice_id"]
+        sname  = row["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        status = row["status"] or "Ready"
+        dname  = (row["deliverable_name"] or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        st_bg, st_color = _STATUS_STYLES.get(status, _STATUS_STYLES["Ready"])
+
+        review_url = row["review_url"]
+        review_btn = ""
+        if status == "Done" and review_url:
+            url_esc = review_url.replace("&", "&amp;").replace('"', "&quot;")
+            review_btn = (
+                f"<a href='{url_esc}' target='_blank' "
+                f"onclick='event.stopPropagation()' "
+                f"style='display:flex;align-items:center;gap:5px;font-size:11px;"
+                f"font-weight:600;padding:4px 10px;border-radius:5px;"
+                f"border:1px solid rgba(13,148,136,0.3);color:#5EEAD4;"
+                f"background:rgba(13,148,136,0.1);text-decoration:none;flex-shrink:0;' "
+                f"onmouseover='this.style.background=\"rgba(13,148,136,0.2)\"' "
+                f"onmouseout='this.style.background=\"rgba(13,148,136,0.1)\"'>"
+                f"▶ Review</a>"
+            )
+
+        return (
+            f"<div onclick='openSliceOverlay({project_id},\"{sid}\")' "
+            f"style='display:flex;align-items:center;gap:14px;padding:12px 16px;"
+            f"background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:9px;cursor:pointer;' "
+            f"onmouseover='this.style.background=\"rgba(255,255,255,0.07)\"' "
+            f"onmouseout='this.style.background=\"rgba(255,255,255,0.04)\"'>"
+            f"<span style='font-size:11px;font-weight:700;color:rgba(255,255,255,0.3);"
+            f'font-family:"SF Mono","Fira Code",monospace;'
+            f"width:50px;flex-shrink:0;'>{sid}</span>"
+            f"<span style='flex:1;font-size:13px;color:rgba(255,255,255,0.85);"
+            f"font-weight:500;'>{sname}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.3);flex-shrink:0;"
+            f"max-width:180px;text-align:right;'>{dname}</span>"
+            f"<span style='font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+            f"background:{st_bg};color:{st_color};flex-shrink:0;width:86px;"
+            f"text-align:center;box-sizing:border-box;'>{status}</span>"
+            + review_btn
+            + "</div>"
+        )
+
+    n_slices = len(phase_slices)
+    slices_header = (
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "margin-bottom:12px;margin-top:28px;'>"
+        "<span style='font-size:11px;font-weight:700;text-transform:uppercase;"
+        "letter-spacing:1.5px;color:rgba(255,255,255,0.35);'>All Slices</span>"
+        f"<span style='font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;"
+        f"background:rgba(37,99,235,0.15);color:#93C5FD;'>{n_slices} in phase</span>"
+        "</div>"
+    )
+
+    slices_html = (
+        slices_header
+        + "<div style='display:flex;flex-direction:column;gap:6px;'>"
+        + "".join(slice_row_html(r) for r in phase_slices)
+        + "</div>"
+        if phase_slices else ""
+    )
+
     return (
         card
         + "<div style='margin-bottom:28px;'>"
         + deliverables_html
         + "</div>"
-        + f"<p style='{ph}'>Slices list arrives in unit of work SL-018.</p>"
+        + slices_html
     )
 
 
@@ -1713,6 +1785,17 @@ def project_detail(name):
             (project_id, phase_num)
         ).fetchall()
 
+    phase_slices = []
+    if phase_num:
+        phase_slices = conn.execute(
+            "SELECT s.slice_id, s.name, s.status, s.review_url, "
+            "COALESCE(d.name, s.deliverable_ref) AS deliverable_name "
+            "FROM slices s "
+            "LEFT JOIN deliverables d ON d.project_id=s.project_id AND d.deliverable_id=s.deliverable_ref "
+            "WHERE s.project_id=? AND s.phase=? ORDER BY s.slice_id",
+            (project_id, phase_num)
+        ).fetchall()
+
     backlog_count = conn.execute(
         "SELECT COUNT(*) FROM slices WHERE project_id=?",
         (project_id,)
@@ -1802,7 +1885,7 @@ def project_detail(name):
     action_html   = _action_tab_html(
         blocked_rows, flag_items, flagged_slices, question_rows, project_id
     )
-    progress_html = _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, project_id)
+    progress_html = _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id)
 
     content = (
         "<div style='padding:32px 40px;flex:1;'>"
