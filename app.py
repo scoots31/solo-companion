@@ -413,16 +413,17 @@ def _slices_bucket(conn, projects_by_id):
         proj_name = proj.get("name", "unknown")
         color = _project_color(proj_name)
         rows.append(
-            f"<div style='padding:10px 16px;display:flex;align-items:center;gap:12px;"
+            f"<div style='padding:12px 16px;display:flex;align-items:center;gap:12px;"
             f"border-bottom:1px solid rgba(255,255,255,0.05);cursor:pointer;'>"
-            f"<span style='font-family:SF Mono,monospace;font-size:11px;"
-            f"color:rgba(255,255,255,0.4);min-width:56px;'>{s['slice_id']}</span>"
-            f"<span style='flex:1;font-size:12px;color:rgba(255,255,255,0.75);'>{s['name']}</span>"
+            f"<span style='width:8px;height:8px;border-radius:50%;background:{color};"
+            f"flex-shrink:0;'></span>"
+            f"<div style='flex:1;min-width:0;'>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.35);margin-bottom:2px;'>"
+            f"{proj_name} · {s['slice_id']}</div>"
+            f"<div style='font-size:13px;color:rgba(255,255,255,0.8);'>{s['name']}</div>"
+            f"</div>"
             f"{_status_pill(s['status'])}"
-            f"<span style='display:flex;align-items:center;gap:5px;flex-shrink:0;'>"
-            f"<span style='width:6px;height:6px;border-radius:50%;background:{color};'></span>"
-            f"<span style='font-size:11px;color:rgba(255,255,255,0.3);'>{proj_name}</span>"
-            f"</span></div>"
+            f"</div>"
         )
 
     return _bucket_section(header_label, rows)
