@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-027 Done — SL-028/029/030 Ready
+**Last updated:** 2026-04-29 · SL-028 Done
 **Project status:** In Build (Phase 5)
 
 ---
@@ -10,13 +10,13 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 3 |
+| ✅ Ready | 2 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 27 |
+| ✓ Done | 28 |
 
 ### Traffic
 | | |
@@ -1769,7 +1769,8 @@ Notes: Description templates per event type: slice_done → "[name] moved to Don
 
 ### SL-028 · Filter Bar — Client-Side Filtering
 
-Status: Ready
+Status: Done
+Review URL: None — client-side only, no UI to review in isolation
 Phase: 5
 Deliverable: D-10
 
@@ -1797,7 +1798,7 @@ Self-verification checklist:
   - Click All and confirm all events reappear
 
 Builder confirmation:
-Pending build
+Done — _applyFilters() ANDs project and type state; type chips toggle single-select (click active chip to reset to All); empty day groups hide when filtered. 2026-04-29.
 
 Depends on: SL-027
 Notes: Filter is AND logic — project AND type, not OR. If no type chip is active, all types show. If no project chip is active, all projects show.
