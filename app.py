@@ -224,6 +224,56 @@ def _page(sidebar_html, main_html, title="Solo Companion", padded=True):
         "  fetch('/open-file',{method:'POST',"
         "    headers:{'Content-Type':'application/json'},"
         "    body:JSON.stringify({path:path})});}"
+        "function _upgradeRevBtns(port,alive){"
+        "  document.querySelectorAll('.rev-btn[data-port=\"'+port+'\"]').forEach(function(btn){"
+        "    if(alive){"
+        "      btn.textContent='\\u25B6 Review';"
+        "      btn.style.color='#5EEAD4';"
+        "      btn.style.borderColor='rgba(13,148,136,0.3)';"
+        "      btn.style.background='rgba(13,148,136,0.1)';"
+        "      btn.dataset.state='alive';"
+        "    }else{"
+        "      btn.textContent='\\u25B6 Start & Review';"
+        "      btn.style.color='#F59E0B';"
+        "      btn.style.borderColor='rgba(245,158,11,0.3)';"
+        "      btn.style.background='rgba(245,158,11,0.1)';"
+        "      btn.dataset.state='dead';"
+        "    }});}"
+        "function handleReview(btn,event){"
+        "  event.stopPropagation();"
+        "  var url=btn.dataset.url;"
+        "  if(btn.dataset.state==='alive'){"
+        "    window.open(url,'_blank');return;}"
+        "  var project=btn.dataset.project;"
+        "  var port=btn.dataset.port;"
+        "  var orig=btn.textContent;"
+        "  btn.textContent='\\u25B6 Starting\\u2026';"
+        "  btn.disabled=true;"
+        "  fetch('/start-and-review',{method:'POST',"
+        "    headers:{'Content-Type':'application/json'},"
+        "    body:JSON.stringify({project:project,url:url})})"
+        "  .then(function(r){return r.json();})"
+        "  .then(function(d){"
+        "    if(d.ok){"
+        "      window.open(d.url,'_blank');"
+        "      _upgradeRevBtns(port,true);"
+        "    }else{"
+        "      btn.textContent='\\u25B6 Start failed';"
+        "      btn.style.color='#F87171';"
+        "      setTimeout(function(){"
+        "        btn.textContent=orig;btn.style.color='#F59E0B';btn.disabled=false;},3000);"
+        "    }})"
+        "  .catch(function(){"
+        "    btn.textContent=orig;btn.disabled=false;});}"
+        "document.addEventListener('DOMContentLoaded',function(){"
+        "  var ports={};"
+        "  document.querySelectorAll('.rev-btn[data-port]').forEach(function(btn){"
+        "    ports[btn.dataset.port]=true;});"
+        "  Object.keys(ports).forEach(function(port){"
+        "    fetch('/port-alive?port='+port)"
+        "    .then(function(r){return r.json();})"
+        "    .then(function(d){_upgradeRevBtns(port,d.alive);})"
+        "    .catch(function(){});});});"
         "function closeOverlay(){"
         "  document.getElementById('overlay-backdrop').style.display='none';"
         "  document.getElementById('overlay-root').innerHTML='';}"
@@ -1803,7 +1853,7 @@ def _render_material_screen_overlay(m, abs_path):
     )
 
 
-def _backlog_tab_html(all_phases, all_deliverables, all_slices, phase_counts, project_id):
+def _backlog_tab_html(all_phases, all_deliverables, all_slices, phase_counts, project_id, app_port=None, proj_name=""):
     """Render the Backlog tab — all phases, deliverables, and slices across the project (SL-019)."""
 
     # Status badge colors (shared with Progress tab)
@@ -1920,14 +1970,16 @@ def _backlog_tab_html(all_phases, all_deliverables, all_slices, phase_counts, pr
         review_url = row["review_url"]
         review_btn = ""
         if status == "Done" and review_url:
-            url_esc = review_url.replace("&", "&amp;").replace('"', "&quot;")
+            url_esc  = review_url.replace("&", "&amp;").replace('"', "&quot;")
+            pname_esc = proj_name.replace("'", "\\'")
+            port_attr = f" data-port='{app_port}'" if app_port else ""
             review_btn = (
-                f"<a href='{url_esc}' target='_blank' onclick='event.stopPropagation()' "
+                f"<button class='rev-btn' data-url='{url_esc}' data-project='{pname_esc}'"
+                f"{port_attr} data-state='dead' onclick='handleReview(this,event)' "
                 f"style='display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;"
-                f"padding:4px 10px;border-radius:5px;border:1px solid rgba(13,148,136,0.3);"
-                f"color:#5EEAD4;background:rgba(13,148,136,0.1);text-decoration:none;flex-shrink:0;' "
-                f"onmouseover='this.style.background=\"rgba(13,148,136,0.2)\"' "
-                f"onmouseout='this.style.background=\"rgba(13,148,136,0.1)\"'>▶ Review</a>"
+                f"padding:4px 10px;border-radius:5px;border:1px solid rgba(245,158,11,0.3);"
+                f"color:#F59E0B;background:rgba(245,158,11,0.1);flex-shrink:0;cursor:pointer;"
+                f"font-family:-apple-system,sans-serif;'>&#9654; Start &amp; Review</button>"
             )
 
         slice_rows_html.append(
@@ -1974,7 +2026,7 @@ def _backlog_tab_html(all_phases, all_deliverables, all_slices, phase_counts, pr
     )
 
 
-def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id):
+def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id, app_port=None, proj_name=""):
     """Render the Progress tab — phase summary card + deliverables list + slice list (SL-018)."""
 
     ph = "font-size:13px;color:rgba(255,255,255,0.25);margin:0;"
@@ -2147,17 +2199,17 @@ def _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phas
         review_url = row["review_url"]
         review_btn = ""
         if status == "Done" and review_url:
-            url_esc = review_url.replace("&", "&amp;").replace('"', "&quot;")
+            url_esc   = review_url.replace("&", "&amp;").replace('"', "&quot;")
+            pname_esc = proj_name.replace("'", "\\'")
+            port_attr = f" data-port='{app_port}'" if app_port else ""
             review_btn = (
-                f"<a href='{url_esc}' target='_blank' "
-                f"onclick='event.stopPropagation()' "
+                f"<button class='rev-btn' data-url='{url_esc}' data-project='{pname_esc}'"
+                f"{port_attr} data-state='dead' onclick='handleReview(this,event)' "
                 f"style='display:flex;align-items:center;gap:5px;font-size:11px;"
                 f"font-weight:600;padding:4px 10px;border-radius:5px;"
-                f"border:1px solid rgba(13,148,136,0.3);color:#5EEAD4;"
-                f"background:rgba(13,148,136,0.1);text-decoration:none;flex-shrink:0;' "
-                f"onmouseover='this.style.background=\"rgba(13,148,136,0.2)\"' "
-                f"onmouseout='this.style.background=\"rgba(13,148,136,0.1)\"'>"
-                f"▶ Review</a>"
+                f"border:1px solid rgba(245,158,11,0.3);color:#F59E0B;"
+                f"background:rgba(245,158,11,0.1);flex-shrink:0;cursor:pointer;"
+                f"font-family:-apple-system,sans-serif;'>&#9654; Start &amp; Review</button>"
             )
 
         return (
@@ -2265,7 +2317,7 @@ def project_detail(name):
     conn = get_conn()
 
     proj = conn.execute(
-        "SELECT id, name, path FROM projects WHERE name = ? AND is_active = 1",
+        "SELECT id, name, path, start_command, app_port FROM projects WHERE name = ? AND is_active = 1",
         (name,)
     ).fetchone()
 
@@ -2282,8 +2334,10 @@ def project_detail(name):
         )
         return _page(_sidebar_html(projects), main_html, title="Solo Companion — Not Found"), 404
 
-    project_id = proj["id"]
-    proj_name = proj["name"]
+    project_id    = proj["id"]
+    proj_name     = proj["name"]
+    app_port      = proj["app_port"]
+    start_command = proj["start_command"]
 
     # Current phase: prefer Active/In Progress, else first non-Done/Cancelled
     current_phase = conn.execute(
@@ -2497,8 +2551,8 @@ def project_detail(name):
     action_html   = _action_tab_html(
         blocked_rows, flag_items, flagged_slices, question_rows, project_id
     )
-    progress_html  = _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id)
-    backlog_html   = _backlog_tab_html(all_phases, all_deliverables, all_slices_backlog, phase_slice_counts_all, project_id)
+    progress_html  = _progress_tab_html(current_phase, phase_slice_counts, deliverable_rows, phase_slices, project_id, app_port=app_port, proj_name=proj_name)
+    backlog_html   = _backlog_tab_html(all_phases, all_deliverables, all_slices_backlog, phase_slice_counts_all, project_id, app_port=app_port, proj_name=proj_name)
     materials_html = _materials_tab_html(materials)
     dc_html        = _decisions_tab_html(decisions, changes)
 
@@ -2685,6 +2739,56 @@ def open_file():
     if path:
         subprocess.Popen(["open", path])
     return "", 204
+
+
+@app.route("/port-alive")
+def port_alive():
+    import socket
+    port_str = request.args.get("port", "")
+    if not port_str or not port_str.isdigit():
+        return {"alive": False}
+    port = int(port_str)
+    try:
+        with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+            return {"alive": True}
+    except OSError:
+        return {"alive": False}
+
+
+@app.route("/start-and-review", methods=["POST"])
+def start_and_review():
+    import socket
+    data = request.get_json(silent=True) or {}
+    project_name = data.get("project", "")
+    review_url   = data.get("url", "")
+
+    conn = get_conn()
+    row = conn.execute(
+        "SELECT start_command, app_port, path FROM projects WHERE name=? AND is_active=1",
+        (project_name,)
+    ).fetchone()
+    conn.close()
+
+    if not row or not row["start_command"] or not row["app_port"]:
+        return {"ok": False, "error": "No start command configured for this project."}
+
+    start_cmd = row["start_command"]
+    port      = int(row["app_port"])
+    proj_path = row["path"]
+
+    cwd = proj_path if proj_path and os.path.isdir(proj_path) else None
+    subprocess.Popen(start_cmd, shell=True, cwd=cwd,
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                return {"ok": True, "url": review_url}
+        except OSError:
+            time.sleep(0.5)
+
+    return {"ok": False, "error": f"App did not respond on port {port} within 10 seconds."}
 
 
 if __name__ == "__main__":

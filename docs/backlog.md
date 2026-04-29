@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-023 done — Review Link Surfacing (no new code — complete from SL-018/019)
+**Last updated:** 2026-04-29 · SL-024 done — Start & Review Action
 **Project status:** Ready for Build
 
 ---
@@ -10,20 +10,20 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 7 |
+| ✅ Ready | 6 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 23 |
+| ✓ Done | 24 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-024 |
-| **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
+| **Next up (Ready, not started)** | SL-025 |
+| **Blocked — waiting on** | — |
 | **Open spikes** | — |
 
 ---
@@ -1537,7 +1537,7 @@ Notes: The framework curator change to solo-build is a separate workstream. This
 
 ### SL-024 · Start & Review Action
 
-Status: Ready
+Status: Done
 Phase: 4
 Deliverable: D-09
 
@@ -1566,7 +1566,13 @@ Self-verification checklist:
   - Kill the start command mid-attempt and confirm error page appears after 10s timeout
 
 Builder confirmation:
-Pending build
+- Port check is async (DOMContentLoaded fetch) — no page load delay
+- Buttons render amber (Start & Review) by default, upgrade to teal (Review) after port check
+- /port-alive?port=<n> returns {alive: bool} via socket.create_connection with 500ms timeout
+- /start-and-review POST starts app via subprocess.Popen(shell=True), polls port every 500ms for 10s, returns {ok, url} or {ok:false, error}
+- Confirmed: port 8710 alive → teal Review rendered; nonexistent project → error JSON returned
+
+Review URL: http://localhost:8710/project/solo-companion?tab=backlog
 
 Depends on: SL-003, SL-018, SL-023
 Notes: tech-context.md field name for the start command needs to be confirmed — check the framework's tech-context template for the exact field name before build. If the field does not exist in the current format, this is a blocker that requires a framework curator change.
