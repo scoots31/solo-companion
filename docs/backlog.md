@@ -1657,3 +1657,73 @@ Impact:
 - Phase 1 boundary — unchanged.
 - Format compatibility rule added: projects whose backlog.md does not match records-spec.md are marked inactive at parse time. Player-evaluation falls in this category until onboarded.
 Confirmed by: Solo
+
+---
+
+## ✅ Phase 1 Complete — Foundation
+**Completed:** 2026-04-29
+**Status:** Tested and ready to deploy
+
+### What was delivered
+The companion app starts automatically and stays running in the background. Every framework markdown file — backlog, handoff, decisions, materials, process maps — is parsed into a structured local database. Two active projects are live in SQLite with all slices, phases, deliverables, flags, questions, decisions, and materials correctly loaded and queryable.
+
+### Slices completed
+6 slices — all Done and verified
+
+### Test confirmation
+Phase test gate: OPEN
+Use cases verified: 5/5
+Regressions found: 0
+
+---
+
+## ✅ Phase 2 Complete — Dashboard
+**Completed:** 2026-04-29
+**Status:** Tested and ready to deploy
+
+### What was delivered
+The solo can open the companion app and immediately see everything that matters across all active projects — what's blocked, what's flagged, what phases and deliverables are active. Clicking any item opens a full-detail overlay. The dashboard replaces every orientation question the solo would otherwise ask the framework.
+
+### Slices completed
+14 slices — all Done and verified
+
+### Test confirmation
+Phase test gate: OPEN
+Use cases verified: 5/5
+Regressions found: 0
+
+---
+
+## ✅ Phase 3 Complete — Project Detail
+**Completed:** 2026-04-29
+**Status:** Tested and ready to deploy
+
+### What was delivered
+Every project has a five-tab detail page covering action items, current phase progress, the full backlog, all framework materials (rendered inline), and the complete decision and change history. The solo can get complete project context — including a decision made weeks ago or the original discovery brief — without starting a framework conversation.
+
+### Slices completed
+18 slices — all Done and verified
+
+### Test confirmation
+Phase test gate: OPEN
+Use cases verified: 5/5
+Regressions found: 0
+
+---
+
+## ✅ Phase 4 Complete — Review Flow
+**Completed:** 2026-04-29
+**Status:** Tested and ready to deploy
+
+### What was delivered
+When a slice ships and the framework records a review URL, a Review button appears on that slice in the companion app automatically. If the project app is stopped, Start & Review starts it and opens the review URL — no terminal required. The full solo build loop — build → companion shows review → solo reviews — works end to end.
+
+### Slices completed
+2 slices — all Done and verified
+
+### Test confirmation
+Phase test gate: OPEN
+Use cases verified: 5/5
+Regressions found: 0
+
+---
