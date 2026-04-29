@@ -159,4 +159,11 @@ def init_db():
         );
     """)
     conn.commit()
+    # Add runtime columns to projects if not present (safe on existing DBs)
+    for col, defn in [("start_command", "TEXT"), ("app_port", "TEXT")]:
+        try:
+            conn.execute(f"ALTER TABLE projects ADD COLUMN {col} {defn}")
+            conn.commit()
+        except Exception:
+            pass  # column already exists
     conn.close()

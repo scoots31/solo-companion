@@ -10,8 +10,8 @@ SL-003: full content sync per active project — phases, deliverables, slices
 Re-sync pattern: each sync is authoritative. For each project, child rows
 (phases, deliverables, slices, materials, decisions, changes, questions,
 flags) are deleted and re-inserted in a single transaction. Projects whose
-backlog format is incompatible with records-spec.md are marked inactive
-and content sync is skipped for them.
+backlog format is incompatible with records-spec.md have content sync
+skipped but remain active in the sidebar.
 """
 
 import json, os, re
@@ -118,16 +118,12 @@ def sync_project_content(conn, project_id, project_name, project_path):
     backlog_path = project_dir / "docs" / "backlog.md"
 
     if not backlog_path.exists():
-        print(f"[sync] {project_name}: docs/backlog.md missing, marking inactive")
-        conn.execute("UPDATE projects SET is_active = 0 WHERE id = ?", (project_id,))
-        conn.commit()
+        print(f"[sync] {project_name}: docs/backlog.md missing, skipping content sync")
         return
 
     backlog_text = backlog_path.read_text()
     if not is_records_spec_format(backlog_text):
-        print(f"[sync] {project_name}: backlog format pre-records-spec, marking inactive")
-        conn.execute("UPDATE projects SET is_active = 0 WHERE id = ?", (project_id,))
-        conn.commit()
+        print(f"[sync] {project_name}: backlog format pre-records-spec, skipping content sync")
         return
 
     backlog_mtime = datetime.fromtimestamp(backlog_path.stat().st_mtime, tz=timezone.utc).isoformat()
@@ -147,6 +143,7 @@ def sync_project_content(conn, project_id, project_name, project_path):
     _sync_questions(c, project_id, project_dir, handoff_open_right_now)
     _sync_flags(c, project_id, handoff_open_right_now)
     _sync_materials(c, project_id, project_dir)
+    _sync_runtime(conn, project_id, project_dir)
 
     conn.commit()
 
@@ -416,6 +413,32 @@ def _sync_materials(c, project_id, project_dir):
                 """, (project_id, phase_name, path.name, mat_type, str(rel)))
             except Exception:
                 pass
+
+
+# ── Runtime fields from tech-context.md ────────────────────────────────
+
+_START_CMD_RE = re.compile(r'\*\*Start command:\*\*\s*`([^`]+)`', re.IGNORECASE)
+_APP_PORT_RE  = re.compile(r'\*\*App port:\*\*\s*`([^`]+)`',      re.IGNORECASE)
+
+
+def _sync_runtime(conn, project_id, project_dir):
+    """Parse start_command and app_port from docs/tech-context.md, store in projects."""
+    tc_path = project_dir / "docs" / "tech-context.md"
+    if not tc_path.exists():
+        return
+    text = tc_path.read_text(encoding="utf-8")
+    cmd_m  = _START_CMD_RE.search(text)
+    port_m = _APP_PORT_RE.search(text)
+    if not cmd_m and not port_m:
+        return
+    conn.execute(
+        "UPDATE projects SET start_command=?, app_port=? WHERE id=?",
+        (
+            cmd_m.group(1).strip()  if cmd_m  else None,
+            port_m.group(1).strip() if port_m else None,
+            project_id,
+        ),
+    )
 
 
 # ── Handoff section reader ──────────────────────────────────────────────
