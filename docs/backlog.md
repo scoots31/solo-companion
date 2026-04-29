@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-018 done — Progress tab: Slice List
+**Last updated:** 2026-04-29 · SL-019 done — Backlog Tab; review URLs written to all Done slices
 **Project status:** Ready for Build
 
 ---
@@ -16,13 +16,13 @@
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 18 |
+| ✓ Done | 19 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-019 |
+| **Next up (Ready, not started)** | SL-020 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -558,6 +558,8 @@ Builder confirmation:
   ✓ app.py minimal — single docstring, no dead code, no premature abstraction
   ✓ Solo browser sign-off — confirmed 2026-04-28 (both routes render correctly)
 
+Review URL: http://localhost:8710
+
 Depends on: none
 Notes: Port 8710 confirmed free before build. Flask runs from ~/Apps/.venv/bin/python3 (venv carries Flask; system python3 does not). Plist copied to ~/Library/LaunchAgents/ and loaded.
 Distribution note: plist has Scott's username hardcoded in app path and python path. Before first public release, an install script must generate the plist dynamically from the installing user's home directory. companion.db is excluded from git — derived data, populated fresh from each user's own framework files on first run.
@@ -602,6 +604,8 @@ Builder confirmation:
   ✓ Inactive marking logic in place — projects whose path no longer exists on disk → is_active = 0; projects no longer present in projects.md → is_active = 0 (history preserved)
   ✓ Dashboard placeholder shows synced project count + list + last-synced time, confirming sync ran on request
   ✓ Solo browser sign-off — confirmed 2026-04-28
+
+Review URL: http://localhost:8710
 
 Depends on: SL-001
 Notes: Sync runs on every dashboard request in Phase 1 — no file watcher. This keeps the implementation simple and covers the primary use case (open app to orient before a session).
@@ -704,6 +708,8 @@ Builder confirmation:
   ✓ player-evaluation correctly marked is_active=0 (legacy format, missing required section headers)
   ✓ Dashboard placeholder shows per-project content counts as proof of population
 
+Review URL: None
+
 Depends on: SL-001, SL-002
 Notes: This is the most complex slice in the build. The markdown parsing must be robust to minor formatting variations in the framework files — the framework does not enforce rigid formatting. Use section-header anchoring (## Section Name) rather than line-number-based parsing. When a section is not found, treat as empty — not an error.
 
@@ -748,6 +754,8 @@ Builder confirmation:
   ✓ /feed route added as placeholder
   ✓ _sidebar_html() + _page() layout wrapper used by all three routes
 
+Review URL: http://localhost:8710
+
 Depends on: SL-002, SL-003
 Notes: Activity Feed route (/feed) renders a placeholder in Phase 1. Do not build the feed — just a page that says it's coming. The sidebar nav item should still appear and be clickable so the sidebar is complete.
 
@@ -783,6 +791,8 @@ Builder confirmation:
   ✓ _relative_synced() returns "just now" / "Xm ago" / "Xh ago" / "Xd ago" / "Xw ago" / "never"
   ✓ POST /sync triggers discover_projects() and redirects 302 to / — confirmed via curl
   ✓ Sync timestamp updates after each refresh click
+
+Review URL: http://localhost:8710
 
 Depends on: SL-002, SL-003
 Notes: None.
@@ -823,6 +833,8 @@ Builder confirmation:
   ✓ Card renders verified: set SL-011 to Blocked in backlog, confirmed card appeared with correct row
   ✓ _open_duration() returns "today" / "Nd" / "Nw" from last_modified ISO timestamp
 
+Review URL: http://localhost:8710
+
 Depends on: SL-003, SL-011
 Notes: Empty state means the card is not rendered — not rendered with a "no blocked items" message. The dashboard should feel clean when everything is unblocked.
 
@@ -861,6 +873,8 @@ Builder confirmation:
   ✓ Empty state verified: card absent from DOM when flags table empty and no flagged slices
   ✓ Card renders verified: added Open right now item to handoff.md, confirmed card appeared with correct row
   ✓ Amber theme (#F59E0B / rgba(217,119,6)) distinct from red blocked card
+
+Review URL: http://localhost:8710
 
 Depends on: SL-003, SL-011
 Notes: "Outstanding questions" items appear in the questions table and surface on the project detail Action tab, not in the Flagged card on the dashboard. The dashboard Flagged card shows stale progress and open handoff items only.
@@ -901,6 +915,8 @@ Builder confirmation:
   ✓ Verified: Phase 2 set to In Progress → row rendered with "4/10" and progress bar
   ✓ _bucket_section() helper introduced for Deliverables + Slices buckets to reuse
 
+Review URL: http://localhost:8710
+
 Depends on: SL-003, SL-013
 Notes: None.
 
@@ -938,6 +954,8 @@ Builder confirmation:
   ✓ Consistent layout with phases and slices buckets
   ✓ Project filter deferred — meaningful only when 2+ active projects exist
 
+Review URL: http://localhost:8710
+
 Depends on: SL-003, SL-012
 Notes: None.
 
@@ -974,6 +992,8 @@ Builder confirmation:
   ✓ Project name + slice ID as label above slice name, consistent with phases and deliverables layout
   ✓ Status pills distinguish Ready vs in-flight states
   ✓ Project filter deferred — meaningful only when 2+ active projects exist
+
+Review URL: http://localhost:8710
 
 Depends on: SL-003, SL-011
 Notes: Ready slices are not shown here — they haven't started. Done slices are not shown — they're complete. This bucket is the "in flight" view only.
@@ -1016,6 +1036,8 @@ Builder confirmation:
   ✓ Hover states on slice rows in dashboard buckets
   ✓ Verified 24/24 field checks against SL-003 real record
 
+Review URL: http://localhost:8710
+
 Depends on: SL-003
 Notes: The four anchors section reads the anchor fields directly from the slice record. Quality gate statuses in Phase 1 are derived from slice status — not separate fields. A slice In Progress has code review and QA as pending. A slice Done has all four gates shown as confirmed.
 
@@ -1049,6 +1071,8 @@ Self-verification checklist:
 Builder confirmation:
 Pending build
 
+Review URL: http://localhost:8710
+
 Depends on: SL-003
 Notes: None.
 
@@ -1081,6 +1105,8 @@ Self-verification checklist:
 
 Builder confirmation:
 Pending build
+
+Review URL: http://localhost:8710
 
 Depends on: SL-003
 Notes: None.
@@ -1127,6 +1153,8 @@ Builder confirmation:
   ✓ Sidebar highlights active project with color-matched left border
   ✓ Solo browser sign-off confirmed 2026-04-28
 
+Review URL: http://localhost:8710/project/solo-companion
+
 Depends on: SL-003, SL-004
 Notes: None.
 
@@ -1169,6 +1197,8 @@ Builder confirmation:
   ✓ Action tab count badge updates correctly (blocked + flags + flagged_slices + questions)
   ✓ Verified all three cards with test data injected directly into SQLite — solo browser sign-off confirmed 2026-04-28
 
+Review URL: http://localhost:8710/project/solo-companion?tab=action
+
 Depends on: SL-003, SL-011, SL-014
 Notes: None.
 
@@ -1202,6 +1232,8 @@ Self-verification checklist:
 Builder confirmation:
 Phase summary card renders from live SQLite. Gate status derived from slice completion (3/3 Done → Cleared for Phase 1). Progress bar and 4-bucket counts correct. Card opens phase overlay on click. Server verified 200, HTML confirmed.
 
+Review URL: http://localhost:8710/project/solo-companion?tab=progress
+
 Depends on: SL-003, SL-013, SL-014
 Notes: phases.status raw field (from backlog.md) is separate from derived gate status — gate is computed at render time, not read from the status field.
 
@@ -1233,6 +1265,8 @@ Self-verification checklist:
 
 Builder confirmation:
 5 deliverables rendered for Phase 3. Status derived from slice completion: D-04 Done (2/2 slices Done), D-05–D-08 Ready (slices not yet In Progress). Slice count per deliverable from JOIN. Row click opens deliverable overlay (200 verified). Phase status fields updated in backlog.md (Phase 1/2 Done, Phase 3 In Progress) so companion correctly identifies current phase.
+
+Review URL: http://localhost:8710/project/solo-companion?tab=progress
 
 Depends on: SL-003, SL-012, SL-016
 Notes: Deliverable status is derived at render time from slices, not from deliverables.status raw field (which stores acceptance status, not build status).
@@ -1271,18 +1305,20 @@ Builder confirmation:
   ✓ Slice list renders for all 9 Phase 3 slices (SL-014–SL-022) with correct ID, name, deliverable, and status
   ✓ Done slices (SL-014–SL-017) show teal badge; Ready slices (SL-018–SL-022) show muted badge
   ✓ Row click opens slice overlay with "Already on this project" footer — verified SL-018 overlay
-  ✓ Review button absent (no review_url in SQLite yet — correct, Phase 4 wires this)
+  ✓ Review button absent (no review_url in SQLite yet — correct, Review URL written to all Done slices retroactively 2026-04-29)
   ✓ Section header shows "9 in phase" count
   ✓ Solo browser sign-off confirmed 2026-04-29
 
+Review URL: http://localhost:8710/project/solo-companion?tab=progress
+
 Depends on: SL-003, SL-011, SL-017, SL-024
-Notes: Port check for "is the app running" is a synchronous GET to the app's port from tech-context.md. Timeout 500ms. If the port is not responding, Show Start & Review. SL-024 handles the start command execution. Review button deferred — no review_url populated until Phase 4 framework curator change lands.
+Notes: Port check for "is the app running" is a synchronous GET to the app's port from tech-context.md. Timeout 500ms. If the port is not responding, Show Start & Review. SL-024 handles the start command execution.
 
 ---
 
 ### SL-019 · Backlog Tab
 
-Status: Ready
+Status: Done
 Phase: 3
 Deliverable: D-06
 
@@ -1308,7 +1344,14 @@ Self-verification checklist:
   - Confirm each overlay type opens correctly
 
 Builder confirmation:
-Pending build
+  ✓ All 4 phases render with name, progress bar (done/total slices), and status badge — upcoming phases dimmed at 0.5 opacity
+  ✓ All 9 deliverables render with phase label, name, and status — ordering by phase then deliverable_id
+  ✓ All 24 slices render with slice_id, name, deliverable name, and status badge — across all phases
+  ✓ Planning/Upcoming slices dimmed at 0.5 opacity; active slices at full opacity
+  ✓ Phase rows open phase overlay; deliverable rows open deliverable overlay; slice rows open slice overlay
+  ✓ Solo browser sign-off confirmed 2026-04-29
+
+Review URL: http://localhost:8710/project/solo-companion?tab=backlog
 
 Depends on: SL-003, SL-011, SL-012, SL-013, SL-014
 Notes: None.
