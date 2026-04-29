@@ -30,6 +30,9 @@ Nothing blocked. SL-007 is next.
 
 None blocking. One open commitment: Phase 5 — Distribution (README, install script, plist templating, config.json setup) to be defined before Phase 4 wraps.
 
+**Framework curator review — player-evaluation legacy format:**
+player-evaluation is currently excluded from Solo Companion (`is_active=0`) because its backlog uses a legacy format that predates the records-spec. It doesn't have `plain_description`, `technical_description`, or other labeled fields the sync layer expects. Question for the curator: can the player-evaluation backlog be migrated to records-spec format so it can sync into the companion app? The overlay handles missing fields gracefully (sections are hidden, not crashed) — so a partial migration would still render. This needs a human to review the player-evaluation backlog and assess the migration cost.
+
 ## Next session picks up at
 
 **SL-004 — Sidebar (Project List, Recency, Navigation).** First UI slice. Spec:
