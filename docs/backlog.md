@@ -10,7 +10,7 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 6 |
+| ✅ Ready | 0 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
@@ -22,7 +22,7 @@
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-025 |
+| **Next up (Ready, not started)** | — |
 | **Blocked — waiting on** | — |
 | **Open spikes** | — |
 
