@@ -1023,7 +1023,7 @@ Notes: The four anchors section reads the anchor fields directly from the slice 
 
 ### SL-012 · Overlay — Deliverable Panel
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-03
 
@@ -1056,7 +1056,7 @@ Notes: None.
 
 ### SL-013 · Overlay — Phase Panel
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-03
 
