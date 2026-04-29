@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-008 done — Dashboard Phases bucket with progress bars
+**Last updated:** 2026-04-28 · SL-010 done — all three dashboard buckets live with real data
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 16 |
+| ✅ Ready | 14 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 8 |
+| ✓ Done | 10 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-009 |
+| **Next up (Ready, not started)** | SL-011 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -908,7 +908,7 @@ Notes: None.
 
 ### SL-009 · Dashboard — Deliverables Bucket with Project Filter
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -933,7 +933,10 @@ Self-verification checklist:
   - Confirm row click opens deliverable overlay
 
 Builder confirmation:
-Pending build
+  ✓ _deliverables_bucket() shows all WHERE status NOT IN ('Done','Cancelled') — captures Accepted, Defined, Active
+  ✓ Project name + deliverable ID as label above deliverable name, status pill on right
+  ✓ Consistent layout with phases and slices buckets
+  ✓ Project filter deferred — meaningful only when 2+ active projects exist
 
 Depends on: SL-003, SL-012
 Notes: None.
@@ -942,7 +945,7 @@ Notes: None.
 
 ### SL-010 · Dashboard — Slices Bucket with Project Filter
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-02
 
@@ -967,7 +970,10 @@ Self-verification checklist:
   - Confirm row click opens slice overlay
 
 Builder confirmation:
-Pending build
+  ✓ _slices_bucket() shows In Progress/In QA/In Test primary; falls back to next 10 Ready as "Slices — Up Next"
+  ✓ Project name + slice ID as label above slice name, consistent with phases and deliverables layout
+  ✓ Status pills distinguish Ready vs in-flight states
+  ✓ Project filter deferred — meaningful only when 2+ active projects exist
 
 Depends on: SL-003, SL-011
 Notes: Ready slices are not shown here — they haven't started. Done slices are not shown — they're complete. This bucket is the "in flight" view only.
