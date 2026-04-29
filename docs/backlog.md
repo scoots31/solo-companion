@@ -1,5 +1,5 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-28 · SL-010 done — all three dashboard buckets live with real data
+**Last updated:** 2026-04-28 · SL-011 done — Slice overlay panel with all 17 spec fields
 **Project status:** Ready for Build
 
 ---
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 14 |
+| ✅ Ready | 13 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 10 |
+| ✓ Done | 11 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up (Ready, not started)** | SL-011 |
+| **Next up (Ready, not started)** | SL-012 |
 | **Blocked — waiting on** | SL-024 (framework curator change — review_url + start_command) |
 | **Open spikes** | — |
 
@@ -982,7 +982,7 @@ Notes: Ready slices are not shown here — they haven't started. Done slices are
 
 ### SL-011 · Overlay — Slice Panel
 
-Status: Ready
+Status: Done
 Phase: 2
 Deliverable: D-03
 
@@ -1008,7 +1008,13 @@ Self-verification checklist:
   - Confirm backdrop click dismisses without navigating
 
 Builder confirmation:
-Pending build
+  ✓ All 17 spec fields rendered: slice_id/name/status/phase/deliverable, plain + technical descriptions, four anchors 2×2 grid, done criteria, self-verification, references, quality gates, depends on, notes, distribution note
+  ✓ Quality gates derived from status: code review and QA ✓ on Done, code review ✓ on In QA/In Test
+  ✓ Builder confirmation gate: ✓ when list is non-empty and not "Pending build"
+  ✓ Backdrop click, ✕ button, Escape key all dismiss
+  ✓ "Take me to this project" / "Already on this project" (disabled) footer states verified
+  ✓ Hover states on slice rows in dashboard buckets
+  ✓ Verified 24/24 field checks against SL-003 real record
 
 Depends on: SL-003
 Notes: The four anchors section reads the anchor fields directly from the slice record. Quality gate statuses in Phase 1 are derived from slice status — not separate fields. A slice In Progress has code review and QA as pending. A slice Done has all four gates shown as confirmed.
