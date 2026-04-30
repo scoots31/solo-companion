@@ -22,13 +22,16 @@ SL-011: Overlay — Slice panel. All 17 spec fields, quality gates derived
 import json
 import os
 import re
+import socket
 import subprocess
+import threading
 import time
 from datetime import datetime, timezone
 from flask import Flask, redirect, request, url_for
 
 from db import get_conn, init_db
 from sync import discover_projects, get_last_synced
+from push import push_snapshot, register_universe
 
 PORT = 8710
 app = Flask(__name__)
@@ -134,6 +137,7 @@ def _sidebar_html(projects, active_name=None):
         "Views</div>"
         + nav_link("Dashboard", "/")
         + nav_link("Activity Feed", "/feed")
+        + nav_link("Cloud Settings", "/settings")
         + "</div>"
     )
 
@@ -2960,6 +2964,7 @@ def activity_feed():
 @app.route("/sync", methods=["POST"])
 def sync():
     discover_projects()
+    threading.Thread(target=push_snapshot, daemon=True).start()
     referrer = request.referrer or ""
     if "/feed" in referrer:
         return redirect(url_for("activity_feed"))
@@ -3135,6 +3140,137 @@ def start_and_review():
             time.sleep(0.5)
 
     return {"ok": False, "error": f"App did not respond on port {port} within 10 seconds."}
+
+
+# ── Cloud settings page ──────────────────────────────────────────────────
+
+CLOUD_CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+
+
+def _load_cloud_config():
+    if os.path.exists(CLOUD_CONFIG_FILE):
+        with open(CLOUD_CONFIG_FILE) as f:
+            return json.load(f)
+    return {}
+
+
+def _save_cloud_config(cfg):
+    with open(CLOUD_CONFIG_FILE, "w") as f:
+        json.dump(cfg, f, indent=2)
+
+
+@app.route("/settings", methods=["GET", "POST"])
+def settings():
+    cfg = _load_cloud_config()
+    saved_msg = ""
+    viewer_url = cfg.get("viewer_url", "")
+
+    if request.method == "POST":
+        universe = request.form.get("universe", "").strip()
+        machine_label = request.form.get("machine_label", "").strip()
+        if not machine_label:
+            machine_label = socket.gethostname().replace(".local", "").replace("-", " ").title()
+        if universe:
+            cfg["universe"] = universe
+            cfg["machine_label"] = machine_label
+            cfg["machine_id"] = machine_label.lower().replace(" ", "-")
+            cfg["framework_path"] = cfg.get("framework_path", "~/Developer/engineering-playbook")
+            _save_cloud_config(cfg)
+            # Register and get viewer URL
+            vurl = register_universe(universe, machine_label)
+            if vurl:
+                cfg["viewer_url"] = vurl
+                viewer_url = vurl
+                _save_cloud_config(cfg)
+                saved_msg = "saved"
+                # Push initial snapshot
+                threading.Thread(target=push_snapshot, daemon=True).start()
+            else:
+                saved_msg = "error"
+
+    universe_val = cfg.get("universe", "")
+    machine_val = cfg.get("machine_label", socket.gethostname().replace(".local", "").replace("-", " ").title())
+
+    status_html = ""
+    if saved_msg == "saved":
+        status_html = (
+            "<div style='background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.25);"
+            "border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#4ade80;'>"
+            "Settings saved. Universe registered."
+            "</div>"
+        )
+    elif saved_msg == "error":
+        status_html = (
+            "<div style='background:rgba(248,113,113,0.08);border:1px solid rgba(248,113,113,0.25);"
+            "border-radius:6px;padding:12px 16px;margin-bottom:20px;font-size:13px;color:#f87171;'>"
+            "Could not reach the cloud service. Check your connection and try again."
+            "</div>"
+        )
+
+    viewer_block = ""
+    if viewer_url:
+        viewer_block = (
+            "<div style='margin-top:24px;padding:16px;background:rgba(232,151,28,0.06);"
+            "border:1px solid rgba(232,151,28,0.2);border-radius:8px;'>"
+            "<div style='font-size:11px;font-weight:600;color:rgba(255,255,255,0.4);"
+            "letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;'>Your Viewer URL</div>"
+            f"<a href='{viewer_url}' target='_blank' style='color:#E8971C;font-size:14px;"
+            f"text-decoration:none;word-break:break-all;'>{viewer_url}</a>"
+            "<div style='margin-top:8px;font-size:12px;color:rgba(255,255,255,0.4);'>"
+            "Share this link — it shows your live project state to anyone you send it to.</div>"
+            "</div>"
+        )
+
+    label = "<label style='display:block;font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px;'>"
+    inp = ("style='width:100%;background:#0d0c0b;border:1px solid rgba(255,255,255,0.12);"
+           "border-radius:6px;padding:9px 12px;color:#EDE8E0;font-size:14px;"
+           "font-family:DM Sans,sans-serif;outline:none;'")
+
+    main_html = (
+        "<div style='max-width:520px;padding:32px;'>"
+        "<div style='font-size:22px;font-weight:600;color:#EDE8E0;margin-bottom:6px;'>"
+        "Cloud Settings</div>"
+        "<div style='font-size:13px;color:rgba(255,255,255,0.4);margin-bottom:28px;'>"
+        "Connect Solo Companion to your cloud viewer. "
+        "Anyone with your viewer URL can see your live project state.</div>"
+        + status_html
+        + "<form method='POST'>"
+        + "<div style='margin-bottom:18px;'>"
+        + label + "Universe name</label>"
+        + f"<input name='universe' type='text' placeholder='e.g. 616' value='{universe_val}' {inp}>"
+        + "<div style='font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;'>"
+        + "The same name on every machine you own = all your data in one view. "
+        + "Different names = isolated views.</div>"
+        + "</div>"
+        + "<div style='margin-bottom:24px;'>"
+        + label + "Machine label</label>"
+        + f"<input name='machine_label' type='text' placeholder='{machine_val}' value='{machine_val}' {inp}>"
+        + "<div style='font-size:11px;color:rgba(255,255,255,0.3);margin-top:5px;'>"
+        + "How this machine appears in the viewer (e.g. Home MacBook, Work Laptop).</div>"
+        + "</div>"
+        + "<button type='submit' style='background:#E8971C;color:#090806;border:none;"
+        + "border-radius:6px;padding:9px 20px;font-size:13px;font-weight:600;"
+        + "cursor:pointer;font-family:DM Sans,sans-serif;'>Save &amp; Register</button>"
+        + "</form>"
+        + viewer_block
+        + "</div>"
+    )
+
+    conn = get_conn()
+    projects = conn.execute("SELECT name, path FROM projects WHERE is_active=1 ORDER BY name").fetchall()
+    conn.close()
+    return _page(_sidebar_html(projects), main_html, title="Solo Companion — Cloud Settings")
+
+
+# ── Background push timer (every 15 minutes) ────────────────────────────
+
+def _background_push_loop():
+    while True:
+        time.sleep(15 * 60)
+        push_snapshot()
+
+
+threading.Thread(target=_background_push_loop, daemon=True).start()
 
 
 if __name__ == "__main__":
