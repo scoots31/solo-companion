@@ -121,6 +121,8 @@ def build_snapshot(cfg):
             "id": pid,
             "name": p["name"],
             "last_synced": p["last_synced"],
+            "autopilot_mode": p["autopilot_mode"],
+            "refinement_cycle": p["refinement_cycle"],
             "phases": phases,
             "deliverables": deliverables,
             "slices": slices,

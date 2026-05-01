@@ -150,6 +150,7 @@ def sync_project_content(conn, project_id, project_name, project_path):
     _sync_flags(c, project_id, handoff_open_right_now)
     _sync_materials(c, project_id, project_dir)
     _sync_runtime(conn, project_id, project_dir)
+    _sync_autopilot_state(conn, project_id, project_dir)
 
     # Diff before/after and append event rows
     _write_events(c, project_id, project_name, before_slices, before_del_done,
@@ -449,6 +450,28 @@ def _sync_runtime(conn, project_id, project_dir):
             port_m.group(1).strip() if port_m else None,
             project_id,
         ),
+    )
+
+
+def _sync_autopilot_state(conn, project_id, project_dir):
+    """Parse Mode and Refinement cycle from docs/continuity/current-phase.md, store in projects."""
+    cp_path = project_dir / "docs" / "continuity" / "current-phase.md"
+    if not cp_path.exists():
+        return
+    text = cp_path.read_text(encoding="utf-8")
+    mode_m = re.search(r"^Mode:\s*(.+)$", text, re.MULTILINE | re.IGNORECASE)
+    cycle_m = re.search(r"^Refinement cycle:\s*(.+)$", text, re.MULTILINE | re.IGNORECASE)
+    if not mode_m and not cycle_m:
+        return
+    mode = mode_m.group(1).strip().lower() if mode_m else None
+    cycle_raw = cycle_m.group(1).strip() if cycle_m else None
+    try:
+        cycle = int(cycle_raw) if cycle_raw and cycle_raw.lower() not in ("none", "0", "") else None
+    except ValueError:
+        cycle = None
+    conn.execute(
+        "UPDATE projects SET autopilot_mode=?, refinement_cycle=? WHERE id=?",
+        (mode, cycle, project_id),
     )
 
 
