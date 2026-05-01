@@ -280,10 +280,10 @@ def _sync_slices(c, project_id, backlog_text, backlog_mtime, open_right_now):
               (project_id, slice_id, name, status, phase, deliverable_ref,
                plain_description, technical_description,
                design_anchor, data_anchor, process_anchor,
-               references_list, done_criteria, self_verification, builder_confirmation,
+               references_list, done_criteria, quality_contract, self_verification, builder_confirmation,
                depends_on, notes, distribution_note,
                is_blocked, is_flagged, flagged_reason, review_url, last_modified)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             project_id,
             slice_id,
@@ -298,6 +298,7 @@ def _sync_slices(c, project_id, backlog_text, backlog_mtime, open_right_now):
             _scalar(fields.get("Process anchor")),
             _list_or_none(fields.get("References")),
             _list_or_none(fields.get("Done criteria")),
+            _list_or_none(fields.get("Quality contract")),
             _list_or_none(fields.get("Self-verification checklist")),
             _list_or_none(fields.get("Builder confirmation")),
             _scalar(fields.get("Depends on")),

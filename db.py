@@ -89,6 +89,7 @@ def init_db():
             process_anchor           TEXT,
             references_list          TEXT,                -- JSON array
             done_criteria            TEXT,                -- JSON array
+            quality_contract         TEXT,                -- JSON array
             self_verification        TEXT,                -- JSON array
             builder_confirmation     TEXT,                -- JSON array
             depends_on               TEXT,
@@ -178,4 +179,10 @@ def init_db():
             conn.commit()
         except Exception:
             pass  # column already exists
+    # Add quality_contract column to slices if not present (safe on existing DBs)
+    try:
+        conn.execute("ALTER TABLE slices ADD COLUMN quality_contract TEXT")
+        conn.commit()
+    except Exception:
+        pass  # column already exists
     conn.close()

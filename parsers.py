@@ -171,6 +171,7 @@ SLICE_FIELDS = (
     "Process anchor",
     "References",
     "Done criteria",
+    "Quality contract",
     "Self-verification checklist",
     "Builder confirmation",
     "Review URL",
