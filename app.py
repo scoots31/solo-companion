@@ -23,6 +23,7 @@ import json
 import os
 import re
 import socket
+import sqlite3
 import subprocess
 import threading
 import time
@@ -3266,6 +3267,38 @@ def settings():
 # ── Search ──────────────────────────────────────────────────────────────
 
 MEMPALACE_CLI = "/Users/scottheinemeier/Apps/.venv/bin/mempalace"
+MEMPALACE_CHROMA = os.path.expanduser("~/.mempalace/palace/chroma.sqlite3")
+
+
+def _get_full_mem_content(source):
+    """Reconstruct full source content from chroma DB chunks, ordered by embedding ID."""
+    if not source or not os.path.exists(MEMPALACE_CHROMA):
+        return None
+    try:
+        conn = sqlite3.connect(MEMPALACE_CHROMA)
+        rows = conn.execute("""
+            SELECT em_doc.string_value
+            FROM embeddings e
+            JOIN embedding_metadata em_src ON e.id=em_src.id AND em_src.key='source_file'
+            JOIN embedding_metadata em_doc ON e.id=em_doc.id AND em_doc.key='chroma:document'
+            WHERE em_src.string_value LIKE ?
+            ORDER BY e.id
+        """, (f"%{source}%",)).fetchall()
+        conn.close()
+        if not rows:
+            return None
+        # Chunks overlap slightly at boundaries — deduplicate by checking each chunk
+        # starts where the previous one doesn't already cover
+        parts = [rows[0][0]]
+        for row in rows[1:]:
+            chunk = row[0]
+            # Only append if this chunk adds new content beyond what we already have
+            tail = parts[-1][-100:] if len(parts[-1]) > 100 else parts[-1]
+            if chunk[:50] not in tail:
+                parts.append(chunk)
+        return "\n\n".join(parts)
+    except Exception:
+        return None
 
 
 _STOP_WORDS = {
@@ -3404,6 +3437,7 @@ def _search_sqlite(query):
 
 def _parse_mempalace_output(output):
     results = []
+    full_cache = {}  # source → full content, avoid duplicate DB queries
     blocks = re.split(r'\n\s*[─=]{20,}[─=\s]*\n', output)
     for block in blocks:
         if not block.strip():
@@ -3414,13 +3448,16 @@ def _parse_mempalace_output(output):
         wing, room = m.group(2).strip(), m.group(3).strip()
         source_m = re.search(r'Source:\s*(.+)', block)
         cosine_m = re.search(r'cosine=([\d.]+)', block)
-        # content follows the blank line after Match:
         content_m = re.search(r'Match:[^\n]*\n\n(.+)', block, re.DOTALL)
+        source = source_m.group(1).strip() if source_m else ""
+        excerpt = content_m.group(1).strip() if content_m else block.strip()
+        if source not in full_cache:
+            full_cache[source] = _get_full_mem_content(source)
         results.append({
-            "wing": wing, "room": room,
-            "source": source_m.group(1).strip() if source_m else "",
+            "wing": wing, "room": room, "source": source,
             "cosine": float(cosine_m.group(1)) if cosine_m else 0.0,
-            "content": content_m.group(1).strip() if content_m else block.strip(),
+            "content": excerpt,
+            "full_content": full_cache[source] or excerpt,
         })
     return results
 
@@ -3543,7 +3580,8 @@ def search():
     mem_json = json.dumps([
         {"wing": r.get("wing",""), "room": r.get("room",""),
          "source": r.get("source",""), "cosine": r.get("cosine", 0),
-         "content": r.get("content","")}
+         "content": r.get("content",""),
+         "full_content": r.get("full_content", r.get("content",""))}
         for r in (mem_results or [])
     ], ensure_ascii=False)
     overlay_js = (
@@ -3610,7 +3648,7 @@ def search():
         "    '</div>'+"
         "    '<div style=\"padding:20px 24px;overflow-y:auto;flex:1;\">'+"
         "      '<div style=\"font-size:13px;color:rgba(255,255,255,0.75);line-height:1.8;"
-        "white-space:pre-wrap;font-family:ui-monospace,monospace;\">'+r.content+'</div>'+"
+        "white-space:pre-wrap;font-family:ui-monospace,monospace;\">'+(r.full_content||r.content)+'</div>'+"
         "    '</div>'+"
         "  '</div>';"
         "  document.getElementById('overlay-root').innerHTML=html;"
