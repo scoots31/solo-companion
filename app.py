@@ -3469,15 +3469,28 @@ def search():
 
     # Search box
     search_html = (
-        "<form method='get' action='/search' style='margin-bottom:32px;'>"
+        "<form id='search-form' method='get' action='/search' style='margin-bottom:32px;'>"
         "<div style='display:flex;gap:10px;'>"
         "<input name='q' value='" + (query or "") + "' placeholder='Search decisions, changes, questions, slices…' autofocus "
         "style='flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);"
         "border-radius:8px;padding:10px 14px;color:#EDE8E0;font-size:14px;outline:none;' />"
-        "<button type='submit' style='background:#E8971C;border:none;border-radius:8px;"
+        "<button id='search-btn' type='submit' style='background:#E8971C;border:none;border-radius:8px;"
         "padding:10px 20px;color:#090806;font-size:13px;font-weight:700;cursor:pointer;'>Search</button>"
         "</div>"
+        "<div id='search-status' style='display:none;margin-top:12px;font-size:13px;"
+        "color:rgba(255,255,255,0.45);'>"
+        "<span style='display:inline-block;animation:pulse 1.2s ease-in-out infinite;'>Searching…</span>"
+        "</div>"
         "</form>"
+        "<style>@keyframes pulse{0%,100%{opacity:.45}50%{opacity:1}}</style>"
+        "<script>"
+        "document.getElementById('search-form').addEventListener('submit',function(){"
+        "  document.getElementById('search-status').style.display='block';"
+        "  var btn=document.getElementById('search-btn');"
+        "  btn.textContent='Searching…';btn.disabled=true;"
+        "  btn.style.opacity='0.5';btn.style.cursor='default';"
+        "});"
+        "</script>"
     )
 
     # Results sections
