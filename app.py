@@ -140,6 +140,7 @@ def _sidebar_html(projects, active_name=None):
         + nav_link("Dashboard", "/")
         + nav_link("Activity Feed", "/feed")
         + nav_link("Search", "/search")
+        + nav_link("Capture", "/capture")
         + nav_link("Cloud Settings", "/settings")
         + "</div>"
     )
@@ -3269,11 +3270,24 @@ def settings():
 
 MEMPALACE_CLI = "/Users/scottheinemeier/Apps/.venv/bin/mempalace"
 MEMPALACE_CHROMA = os.path.expanduser("~/.mempalace/palace/chroma.sqlite3")
+CAPTURES_DIR = os.path.expanduser("~/Developer/mempalace-captures")
 
 
 def _strip_tunnels(text):
-    """Strip MemPalace tunnel references (||→drawer_...) from chunk text."""
-    return re.sub(r'\|\|→[^\n]*', '', text).strip()
+    """Strip MemPalace tunnel references and tag metadata from chunk text.
+    MemPalace format: content|tags|→drawer_id1,drawer_id2,...
+    Handles the intact form and chunk-boundary splits."""
+    # Main tunnel: |→ to end of line (single pipe + unicode arrow)
+    text = re.sub(r'\|→[^\n]*', '', text)
+    # Intact double-pipe form just in case: ||→ to end of line
+    text = re.sub(r'\|\|→[^\n]*', '', text)
+    # Leftover →drawer_ lines (chunk split right before the arrow)
+    text = re.sub(r'→drawer_[^\n]*', '', text)
+    # Lines that are only drawer ID continuation text (e.g. "drawer_Foo System_general_abc,drawer_...")
+    text = re.sub(r'^drawer_[^\n]*', '', text, flags=re.MULTILINE)
+    # Strip MemPalace tag section: |Word;Word;Word at end of line (semicolon-separated single-word tags)
+    text = re.sub(r'\|[A-Za-z]+(?:;[A-Za-z]+)+\s*$', '', text, flags=re.MULTILINE)
+    return text.strip()
 
 
 def _clean_mem_content(text):
@@ -3294,6 +3308,16 @@ def _clean_mem_content(text):
         text = '\n'.join(lines)
     text = re.sub(r'\n{3,}', '\n\n', re.sub(r'[ \t]+', ' ', text))
     return text.strip()
+
+
+def _strip_nav_header(text):
+    """Drop leading short lines (nav/TOC) from HTML-sourced content.
+    Keeps everything from the first line that has more than 8 words."""
+    lines = text.split('\n')
+    for i, line in enumerate(lines):
+        if len(line.split()) > 8:
+            return '\n'.join(lines[i:]).strip()
+    return text
 
 
 def _get_full_mem_content(source):
@@ -3321,7 +3345,10 @@ def _get_full_mem_content(source):
             tail = parts[-1][-100:] if len(parts[-1]) > 100 else parts[-1]
             if chunk[:50] not in tail:
                 parts.append(chunk)
-        return _clean_mem_content("\n\n".join(p for p in parts if p))
+        cleaned = _clean_mem_content("\n\n".join(p for p in parts if p))
+        if source.endswith('.html'):
+            cleaned = _strip_nav_header(cleaned)
+        return cleaned
     except Exception:
         return None
 
@@ -3480,6 +3507,7 @@ def _parse_mempalace_output(output):
             full_cache[source] = _get_full_mem_content(source)
         results.append({
             "wing": wing, "room": room, "source": source,
+            "source_label": os.path.basename(source) if source else "",
             "cosine": float(cosine_m.group(1)) if cosine_m else 0.0,
             "content": excerpt,
             "full_content": full_cache[source] or excerpt,
@@ -3488,17 +3516,33 @@ def _parse_mempalace_output(output):
 
 
 def _search_mempalace(query):
+    """Run two passes against MemPalace — natural language + keyword-only — and
+    merge, keeping the highest cosine score per source. Returns top 12 by score."""
     if not os.path.exists(MEMPALACE_CLI):
         return None
     try:
-        result = subprocess.run(
-            [MEMPALACE_CLI, "search", query],
-            capture_output=True, text=True, timeout=15
-        )
-        output = result.stdout.strip()
-        if not output:
-            return []
-        return _parse_mempalace_output(output)
+        tokens = _tokenize_query(query)
+        keyword_query = " ".join(tokens) if tokens else query
+
+        # Fire both queries concurrently
+        procs = {}
+        for label, q in [("nl", query), ("kw", keyword_query)]:
+            if q:
+                procs[label] = subprocess.Popen(
+                    [MEMPALACE_CLI, "search", q, "--results", "15"],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+                )
+
+        # Collect and merge, best score per source wins
+        by_source = {}
+        for label, proc in procs.items():
+            stdout, _ = proc.communicate(timeout=20)
+            for r in _parse_mempalace_output(stdout.strip()):
+                src = r["source"]
+                if src not in by_source or r["cosine"] > by_source[src]["cosine"]:
+                    by_source[src] = r
+
+        return sorted(by_source.values(), key=lambda r: r["cosine"], reverse=True)[:12]
     except Exception:
         return None
 
@@ -3527,7 +3571,7 @@ def search():
         if r.get("date"):    meta_parts.append(r["date"][:10] if r["date"] else "")
         meta = " · ".join(p for p in meta_parts if p)
         body_text = r["body"][:300] + ("…" if len(r["body"]) > 300 else "") if r.get("body") else ""
-        body = f"<div style='font-size:12px;color:rgba(255,255,255,0.55);margin-top:8px;line-height:1.6;white-space:pre-wrap;'>{body_text}</div>" if body_text else ""
+        body = f"<div style='font-size:12px;color:rgba(255,255,255,0.55);margin-top:8px;line-height:1.6;'>{html_mod.escape(body_text)}</div>" if body_text else ""
         hint = "<div style='font-size:10px;color:rgba(255,255,255,0.2);margin-top:8px;'>Click to expand</div>"
         return (
             f"<div onclick='openSearchResultOverlay({idx})' "
@@ -3549,18 +3593,19 @@ def search():
         pct = int(r["cosine"] * 100)
         score_color = "#4ADE80" if pct >= 70 else "#FCD34D" if pct >= 50 else "rgba(255,255,255,0.3)"
         raw = r["content"]
-        content_text = html_mod.escape(raw[:400] + ("…" if len(raw) > 400 else ""))
+        content_text = html_mod.escape(raw[:300] + ("…" if len(raw) > 300 else ""))
+        source_label = html_mod.escape(r.get("source_label", ""))
         return (
             f"<div onclick='openMemResultOverlay({idx})' "
             f"style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
             f"border-radius:8px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;' "
             f"onmouseover=\"this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.05)'\" "
             f"onmouseout=\"this.style.borderColor='rgba(255,255,255,0.07)';this.style.background='rgba(255,255,255,0.03)'\">"
-            f"<div style='display:flex;justify-content:flex-end;margin-bottom:8px;'>"
+            f"<div style='display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;'>"
+            f"<span style='font-size:10px;color:rgba(255,255,255,0.3);font-family:ui-monospace,monospace;'>{source_label}</span>"
             f"<span style='font-size:10px;font-weight:600;color:{score_color};'>{pct}% match</span>"
             f"</div>"
-            f"<div style='font-size:12px;color:rgba(255,255,255,0.6);line-height:1.7;white-space:pre-wrap;"
-            f"font-family:ui-monospace,monospace;'>{content_text}</div>"
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.6);line-height:1.7;'>{content_text}</div>"
             f"<div style='font-size:10px;color:rgba(255,255,255,0.2);margin-top:8px;'>Click to expand</div>"
             f"</div>"
         )
@@ -3601,23 +3646,53 @@ def search():
     ], ensure_ascii=False)
     mem_json = json.dumps([
         {"wing": r.get("wing",""), "room": r.get("room",""),
-         "source": r.get("source",""), "cosine": r.get("cosine", 0),
+         "source": r.get("source",""),
+         "source_label": r.get("source_label",""),
+         "cosine": r.get("cosine", 0),
          "content": r.get("content",""),
          "full_content": r.get("full_content", r.get("content",""))}
         for r in (mem_results or [])
     ], ensure_ascii=False)
     overlay_js = (
         "<script>"
+        "function _esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}"
+        "function _inlineMd(s){"
+        "  s=s.replace(/`([^`]+)`/g,'<code style=\"font-family:ui-monospace,monospace;font-size:11px;"
+        "background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;color:#E8971C;\">$1</code>');"
+        "  s=s.replace(/\\*\\*([^*]+)\\*\\*/g,'<strong style=\"color:#EDE8E0;font-weight:600;\">$1</strong>');"
+        "  s=s.replace(/\\*([^*]+)\\*/g,'<em style=\"color:rgba(255,255,255,0.7);\">$1</em>');"
+        "  return s;"
+        "}"
+        "function _md(text){"
+        "  if(!text)return '';"
+        "  var lines=text.split('\\n');var out=[];"
+        "  for(var i=0;i<lines.length;i++){"
+        "    var l=lines[i];"
+        "    if(/^### /.test(l)){out.push('<div style=\"font-size:12px;font-weight:700;color:#EDE8E0;"
+        "margin:14px 0 3px;\">'+_inlineMd(_esc(l.slice(4)))+'</div>');}"
+        "    else if(/^## /.test(l)){out.push('<div style=\"font-size:13px;font-weight:700;color:#EDE8E0;"
+        "margin:16px 0 5px;\">'+_inlineMd(_esc(l.slice(3)))+'</div>');}"
+        "    else if(/^# /.test(l)){out.push('<div style=\"font-size:15px;font-weight:700;color:#EDE8E0;"
+        "margin:18px 0 7px;\">'+_inlineMd(_esc(l.slice(2)))+'</div>');}"
+        "    else if(/^[-*] /.test(l)){out.push('<div style=\"display:flex;gap:8px;margin:3px 0;"
+        "padding-left:4px;\"><span style=\"color:rgba(255,255,255,0.25);flex-shrink:0;margin-top:1px;\">·</span>"
+        "<span style=\"font-size:13px;color:rgba(255,255,255,0.72);line-height:1.7;\">'+_inlineMd(_esc(l.slice(2)))+'</span></div>');}"
+        "    else if(l.trim()===''){out.push('<div style=\"height:7px;\"></div>');}"
+        "    else{out.push('<div style=\"font-size:13px;color:rgba(255,255,255,0.72);line-height:1.7;"
+        "margin:2px 0;\">'+_inlineMd(_esc(l))+'</div>');}"
+        "  }"
+        "  return out.join('');"
+        "}"
         f"var _srData={sr_json};"
         "function openSearchResultOverlay(i){"
         "  var r=_srData[i];"
         "  var tc={'Decision':'#818CF8','Change':'#FCD34D','Question':'#34D399','Slice':'#60A5FA'}[r.type]||'#888';"
         "  var meta=[r.project,r.phase,r.date?r.date.slice(0,10):''].filter(Boolean).join(' · ');"
         "  var fieldsHtml=r.fields.filter(function(f){return f.value;}).map(function(f){"
-        "    return '<div style=\"margin-bottom:14px\">'+"
+        "    return '<div style=\"margin-bottom:16px\">'+"
         "      '<div style=\"font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;"
-        "color:rgba(255,255,255,0.3);margin-bottom:5px;\">'+f.label+'</div>'+"
-        "      '<div style=\"font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-wrap;\">'+f.value+'</div>'+"
+        "color:rgba(255,255,255,0.25);margin-bottom:6px;\">'+_esc(f.label)+'</div>'+"
+        "      '<div>'+_md(f.value)+'</div>'+"
         "    '</div>';"
         "  }).join('');"
         "  var html="
@@ -3628,15 +3703,15 @@ def search():
         "      '<div style=\"display:flex;align-items:center;gap:10px;\">'+"
         "        '<span style=\"font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;"
         "background:rgba(255,255,255,0.08);color:'+tc+'\">'+r.type.toUpperCase()+'</span>'+"
-        "        '<span style=\"font-size:15px;font-weight:700;color:#fff;\">'+r.title+'</span>'+"
+        "        '<span style=\"font-size:15px;font-weight:700;color:#fff;\">'+_esc(r.title)+'</span>'+"
         "      '</div>'+"
         "      '<button onclick=\"closeOverlay()\" style=\"background:none;border:none;"
         "color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px;\">✕</button>'+"
         "    '</div>'+"
-        "    '<div style=\"padding:20px 24px 8px;border-bottom:1px solid rgba(255,255,255,0.07);"
-        "flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;\">'+"
+        "    '<div style=\"padding:14px 24px;border-bottom:1px solid rgba(255,255,255,0.07);"
+        "flex-shrink:0;\">'+"
         "      (meta?'<span style=\"font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
-        "background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);\">'+meta+'</span>':'')+"
+        "background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);\">'+_esc(meta)+'</span>':'')+"
         "    '</div>'+"
         "    '<div style=\"padding:20px 24px;overflow-y:auto;flex:1;\">'+"
         "      (fieldsHtml||'<div style=\"color:rgba(255,255,255,0.4);font-size:13px;\">No additional detail.</div>')+"
@@ -3646,7 +3721,6 @@ def search():
         "  document.getElementById('overlay-backdrop').style.display='flex';"
         "}"
         f"var _memData={mem_json};"
-        "function _esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}"
         "function openMemResultOverlay(i){"
         "  var r=_memData[i];"
         "  var pct=Math.round(r.cosine*100);"
@@ -3656,13 +3730,16 @@ def search():
         "width:680px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;\">'+"
         "    '<div style=\"display:flex;align-items:center;justify-content:space-between;"
         "padding:14px 24px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;\">'+"
-        "      '<span style=\"font-size:11px;font-weight:600;color:'+scoreColor+';\">'+pct+'% match</span>'+"
-        "      '<button onclick=\"closeOverlay()\" style=\"background:none;border:none;"
+        "      '<span style=\"font-size:11px;font-family:ui-monospace,monospace;color:rgba(255,255,255,0.3);\">"
+        "'+_esc(r.source_label||'')+'</span>'+"
+        "      '<div style=\"display:flex;align-items:center;gap:12px;\">'+"
+        "        '<span style=\"font-size:11px;font-weight:600;color:'+scoreColor+';\">'+pct+'% match</span>'+"
+        "        '<button onclick=\"closeOverlay()\" style=\"background:none;border:none;"
         "color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px;\">✕</button>'+"
+        "      '</div>'+"
         "    '</div>'+"
         "    '<div style=\"padding:20px 24px;overflow-y:auto;flex:1;\">'+"
-        "      '<div style=\"font-size:13px;color:rgba(255,255,255,0.75);line-height:1.8;"
-        "white-space:pre-wrap;font-family:ui-monospace,monospace;\">'+_esc(r.full_content||r.content)+'</div>'+"
+        "      _md(r.full_content||r.content)+"
         "    '</div>'+"
         "  '</div>';"
         "  document.getElementById('overlay-root').innerHTML=html;"
@@ -3767,6 +3844,137 @@ def search():
     projects = conn.execute("SELECT name, path FROM projects WHERE is_active=1 ORDER BY name").fetchall()
     conn.close()
     return _page(_sidebar_html(projects), main_html, title="Solo Companion — Search")
+
+
+# ── Capture ─────────────────────────────────────────────────────────────
+
+def _slug(text):
+    """Convert title to a filesystem-safe slug."""
+    text = text.lower().strip()
+    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r'[\s_-]+', '-', text)
+    return text[:60].strip('-')
+
+
+def _mine_captures_async():
+    """Run mempalace mine on captures dir in a background thread."""
+    def _run():
+        try:
+            subprocess.run(
+                [MEMPALACE_CLI, "mine", CAPTURES_DIR],
+                capture_output=True, timeout=120
+            )
+        except Exception:
+            pass
+    threading.Thread(target=_run, daemon=True).start()
+
+
+@app.route("/capture", methods=["GET"])
+def capture_page():
+    conn = get_conn()
+    projects = conn.execute("SELECT name, path FROM projects WHERE is_active=1 ORDER BY name").fetchall()
+    conn.close()
+    project_names = [p["name"] for p in projects]
+
+    saved = request.args.get("saved", "")
+
+    project_options = "<option value=''>— no project —</option>" + "".join(
+        f"<option value='{p}'>{p}</option>" for p in project_names
+    )
+
+    flash = ""
+    if saved:
+        flash = (
+            "<div style='background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.2);"
+            "border-radius:8px;padding:12px 16px;margin-bottom:24px;font-size:13px;color:#4ADE80;'>"
+            f"Saved and filed — <span style='font-family:ui-monospace,monospace;font-size:11px;"
+            f"color:rgba(255,255,255,0.4);'>{html_mod.escape(saved)}</span>"
+            "</div>"
+        )
+
+    main_html = (
+        "<div style='max-width:680px;'>"
+        "<div style='margin-bottom:28px;'>"
+        "<h1 style='font-size:20px;font-weight:600;margin:0 0 6px;'>Capture</h1>"
+        "<p style='font-size:13px;color:rgba(255,255,255,0.4);margin:0;'>"
+        "Write a thought, decision, or note — it goes straight into memory and becomes searchable.</p>"
+        "</div>"
+        + flash +
+        "<form method='POST' action='/capture/save'>"
+        "<div style='margin-bottom:16px;'>"
+        "<label style='display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);"
+        "text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;'>Title</label>"
+        "<input name='title' required autofocus placeholder='What is this about?' "
+        "style='width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);"
+        "border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;"
+        "color:#EDE8E0;font-size:14px;outline:none;' />"
+        "</div>"
+        "<div style='margin-bottom:16px;'>"
+        "<label style='display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);"
+        "text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;'>Project <span style='font-weight:400;opacity:.6;'>(optional)</span></label>"
+        f"<select name='project' style='width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);"
+        "border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:10px 14px;"
+        "color:#EDE8E0;font-size:13px;outline:none;appearance:none;'>"
+        f"{project_options}"
+        "</select>"
+        "</div>"
+        "<div style='margin-bottom:24px;'>"
+        "<label style='display:block;font-size:11px;font-weight:600;color:rgba(255,255,255,0.35);"
+        "text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;'>Content</label>"
+        "<textarea name='content' required rows='14' placeholder='Write freely — ideas, decisions, context, anything worth remembering…' "
+        "style='width:100%;box-sizing:border-box;background:rgba(255,255,255,0.05);"
+        "border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:12px 14px;"
+        "color:#EDE8E0;font-size:13px;line-height:1.7;outline:none;resize:vertical;"
+        "font-family:-apple-system,sans-serif;'></textarea>"
+        "</div>"
+        "<button type='submit' id='save-btn' "
+        "style='background:#E8971C;border:none;border-radius:8px;padding:11px 28px;"
+        "color:#090806;font-size:13px;font-weight:700;cursor:pointer;'>Save to Memory</button>"
+        "</form>"
+        "</div>"
+        "<script>"
+        "document.querySelector('form').addEventListener('submit',function(){"
+        "  var btn=document.getElementById('save-btn');"
+        "  btn.textContent='Saving…';btn.disabled=true;btn.style.opacity='0.6';"
+        "});"
+        "</script>"
+    )
+    return _page(_sidebar_html(projects), main_html, title="Solo Companion — Capture")
+
+
+@app.route("/capture/save", methods=["POST"])
+def capture_save():
+    title = request.form.get("title", "").strip()
+    content = request.form.get("content", "").strip()
+    project = request.form.get("project", "").strip()
+
+    if not title or not content:
+        return redirect("/capture")
+
+    os.makedirs(CAPTURES_DIR, exist_ok=True)
+
+    date_str = datetime.now().strftime("%Y-%m-%d")
+    filename = f"{date_str}-{_slug(title)}.md"
+    filepath = os.path.join(CAPTURES_DIR, filename)
+
+    # If file already exists (same title same day), append a counter
+    counter = 1
+    while os.path.exists(filepath):
+        filepath = os.path.join(CAPTURES_DIR, f"{date_str}-{_slug(title)}-{counter}.md")
+        counter += 1
+
+    lines = [f"# {title}", ""]
+    if project:
+        lines += [f"**Project:** {project}", ""]
+    lines += [f"**Captured:** {date_str}", "", content]
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+    if os.path.exists(MEMPALACE_CLI):
+        _mine_captures_async()
+
+    return redirect(f"/capture?saved={html_mod.escape(os.path.basename(filepath))}")
 
 
 # ── Background push timer (every 15 minutes) ────────────────────────────
