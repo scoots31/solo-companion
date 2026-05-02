@@ -3578,8 +3578,48 @@ def search():
         "</script>"
     )
 
+    # Filter chips JS — client-side show/hide, only rendered when both sections present
+    show_chips = query and has_mempalace
+    chips_js = ""
+    chips_html = ""
+    if show_chips:
+        chips_js = (
+            "<script>"
+            "function _setFilter(f){"
+            "  document.querySelectorAll('.sr-chip').forEach(function(c){"
+            "    var active=c.dataset.filter===f;"
+            "    c.style.background=active?'rgba(232,151,28,0.15)':'rgba(255,255,255,0.05)';"
+            "    c.style.color=active?'#E8971C':'rgba(255,255,255,0.45)';"
+            "    c.style.borderColor=active?'rgba(232,151,28,0.4)':'rgba(255,255,255,0.1)';"
+            "  });"
+            "  var sp=document.getElementById('section-projects');"
+            "  var sm=document.getElementById('section-memory');"
+            "  if(f==='all'){sp.style.display='';sm.style.display='';}"
+            "  else if(f==='projects'){sp.style.display='';sm.style.display='none';}"
+            "  else{sp.style.display='none';sm.style.display='';}"
+            "}"
+            "</script>"
+        )
+        def chip(label, f, active=False):
+            bg = "rgba(232,151,28,0.15)" if active else "rgba(255,255,255,0.05)"
+            color = "#E8971C" if active else "rgba(255,255,255,0.45)"
+            border = "rgba(232,151,28,0.4)" if active else "rgba(255,255,255,0.1)"
+            return (
+                f"<button class='sr-chip' data-filter='{f}' onclick='_setFilter(\"{f}\")' "
+                f"style='background:{bg};color:{color};border:1px solid {border};"
+                f"border-radius:20px;padding:5px 14px;font-size:12px;font-weight:600;"
+                f"cursor:pointer;'>{label}</button>"
+            )
+        chips_html = (
+            "<div style='display:flex;gap:8px;margin-bottom:24px;'>"
+            + chip("All", "all", active=True)
+            + chip("Project Records", "projects")
+            + chip("Memory", "memory")
+            + "</div>"
+        )
+
     # Results sections
-    results_html = overlay_js
+    results_html = overlay_js + chips_js
     if query:
         # Project records
         db_section_body = "".join(result_card(r, i) for i, r in enumerate(db_results)) if db_results else (
@@ -3591,7 +3631,8 @@ def search():
             f"{len(db_results)}</span>" if db_results else ""
         )
         results_html += (
-            f"<div style='margin-bottom:32px;'>"
+            chips_html +
+            f"<div id='section-projects' style='margin-bottom:32px;'>"
             f"<div style='font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);"
             f"margin-bottom:14px;display:flex;align-items:center;'>Project Records{count_badge}</div>"
             f"{db_section_body}</div>"
@@ -3613,7 +3654,7 @@ def search():
                     f"{len(mem_results)}</span>"
                 )
             results_html += (
-                f"<div>"
+                f"<div id='section-memory'>"
                 f"<div style='font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);"
                 f"margin-bottom:14px;display:flex;align-items:center;'>Memory{mem_count}</div>"
                 f"{mem_body}</div>"
