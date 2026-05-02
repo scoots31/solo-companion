@@ -3268,55 +3268,103 @@ def settings():
 MEMPALACE_CLI = "/Users/scottheinemeier/Apps/.venv/bin/mempalace"
 
 
+_STOP_WORDS = {
+    'a', 'an', 'the', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for',
+    'of', 'with', 'by', 'from', 'is', 'are', 'was', 'were', 'be', 'been',
+    'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would',
+    'could', 'should', 'may', 'might', 'shall', 'can', 'about', 'regarding',
+    'this', 'that', 'these', 'those', 'which', 'who', 'how', 'when', 'where',
+    'why', 'what', 'it', 'its', 'i', 'me', 'my', 'we', 'our', 'you', 'your',
+    'he', 'she', 'his', 'her', 'they', 'their', 'any', 'all', 'some', 'no',
+    'not', 'made', 'make', 'into', 'onto', 'also', 'just', 'than', 'then',
+    'so', 'if', 'as', 'up', 'out', 'there', 'here', 'get', 'got', 'use',
+    'used', 'tell', 'show', 'give', 'find', 'look', 'need', 'want',
+}
+
+
+def _tokenize_query(query):
+    words = re.findall(r'[a-z0-9]+', query.lower())
+    return [w for w in words if len(w) > 2 and w not in _STOP_WORDS]
+
+
+def _where_and(fields, tokens):
+    """All tokens must appear somewhere across fields."""
+    clauses, params = [], []
+    for token in tokens:
+        field_conds = " OR ".join(f"{f} LIKE ?" for f in fields)
+        clauses.append(f"({field_conds})")
+        params.extend([f"%{token}%"] * len(fields))
+    return " AND ".join(clauses), params
+
+
+def _where_or(fields, tokens):
+    """Any token matching any field is a hit."""
+    clauses, params = [], []
+    for token in tokens:
+        for f in fields:
+            clauses.append(f"{f} LIKE ?")
+            params.append(f"%{token}%")
+    return " OR ".join(clauses), params
+
+
+def _run_search(conn, sql_template, fields, tokens, row_builder):
+    """Try AND first; fall back to OR if no results."""
+    for build_where in (_where_and, _where_or):
+        where, params = build_where(fields, tokens)
+        rows = conn.execute(sql_template.format(where=where), params).fetchall()
+        if rows:
+            return [row_builder(r) for r in rows]
+    return []
+
+
 def _search_sqlite(query):
-    q = f"%{query}%"
+    tokens = _tokenize_query(query)
+    if not tokens:
+        return []
+
     results = []
     conn = get_conn()
 
-    for r in conn.execute("""
+    results += _run_search(conn, """
         SELECT p.name AS project, d.title, d.date, d.phase, d.body, d.why, d.status
         FROM decisions d JOIN projects p ON p.id=d.project_id
-        WHERE d.title LIKE ? OR d.body LIKE ? OR d.why LIKE ?
-        ORDER BY d.date DESC LIMIT 30
-    """, (q, q, q)).fetchall():
-        results.append({"type": "Decision", "project": r["project"], "title": r["title"],
-                        "date": r["date"], "phase": r["phase"], "body": r["body"] or "",
-                        "extra": r["why"] or ""})
+        WHERE {where} ORDER BY d.date DESC LIMIT 30
+    """, ['d.title', 'd.body', 'd.why', 'p.name'], tokens,
+        lambda r: {"type": "Decision", "project": r["project"], "title": r["title"],
+                   "date": r["date"], "phase": r["phase"], "body": r["body"] or "",
+                   "extra": r["why"] or ""})
 
-    for r in conn.execute("""
+    results += _run_search(conn, """
         SELECT p.name AS project, c.title, c.date, c.phase, c.was_value, c.became_value, c.why
         FROM changes c JOIN projects p ON p.id=c.project_id
-        WHERE c.title LIKE ? OR c.why LIKE ? OR c.was_value LIKE ? OR c.became_value LIKE ?
-        ORDER BY c.date DESC LIMIT 20
-    """, (q, q, q, q)).fetchall():
-        body = ""
-        if r["was_value"]: body += f"Was: {r['was_value']}\n"
-        if r["became_value"]: body += f"Became: {r['became_value']}"
-        results.append({"type": "Change", "project": r["project"], "title": r["title"],
-                        "date": r["date"], "phase": r["phase"], "body": body.strip(),
-                        "extra": r["why"] or ""})
+        WHERE {where} ORDER BY c.date DESC LIMIT 20
+    """, ['c.title', 'c.why', 'c.was_value', 'c.became_value', 'p.name'], tokens,
+        lambda r: {"type": "Change", "project": r["project"], "title": r["title"],
+                   "date": r["date"], "phase": r["phase"],
+                   "body": ("Was: " + r["was_value"] + "\n" if r["was_value"] else "")
+                           + (r["became_value"] or ""),
+                   "extra": r["why"] or ""})
 
-    for r in conn.execute("""
+    results += _run_search(conn, """
         SELECT p.name AS project, q.text, q.answer, q.status, q.surfaced_during
         FROM questions q JOIN projects p ON p.id=q.project_id
-        WHERE q.text LIKE ? OR q.answer LIKE ?
-        ORDER BY q.id DESC LIMIT 20
-    """, (q, q)).fetchall():
-        results.append({"type": "Question", "project": r["project"], "title": r["text"],
-                        "date": None, "phase": r["surfaced_during"], "body": r["answer"] or "(unanswered)",
-                        "extra": f"Status: {r['status']}" if r["status"] else ""})
+        WHERE {where} ORDER BY q.id DESC LIMIT 20
+    """, ['q.text', 'q.answer', 'p.name'], tokens,
+        lambda r: {"type": "Question", "project": r["project"], "title": r["text"],
+                   "date": None, "phase": r["surfaced_during"],
+                   "body": r["answer"] or "(unanswered)",
+                   "extra": f"Status: {r['status']}" if r["status"] else ""})
 
-    for r in conn.execute("""
+    results += _run_search(conn, """
         SELECT p.name AS project, s.slice_id, s.name, s.plain_description, s.notes, s.status, s.phase
         FROM slices s JOIN projects p ON p.id=s.project_id
-        WHERE s.name LIKE ? OR s.plain_description LIKE ? OR s.notes LIKE ?
-        ORDER BY s.id DESC LIMIT 15
-    """, (q, q, q)).fetchall():
-        results.append({"type": "Slice", "project": r["project"],
-                        "title": f"{r['slice_id']} — {r['name']}",
-                        "date": None, "phase": r["phase"],
-                        "body": r["plain_description"] or r["notes"] or "",
-                        "extra": f"Status: {r['status']}" if r["status"] else ""})
+        WHERE {where} ORDER BY s.id DESC LIMIT 15
+    """, ['s.name', 's.plain_description', 's.notes', 'p.name'], tokens,
+        lambda r: {"type": "Slice", "project": r["project"],
+                   "title": f"{r['slice_id']} — {r['name']}",
+                   "date": None, "phase": r["phase"],
+                   "body": r["plain_description"] or r["notes"] or "",
+                   "extra": f"Status: {r['status']}" if r["status"] else ""})
 
     conn.close()
     return results
