@@ -137,6 +137,7 @@ def _sidebar_html(projects, active_name=None):
         "Views</div>"
         + nav_link("Dashboard", "/")
         + nav_link("Activity Feed", "/feed")
+        + nav_link("Search", "/search")
         + nav_link("Cloud Settings", "/settings")
         + "</div>"
     )
@@ -3260,6 +3261,232 @@ def settings():
     projects = conn.execute("SELECT name, path FROM projects WHERE is_active=1 ORDER BY name").fetchall()
     conn.close()
     return _page(_sidebar_html(projects), main_html, title="Solo Companion — Cloud Settings")
+
+
+# ── Search ──────────────────────────────────────────────────────────────
+
+MEMPALACE_CLI = "/Users/scottheinemeier/Apps/.venv/bin/mempalace"
+
+
+def _search_sqlite(query):
+    q = f"%{query}%"
+    results = []
+    conn = get_conn()
+
+    for r in conn.execute("""
+        SELECT p.name AS project, d.title, d.date, d.phase, d.body, d.why, d.status
+        FROM decisions d JOIN projects p ON p.id=d.project_id
+        WHERE d.title LIKE ? OR d.body LIKE ? OR d.why LIKE ?
+        ORDER BY d.date DESC LIMIT 30
+    """, (q, q, q)).fetchall():
+        results.append({"type": "Decision", "project": r["project"], "title": r["title"],
+                        "date": r["date"], "phase": r["phase"], "body": r["body"] or "",
+                        "extra": r["why"] or ""})
+
+    for r in conn.execute("""
+        SELECT p.name AS project, c.title, c.date, c.phase, c.was_value, c.became_value, c.why
+        FROM changes c JOIN projects p ON p.id=c.project_id
+        WHERE c.title LIKE ? OR c.why LIKE ? OR c.was_value LIKE ? OR c.became_value LIKE ?
+        ORDER BY c.date DESC LIMIT 20
+    """, (q, q, q, q)).fetchall():
+        body = ""
+        if r["was_value"]: body += f"Was: {r['was_value']}\n"
+        if r["became_value"]: body += f"Became: {r['became_value']}"
+        results.append({"type": "Change", "project": r["project"], "title": r["title"],
+                        "date": r["date"], "phase": r["phase"], "body": body.strip(),
+                        "extra": r["why"] or ""})
+
+    for r in conn.execute("""
+        SELECT p.name AS project, q.text, q.answer, q.status, q.surfaced_during
+        FROM questions q JOIN projects p ON p.id=q.project_id
+        WHERE q.text LIKE ? OR q.answer LIKE ?
+        ORDER BY q.id DESC LIMIT 20
+    """, (q, q)).fetchall():
+        results.append({"type": "Question", "project": r["project"], "title": r["text"],
+                        "date": None, "phase": r["surfaced_during"], "body": r["answer"] or "(unanswered)",
+                        "extra": f"Status: {r['status']}" if r["status"] else ""})
+
+    for r in conn.execute("""
+        SELECT p.name AS project, s.slice_id, s.name, s.plain_description, s.notes, s.status, s.phase
+        FROM slices s JOIN projects p ON p.id=s.project_id
+        WHERE s.name LIKE ? OR s.plain_description LIKE ? OR s.notes LIKE ?
+        ORDER BY s.id DESC LIMIT 15
+    """, (q, q, q)).fetchall():
+        results.append({"type": "Slice", "project": r["project"],
+                        "title": f"{r['slice_id']} — {r['name']}",
+                        "date": None, "phase": r["phase"],
+                        "body": r["plain_description"] or r["notes"] or "",
+                        "extra": f"Status: {r['status']}" if r["status"] else ""})
+
+    conn.close()
+    return results
+
+
+def _parse_mempalace_output(output):
+    results = []
+    blocks = re.split(r'\n\s*[─=]{20,}[─=\s]*\n', output)
+    for block in blocks:
+        if not block.strip():
+            continue
+        m = re.search(r'\[(\d+)\]\s+(.+?)\s*/\s*(.+)', block)
+        if not m:
+            continue
+        wing, room = m.group(2).strip(), m.group(3).strip()
+        source_m = re.search(r'Source:\s*(.+)', block)
+        cosine_m = re.search(r'cosine=([\d.]+)', block)
+        # content follows the blank line after Match:
+        content_m = re.search(r'Match:[^\n]*\n\n(.+)', block, re.DOTALL)
+        results.append({
+            "wing": wing, "room": room,
+            "source": source_m.group(1).strip() if source_m else "",
+            "cosine": float(cosine_m.group(1)) if cosine_m else 0.0,
+            "content": content_m.group(1).strip() if content_m else block.strip(),
+        })
+    return results
+
+
+def _search_mempalace(query):
+    if not os.path.exists(MEMPALACE_CLI):
+        return None
+    try:
+        result = subprocess.run(
+            [MEMPALACE_CLI, "search", query],
+            capture_output=True, text=True, timeout=15
+        )
+        output = result.stdout.strip()
+        if not output:
+            return []
+        return _parse_mempalace_output(output)
+    except Exception:
+        return None
+
+
+def _type_color(t):
+    return {"Decision": "#818CF8", "Change": "#FCD34D",
+            "Question": "#34D399", "Slice": "#60A5FA"}.get(t, "#888")
+
+
+@app.route("/search")
+def search():
+    query = request.args.get("q", "").strip()
+    db_results, mem_results = [], None
+    has_mempalace = os.path.exists(MEMPALACE_CLI)
+
+    if query:
+        db_results = _search_sqlite(query)
+        if has_mempalace:
+            mem_results = _search_mempalace(query)
+
+    def result_card(r):
+        tc = _type_color(r["type"])
+        meta_parts = []
+        if r.get("project"): meta_parts.append(r["project"])
+        if r.get("phase"):   meta_parts.append(r["phase"])
+        if r.get("date"):    meta_parts.append(r["date"][:10] if r["date"] else "")
+        meta = " · ".join(p for p in meta_parts if p)
+        extra = f"<div style='font-size:11px;color:rgba(255,255,255,0.35);margin-top:6px;'>{r['extra']}</div>" if r.get("extra") else ""
+        body_text = r["body"][:400] + ("…" if len(r["body"]) > 400 else "") if r.get("body") else ""
+        body = f"<div style='font-size:12px;color:rgba(255,255,255,0.55);margin-top:8px;line-height:1.6;white-space:pre-wrap;'>{body_text}</div>" if body_text else ""
+        return (
+            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:14px 16px;margin-bottom:8px;'>"
+            f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:4px;'>"
+            f"<span style='font-size:10px;font-weight:700;color:{tc};background:rgba(255,255,255,0.06);"
+            f"padding:2px 8px;border-radius:10px;letter-spacing:0.05em;'>{r['type'].upper()}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.35);'>{meta}</span>"
+            f"</div>"
+            f"<div style='font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);'>{r['title']}</div>"
+            f"{body}{extra}"
+            f"</div>"
+        )
+
+    def mem_card(r):
+        pct = int(r["cosine"] * 100)
+        score_color = "#4ADE80" if pct >= 70 else "#FCD34D" if pct >= 50 else "rgba(255,255,255,0.3)"
+        content_text = r["content"][:600] + ("…" if len(r["content"]) > 600 else "")
+        return (
+            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:14px 16px;margin-bottom:8px;'>"
+            f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:6px;'>"
+            f"<span style='font-size:10px;font-weight:700;color:#A78BFA;background:rgba(255,255,255,0.06);"
+            f"padding:2px 8px;border-radius:10px;letter-spacing:0.05em;'>{r['wing'].upper()}</span>"
+            f"<span style='font-size:11px;color:rgba(255,255,255,0.4);'>{r['room']}</span>"
+            f"<span style='margin-left:auto;font-size:10px;font-weight:600;color:{score_color};'>{pct}% match</span>"
+            f"</div>"
+            f"<div style='font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:8px;'>{r['source']}</div>"
+            f"<div style='font-size:12px;color:rgba(255,255,255,0.6);line-height:1.7;white-space:pre-wrap;"
+            f"font-family:ui-monospace,monospace;'>{content_text}</div>"
+            f"</div>"
+        )
+
+    # Search box
+    search_html = (
+        "<form method='get' action='/search' style='margin-bottom:32px;'>"
+        "<div style='display:flex;gap:10px;'>"
+        "<input name='q' value='" + (query or "") + "' placeholder='Search decisions, changes, questions, slices…' autofocus "
+        "style='flex:1;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);"
+        "border-radius:8px;padding:10px 14px;color:#EDE8E0;font-size:14px;outline:none;' />"
+        "<button type='submit' style='background:#E8971C;border:none;border-radius:8px;"
+        "padding:10px 20px;color:#090806;font-size:13px;font-weight:700;cursor:pointer;'>Search</button>"
+        "</div>"
+        "</form>"
+    )
+
+    # Results sections
+    results_html = ""
+    if query:
+        # Project records
+        db_section_body = "".join(result_card(r) for r in db_results) if db_results else (
+            "<div style='color:rgba(255,255,255,0.3);font-size:13px;padding:12px 0;'>No matches in project records.</div>"
+        )
+        count_badge = (
+            f"<span style='background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);"
+            f"font-size:11px;padding:1px 7px;border-radius:10px;font-weight:600;margin-left:8px;'>"
+            f"{len(db_results)}</span>" if db_results else ""
+        )
+        results_html += (
+            f"<div style='margin-bottom:32px;'>"
+            f"<div style='font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);"
+            f"margin-bottom:14px;display:flex;align-items:center;'>Project Records{count_badge}</div>"
+            f"{db_section_body}</div>"
+        )
+
+        # Memory section — only if mempalace present
+        if has_mempalace:
+            if mem_results is None:
+                mem_body = "<div style='color:rgba(255,255,255,0.3);font-size:13px;padding:12px 0;'>Memory search unavailable.</div>"
+                mem_count = ""
+            elif not mem_results:
+                mem_body = "<div style='color:rgba(255,255,255,0.3);font-size:13px;padding:12px 0;'>No matches in memory.</div>"
+                mem_count = ""
+            else:
+                mem_body = "".join(mem_card(r) for r in mem_results)
+                mem_count = (
+                    f"<span style='background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);"
+                    f"font-size:11px;padding:1px 7px;border-radius:10px;font-weight:600;margin-left:8px;'>"
+                    f"{len(mem_results)}</span>"
+                )
+            results_html += (
+                f"<div>"
+                f"<div style='font-size:13px;font-weight:600;color:rgba(255,255,255,0.7);"
+                f"margin-bottom:14px;display:flex;align-items:center;'>Memory{mem_count}</div>"
+                f"{mem_body}</div>"
+            )
+
+    main_html = (
+        "<div style='padding:40px 48px;max-width:860px;'>"
+        "<h1 style='font-size:20px;font-weight:600;margin:0 0 6px;'>Search</h1>"
+        "<p style='font-size:12px;color:rgba(255,255,255,0.4);margin:0 0 28px;'>"
+        "Search across all project records" + (" and memory" if has_mempalace else "") + ".</p>"
+        + search_html
+        + results_html
+        + "</div>"
+    )
+
+    conn = get_conn()
+    projects = conn.execute("SELECT name, path FROM projects WHERE is_active=1 ORDER BY name").fetchall()
+    conn.close()
+    return _page(_sidebar_html(projects), main_html, title="Solo Companion — Search")
 
 
 # ── Background push timer (every 15 minutes) ────────────────────────────
