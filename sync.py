@@ -151,6 +151,7 @@ def sync_project_content(conn, project_id, project_name, project_path):
     _sync_materials(c, project_id, project_dir)
     _sync_runtime(conn, project_id, project_dir)
     _sync_autopilot_state(conn, project_id, project_dir)
+    _sync_metrics(conn, project_id, project_dir)
 
     # Diff before/after and append event rows
     _write_events(c, project_id, project_name, before_slices, before_del_done,
@@ -473,6 +474,22 @@ def _sync_autopilot_state(conn, project_id, project_dir):
         "UPDATE projects SET autopilot_mode=?, refinement_cycle=? WHERE id=?",
         (mode, cycle, project_id),
     )
+
+
+def _sync_metrics(conn, project_id, project_dir):
+    """Read docs/metrics.json and store raw JSON in projects.metrics_json."""
+    metrics_path = project_dir / "docs" / "metrics.json"
+    if not metrics_path.exists():
+        return
+    try:
+        text = metrics_path.read_text(encoding="utf-8")
+        json.loads(text)  # validate before storing
+        conn.execute(
+            "UPDATE projects SET metrics_json=? WHERE id=?",
+            (text, project_id),
+        )
+    except Exception:
+        pass
 
 
 # ── Event diff layer (SL-025) ──────────────────────────────────────────

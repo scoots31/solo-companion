@@ -117,12 +117,18 @@ def build_snapshot(cfg):
             ).fetchall()
         ]
 
+        try:
+            metrics = json.loads(p["metrics_json"]) if p["metrics_json"] else None
+        except Exception:
+            metrics = None
+
         projects.append({
             "id": pid,
             "name": p["name"],
             "last_synced": p["last_synced"],
             "autopilot_mode": p["autopilot_mode"],
             "refinement_cycle": p["refinement_cycle"],
+            "metrics": metrics,
             "phases": phases,
             "deliverables": deliverables,
             "slices": slices,

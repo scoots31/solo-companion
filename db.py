@@ -174,7 +174,8 @@ def init_db():
     conn.commit()
     # Add runtime columns to projects if not present (safe on existing DBs)
     for col, defn in [("start_command", "TEXT"), ("app_port", "TEXT"),
-                      ("autopilot_mode", "TEXT"), ("refinement_cycle", "INTEGER")]:
+                      ("autopilot_mode", "TEXT"), ("refinement_cycle", "INTEGER"),
+                      ("metrics_json", "TEXT")]:
         try:
             conn.execute(f"ALTER TABLE projects ADD COLUMN {col} {defn}")
             conn.commit()
