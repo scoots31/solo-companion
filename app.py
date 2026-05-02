@@ -19,6 +19,7 @@ SL-011: Overlay — Slice panel. All 17 spec fields, quality gates derived
         from status, backdrop + ✕ dismiss, "Take me to this project" footer.
 """
 
+import html as html_mod
 import json
 import os
 import re
@@ -3523,7 +3524,8 @@ def search():
     def mem_card(r, idx):
         pct = int(r["cosine"] * 100)
         score_color = "#4ADE80" if pct >= 70 else "#FCD34D" if pct >= 50 else "rgba(255,255,255,0.3)"
-        content_text = r["content"][:400] + ("…" if len(r["content"]) > 400 else "")
+        raw = r["content"]
+        content_text = html_mod.escape(raw[:400] + ("…" if len(raw) > 400 else ""))
         return (
             f"<div onclick='openMemResultOverlay({idx})' "
             f"style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
@@ -3620,6 +3622,7 @@ def search():
         "  document.getElementById('overlay-backdrop').style.display='flex';"
         "}"
         f"var _memData={mem_json};"
+        "function _esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}"
         "function openMemResultOverlay(i){"
         "  var r=_memData[i];"
         "  var pct=Math.round(r.cosine*100);"
@@ -3635,7 +3638,7 @@ def search():
         "    '</div>'+"
         "    '<div style=\"padding:20px 24px;overflow-y:auto;flex:1;\">'+"
         "      '<div style=\"font-size:13px;color:rgba(255,255,255,0.75);line-height:1.8;"
-        "white-space:pre-wrap;font-family:ui-monospace,monospace;\">'+(r.full_content||r.content)+'</div>'+"
+        "white-space:pre-wrap;font-family:ui-monospace,monospace;\">'+_esc(r.full_content||r.content)+'</div>'+"
         "    '</div>'+"
         "  '</div>';"
         "  document.getElementById('overlay-root').innerHTML=html;"
