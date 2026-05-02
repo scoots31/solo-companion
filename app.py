@@ -3326,16 +3326,24 @@ def _search_sqlite(query):
     conn = get_conn()
 
     results += _run_search(conn, """
-        SELECT p.name AS project, d.title, d.date, d.phase, d.body, d.why, d.status
+        SELECT p.name AS project, d.title, d.date, d.phase, d.body, d.why,
+               d.status, d.alternatives, d.tradeoffs
         FROM decisions d JOIN projects p ON p.id=d.project_id
         WHERE {where} ORDER BY d.date DESC LIMIT 30
     """, ['d.title', 'd.body', 'd.why', 'p.name'], tokens,
         lambda r: {"type": "Decision", "project": r["project"], "title": r["title"],
                    "date": r["date"], "phase": r["phase"], "body": r["body"] or "",
-                   "extra": r["why"] or ""})
+                   "extra": r["why"] or "",
+                   "fields": [
+                       {"label": "Status", "value": r["status"] or ""},
+                       {"label": "Why", "value": r["why"] or ""},
+                       {"label": "Alternatives", "value": r["alternatives"] or ""},
+                       {"label": "Tradeoffs", "value": r["tradeoffs"] or ""},
+                   ]})
 
     results += _run_search(conn, """
-        SELECT p.name AS project, c.title, c.date, c.phase, c.was_value, c.became_value, c.why
+        SELECT p.name AS project, c.title, c.date, c.phase, c.was_value,
+               c.became_value, c.why, c.affects
         FROM changes c JOIN projects p ON p.id=c.project_id
         WHERE {where} ORDER BY c.date DESC LIMIT 20
     """, ['c.title', 'c.why', 'c.was_value', 'c.became_value', 'p.name'], tokens,
@@ -3343,20 +3351,35 @@ def _search_sqlite(query):
                    "date": r["date"], "phase": r["phase"],
                    "body": ("Was: " + r["was_value"] + "\n" if r["was_value"] else "")
                            + (r["became_value"] or ""),
-                   "extra": r["why"] or ""})
+                   "extra": r["why"] or "",
+                   "fields": [
+                       {"label": "Was", "value": r["was_value"] or ""},
+                       {"label": "Became", "value": r["became_value"] or ""},
+                       {"label": "Why", "value": r["why"] or ""},
+                       {"label": "Affects", "value": r["affects"] or ""},
+                   ]})
 
     results += _run_search(conn, """
-        SELECT p.name AS project, q.text, q.answer, q.status, q.surfaced_during
+        SELECT p.name AS project, q.text, q.answer, q.status, q.surfaced_during,
+               q.blocking, q.who_can_answer
         FROM questions q JOIN projects p ON p.id=q.project_id
         WHERE {where} ORDER BY q.id DESC LIMIT 20
     """, ['q.text', 'q.answer', 'p.name'], tokens,
         lambda r: {"type": "Question", "project": r["project"], "title": r["text"],
                    "date": None, "phase": r["surfaced_during"],
                    "body": r["answer"] or "(unanswered)",
-                   "extra": f"Status: {r['status']}" if r["status"] else ""})
+                   "extra": f"Status: {r['status']}" if r["status"] else "",
+                   "fields": [
+                       {"label": "Status", "value": r["status"] or ""},
+                       {"label": "Answer", "value": r["answer"] or "(unanswered)"},
+                       {"label": "Blocking", "value": r["blocking"] or ""},
+                       {"label": "Who can answer", "value": r["who_can_answer"] or ""},
+                   ]})
 
     results += _run_search(conn, """
-        SELECT p.name AS project, s.slice_id, s.name, s.plain_description, s.notes, s.status, s.phase
+        SELECT p.name AS project, s.slice_id, s.name, s.plain_description,
+               s.technical_description, s.notes, s.status, s.phase,
+               s.done_criteria, s.quality_contract, s.depends_on
         FROM slices s JOIN projects p ON p.id=s.project_id
         WHERE {where} ORDER BY s.id DESC LIMIT 15
     """, ['s.name', 's.plain_description', 's.notes', 'p.name'], tokens,
@@ -3364,7 +3387,16 @@ def _search_sqlite(query):
                    "title": f"{r['slice_id']} — {r['name']}",
                    "date": None, "phase": r["phase"],
                    "body": r["plain_description"] or r["notes"] or "",
-                   "extra": f"Status: {r['status']}" if r["status"] else ""})
+                   "extra": f"Status: {r['status']}" if r["status"] else "",
+                   "fields": [
+                       {"label": "Status", "value": r["status"] or ""},
+                       {"label": "Plain description", "value": r["plain_description"] or ""},
+                       {"label": "Technical description", "value": r["technical_description"] or ""},
+                       {"label": "Done criteria", "value": r["done_criteria"] or ""},
+                       {"label": "Quality contract", "value": r["quality_contract"] or ""},
+                       {"label": "Depends on", "value": r["depends_on"] or ""},
+                       {"label": "Notes", "value": r["notes"] or ""},
+                   ]})
 
     conn.close()
     return results
@@ -3425,26 +3457,29 @@ def search():
         if has_mempalace:
             mem_results = _search_mempalace(query)
 
-    def result_card(r):
+    def result_card(r, idx):
         tc = _type_color(r["type"])
         meta_parts = []
         if r.get("project"): meta_parts.append(r["project"])
         if r.get("phase"):   meta_parts.append(r["phase"])
         if r.get("date"):    meta_parts.append(r["date"][:10] if r["date"] else "")
         meta = " · ".join(p for p in meta_parts if p)
-        extra = f"<div style='font-size:11px;color:rgba(255,255,255,0.35);margin-top:6px;'>{r['extra']}</div>" if r.get("extra") else ""
-        body_text = r["body"][:400] + ("…" if len(r["body"]) > 400 else "") if r.get("body") else ""
+        body_text = r["body"][:300] + ("…" if len(r["body"]) > 300 else "") if r.get("body") else ""
         body = f"<div style='font-size:12px;color:rgba(255,255,255,0.55);margin-top:8px;line-height:1.6;white-space:pre-wrap;'>{body_text}</div>" if body_text else ""
+        hint = "<div style='font-size:10px;color:rgba(255,255,255,0.2);margin-top:8px;'>Click to expand</div>"
         return (
-            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
-            f"border-radius:8px;padding:14px 16px;margin-bottom:8px;'>"
+            f"<div onclick='openSearchResultOverlay({idx})' "
+            f"style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;' "
+            f"onmouseover=\"this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.05)'\" "
+            f"onmouseout=\"this.style.borderColor='rgba(255,255,255,0.07)';this.style.background='rgba(255,255,255,0.03)'\">"
             f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:4px;'>"
             f"<span style='font-size:10px;font-weight:700;color:{tc};background:rgba(255,255,255,0.06);"
             f"padding:2px 8px;border-radius:10px;letter-spacing:0.05em;'>{r['type'].upper()}</span>"
             f"<span style='font-size:11px;color:rgba(255,255,255,0.35);'>{meta}</span>"
             f"</div>"
             f"<div style='font-size:13px;font-weight:600;color:rgba(255,255,255,0.85);'>{r['title']}</div>"
-            f"{body}{extra}"
+            f"{body}{hint}"
             f"</div>"
         )
 
@@ -3493,11 +3528,61 @@ def search():
         "</script>"
     )
 
+    # JS data array for overlay — serialize all db_results
+    sr_json = json.dumps([
+        {"type": r.get("type",""), "project": r.get("project",""),
+         "title": r.get("title",""), "date": r.get("date") or "",
+         "phase": r.get("phase") or "", "body": r.get("body",""),
+         "fields": r.get("fields",[])}
+        for r in db_results
+    ], ensure_ascii=False)
+    overlay_js = (
+        "<script>"
+        f"var _srData={sr_json};"
+        "function openSearchResultOverlay(i){"
+        "  var r=_srData[i];"
+        "  var tc={'Decision':'#818CF8','Change':'#FCD34D','Question':'#34D399','Slice':'#60A5FA'}[r.type]||'#888';"
+        "  var meta=[r.project,r.phase,r.date?r.date.slice(0,10):''].filter(Boolean).join(' · ');"
+        "  var fieldsHtml=r.fields.filter(function(f){return f.value;}).map(function(f){"
+        "    return '<div style=\"margin-bottom:14px\">'+"
+        "      '<div style=\"font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;"
+        "color:rgba(255,255,255,0.3);margin-bottom:5px;\">'+f.label+'</div>'+"
+        "      '<div style=\"font-size:13px;color:rgba(255,255,255,0.75);line-height:1.7;white-space:pre-wrap;\">'+f.value+'</div>'+"
+        "    '</div>';"
+        "  }).join('');"
+        "  var html="
+        "    '<div style=\"background:#1A2035;border:1px solid rgba(255,255,255,0.1);border-radius:14px;"
+        "width:680px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;\">'+"
+        "    '<div style=\"display:flex;align-items:center;justify-content:space-between;"
+        "padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;\">'+"
+        "      '<div style=\"display:flex;align-items:center;gap:10px;\">'+"
+        "        '<span style=\"font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;"
+        "background:rgba(255,255,255,0.08);color:'+tc+'\">'+r.type.toUpperCase()+'</span>'+"
+        "        '<span style=\"font-size:15px;font-weight:700;color:#fff;\">'+r.title+'</span>'+"
+        "      '</div>'+"
+        "      '<button onclick=\"closeOverlay()\" style=\"background:none;border:none;"
+        "color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px;\">✕</button>'+"
+        "    '</div>'+"
+        "    '<div style=\"padding:20px 24px 8px;border-bottom:1px solid rgba(255,255,255,0.07);"
+        "flex-shrink:0;display:flex;gap:8px;flex-wrap:wrap;\">'+"
+        "      (meta?'<span style=\"font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;"
+        "background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);\">'+meta+'</span>':'')+"
+        "    '</div>'+"
+        "    '<div style=\"padding:20px 24px;overflow-y:auto;flex:1;\">'+"
+        "      (fieldsHtml||'<div style=\"color:rgba(255,255,255,0.4);font-size:13px;\">No additional detail.</div>')+"
+        "    '</div>'+"
+        "  '</div>';"
+        "  document.getElementById('overlay-root').innerHTML=html;"
+        "  document.getElementById('overlay-backdrop').style.display='flex';"
+        "}"
+        "</script>"
+    )
+
     # Results sections
-    results_html = ""
+    results_html = overlay_js
     if query:
         # Project records
-        db_section_body = "".join(result_card(r) for r in db_results) if db_results else (
+        db_section_body = "".join(result_card(r, i) for i, r in enumerate(db_results)) if db_results else (
             "<div style='color:rgba(255,255,255,0.3);font-size:13px;padding:12px 0;'>No matches in project records.</div>"
         )
         count_badge = (
