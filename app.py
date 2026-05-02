@@ -3483,13 +3483,16 @@ def search():
             f"</div>"
         )
 
-    def mem_card(r):
+    def mem_card(r, idx):
         pct = int(r["cosine"] * 100)
         score_color = "#4ADE80" if pct >= 70 else "#FCD34D" if pct >= 50 else "rgba(255,255,255,0.3)"
-        content_text = r["content"][:600] + ("…" if len(r["content"]) > 600 else "")
+        content_text = r["content"][:400] + ("…" if len(r["content"]) > 400 else "")
         return (
-            f"<div style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
-            f"border-radius:8px;padding:14px 16px;margin-bottom:8px;'>"
+            f"<div onclick='openMemResultOverlay({idx})' "
+            f"style='background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07);"
+            f"border-radius:8px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;' "
+            f"onmouseover=\"this.style.borderColor='rgba(255,255,255,0.18)';this.style.background='rgba(255,255,255,0.05)'\" "
+            f"onmouseout=\"this.style.borderColor='rgba(255,255,255,0.07)';this.style.background='rgba(255,255,255,0.03)'\">"
             f"<div style='display:flex;align-items:center;gap:8px;margin-bottom:6px;'>"
             f"<span style='font-size:10px;font-weight:700;color:#A78BFA;background:rgba(255,255,255,0.06);"
             f"padding:2px 8px;border-radius:10px;letter-spacing:0.05em;'>{r['wing'].upper()}</span>"
@@ -3499,6 +3502,7 @@ def search():
             f"<div style='font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:8px;'>{r['source']}</div>"
             f"<div style='font-size:12px;color:rgba(255,255,255,0.6);line-height:1.7;white-space:pre-wrap;"
             f"font-family:ui-monospace,monospace;'>{content_text}</div>"
+            f"<div style='font-size:10px;color:rgba(255,255,255,0.2);margin-top:8px;'>Click to expand</div>"
             f"</div>"
         )
 
@@ -3528,13 +3532,19 @@ def search():
         "</script>"
     )
 
-    # JS data array for overlay — serialize all db_results
+    # JS data arrays for overlays
     sr_json = json.dumps([
         {"type": r.get("type",""), "project": r.get("project",""),
          "title": r.get("title",""), "date": r.get("date") or "",
          "phase": r.get("phase") or "", "body": r.get("body",""),
          "fields": r.get("fields",[])}
         for r in db_results
+    ], ensure_ascii=False)
+    mem_json = json.dumps([
+        {"wing": r.get("wing",""), "room": r.get("room",""),
+         "source": r.get("source",""), "cosine": r.get("cosine", 0),
+         "content": r.get("content","")}
+        for r in (mem_results or [])
     ], ensure_ascii=False)
     overlay_js = (
         "<script>"
@@ -3570,6 +3580,37 @@ def search():
         "    '</div>'+"
         "    '<div style=\"padding:20px 24px;overflow-y:auto;flex:1;\">'+"
         "      (fieldsHtml||'<div style=\"color:rgba(255,255,255,0.4);font-size:13px;\">No additional detail.</div>')+"
+        "    '</div>'+"
+        "  '</div>';"
+        "  document.getElementById('overlay-root').innerHTML=html;"
+        "  document.getElementById('overlay-backdrop').style.display='flex';"
+        "}"
+        f"var _memData={mem_json};"
+        "function openMemResultOverlay(i){"
+        "  var r=_memData[i];"
+        "  var pct=Math.round(r.cosine*100);"
+        "  var scoreColor=pct>=70?'#4ADE80':pct>=50?'#FCD34D':'rgba(255,255,255,0.3)';"
+        "  var html="
+        "    '<div style=\"background:#1A2035;border:1px solid rgba(255,255,255,0.1);border-radius:14px;"
+        "width:680px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column;overflow:hidden;\">'+"
+        "    '<div style=\"display:flex;align-items:center;justify-content:space-between;"
+        "padding:18px 24px;border-bottom:1px solid rgba(255,255,255,0.07);flex-shrink:0;\">'+"
+        "      '<div style=\"display:flex;align-items:center;gap:10px;\">'+"
+        "        '<span style=\"font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;"
+        "background:rgba(167,139,250,0.15);color:#A78BFA;\">'+r.wing.toUpperCase()+'</span>'+"
+        "        '<span style=\"font-size:15px;font-weight:700;color:#fff;\">'+r.room+'</span>'+"
+        "      '</div>'+"
+        "      '<button onclick=\"closeOverlay()\" style=\"background:none;border:none;"
+        "color:rgba(255,255,255,0.4);font-size:16px;cursor:pointer;padding:4px 8px;border-radius:6px;\">✕</button>'+"
+        "    '</div>'+"
+        "    '<div style=\"padding:12px 24px;border-bottom:1px solid rgba(255,255,255,0.07);"
+        "flex-shrink:0;display:flex;align-items:center;gap:12px;\">'+"
+        "      '<span style=\"font-size:11px;color:rgba(255,255,255,0.35);\">'+r.source+'</span>'+"
+        "      '<span style=\"font-size:11px;font-weight:600;color:'+scoreColor+';\">'+pct+'% match</span>'+"
+        "    '</div>'+"
+        "    '<div style=\"padding:20px 24px;overflow-y:auto;flex:1;\">'+"
+        "      '<div style=\"font-size:13px;color:rgba(255,255,255,0.75);line-height:1.8;"
+        "white-space:pre-wrap;font-family:ui-monospace,monospace;\">'+r.content+'</div>'+"
         "    '</div>'+"
         "  '</div>';"
         "  document.getElementById('overlay-root').innerHTML=html;"
@@ -3647,7 +3688,7 @@ def search():
                 mem_body = "<div style='color:rgba(255,255,255,0.3);font-size:13px;padding:12px 0;'>No matches in memory.</div>"
                 mem_count = ""
             else:
-                mem_body = "".join(mem_card(r) for r in mem_results)
+                mem_body = "".join(mem_card(r, i) for i, r in enumerate(mem_results))
                 mem_count = (
                     f"<span style='background:rgba(255,255,255,0.06);color:rgba(255,255,255,0.4);"
                     f"font-size:11px;padding:1px 7px;border-radius:10px;font-weight:600;margin-left:8px;'>"
