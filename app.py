@@ -3271,6 +3271,31 @@ MEMPALACE_CLI = "/Users/scottheinemeier/Apps/.venv/bin/mempalace"
 MEMPALACE_CHROMA = os.path.expanduser("~/.mempalace/palace/chroma.sqlite3")
 
 
+def _strip_tunnels(text):
+    """Strip MemPalace tunnel references (||→drawer_...) from chunk text."""
+    return re.sub(r'\|\|→[^\n]*', '', text).strip()
+
+
+def _clean_mem_content(text):
+    """Strip HTML tags, CSS fragments, and tunnel refs; normalize whitespace."""
+    if not text:
+        return text
+    if re.search(r'<[a-zA-Z][^>]*>', text):
+        # Remove style/script blocks entirely
+        text = re.sub(r'<(style|script)[^>]*>.*?</\1>', ' ', text, flags=re.DOTALL | re.IGNORECASE)
+        # Remove full tags
+        text = re.sub(r'<[^>]+>', ' ', text)
+        # Remove partial tag remnants at chunk boundaries (e.g. '45,212,191,0.7)">', 'pan>', 'ound:#475569">')
+        text = re.sub(r'[^\s]*>', ' ', text)
+        # Decode entities
+        text = text.replace('&nbsp;', ' ').replace('&amp;', '&').replace('&lt;', '<').replace('&gt;', '>').replace('&quot;', '"').replace('&#39;', "'")
+        # Drop lines that are clearly CSS/attribute remnants (no real words)
+        lines = [l for l in text.split('\n') if re.search(r'[a-zA-Z]{3}', l)]
+        text = '\n'.join(lines)
+    text = re.sub(r'\n{3,}', '\n\n', re.sub(r'[ \t]+', ' ', text))
+    return text.strip()
+
+
 def _get_full_mem_content(source):
     """Reconstruct full source content from chroma DB chunks, ordered by embedding ID."""
     if not source or not os.path.exists(MEMPALACE_CHROMA):
@@ -3288,16 +3313,15 @@ def _get_full_mem_content(source):
         conn.close()
         if not rows:
             return None
-        # Chunks overlap slightly at boundaries — deduplicate by checking each chunk
-        # starts where the previous one doesn't already cover
-        parts = [rows[0][0]]
+        parts = [_strip_tunnels(rows[0][0])]
         for row in rows[1:]:
-            chunk = row[0]
-            # Only append if this chunk adds new content beyond what we already have
+            chunk = _strip_tunnels(row[0])
+            if not chunk:
+                continue
             tail = parts[-1][-100:] if len(parts[-1]) > 100 else parts[-1]
             if chunk[:50] not in tail:
                 parts.append(chunk)
-        return "\n\n".join(parts)
+        return _clean_mem_content("\n\n".join(p for p in parts if p))
     except Exception:
         return None
 
@@ -3451,7 +3475,7 @@ def _parse_mempalace_output(output):
         cosine_m = re.search(r'cosine=([\d.]+)', block)
         content_m = re.search(r'Match:[^\n]*\n\n(.+)', block, re.DOTALL)
         source = source_m.group(1).strip() if source_m else ""
-        excerpt = content_m.group(1).strip() if content_m else block.strip()
+        excerpt = _clean_mem_content(_strip_tunnels(content_m.group(1).strip() if content_m else block.strip()))
         if source not in full_cache:
             full_cache[source] = _get_full_mem_content(source)
         results.append({
