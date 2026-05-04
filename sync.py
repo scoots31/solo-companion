@@ -283,9 +283,9 @@ def _sync_slices(c, project_id, backlog_text, backlog_mtime, open_right_now):
                plain_description, technical_description,
                design_anchor, data_anchor, process_anchor,
                references_list, done_criteria, quality_contract, self_verification, builder_confirmation,
-               depends_on, notes, distribution_note,
+               depends_on, notes, distribution_note, architecture_type,
                is_blocked, is_flagged, flagged_reason, review_url, last_modified)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             project_id,
             slice_id,
@@ -306,6 +306,7 @@ def _sync_slices(c, project_id, backlog_text, backlog_mtime, open_right_now):
             _scalar(fields.get("Depends on")),
             _scalar(fields.get("Notes")),
             _scalar(fields.get("Distribution note")),
+            _scalar(fields.get("Architecture type")),
             is_blocked,
             is_flagged,
             flagged_reason,

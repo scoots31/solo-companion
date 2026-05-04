@@ -95,6 +95,7 @@ def init_db():
             depends_on               TEXT,
             notes                    TEXT,
             distribution_note        TEXT,                -- optional 17th field
+            architecture_type        TEXT,                -- "Leaf node" | "Core architecture"
             -- derived at parse time
             is_blocked               INTEGER NOT NULL DEFAULT 0,
             is_flagged               INTEGER NOT NULL DEFAULT 0,
@@ -184,6 +185,12 @@ def init_db():
     # Add quality_contract column to slices if not present (safe on existing DBs)
     try:
         conn.execute("ALTER TABLE slices ADD COLUMN quality_contract TEXT")
+        conn.commit()
+    except Exception:
+        pass  # column already exists
+    # Add architecture_type column to slices if not present (safe on existing DBs)
+    try:
+        conn.execute("ALTER TABLE slices ADD COLUMN architecture_type TEXT")
         conn.commit()
     except Exception:
         pass  # column already exists
