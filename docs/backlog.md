@@ -1,6 +1,6 @@
 # Backlog — Solo Companion
-**Last updated:** 2026-04-29 · SL-030 Done
-**Project status:** In Build (Phase 5)
+**Last updated:** 2026-05-05 · Phase 6 plan approved
+**Project status:** Planning (Phase 6)
 
 ---
 
@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 0 |
+| ✅ Ready | 6 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 30 |
+| ✓ Done | 31 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up** | D-10 QA → Phase 5 test |
+| **Next up** | SL-032 — column assignment query |
 | **Blocked — waiting on** | — |
 | **Open spikes** | — |
 
@@ -221,6 +221,45 @@ Builder confirmation:
 All 4 acceptance criteria verified 2026-04-29. Events table populated with 10 events across 4 live event types (slice_done, slice_in_progress, block_opened, deliverable_done). All 8 event type code paths implemented. Filter bar wired with AND logic across project dropdown and type chips. Slice/deliverable/phase overlay endpoints return 200 from feed context. Empty state copy present. Phase 5 accepted.
 
 Notes: Event timestamp uses file mtime (last_modified already in SQLite) — not sync-run time and not git history. See framework-improvements.md for the Option C upgrade path when per-slice accuracy is needed.
+
+---
+
+### Phase 6 · Board View
+
+Status: Planning
+
+Plain language description:
+The solo can open a Board tab in the companion — local and in the cloud viewer — and see every active deliverable across all their projects at once, grouped into kanban columns by build stage: Design Sprint, Planning, In Build, In Test. They can switch to a slice-level view with one click, or narrow the board to a single project with the project filter. Clicking any card opens the full detail overlay. The board replaces the need to navigate project by project to understand where everything stands.
+
+Technical description:
+Two surfaces built in parallel. Local app: new /board Flask route in app.py rendering four tinted kanban columns. Column assignment derived at render time from existing slices.status field using most-advanced-status-per-deliverable logic — no new data model. Project filter uses same single-dropdown pattern as the activity feed. View toggle switches between deliverable cards (name, project dot, slice count, status pip breakdown) and slice cards (ID, name, deliverable, project dot, status badge). Card click wires to existing openDeliverableOverlay() and openSliceOverlay() functions. Cloud viewer: Board tab added to index.js sidebar nav; renderBoard() function reads deliverables and slices from the existing KV push payload — no push.py changes required.
+
+Question this phase answers: Can the solo see where every active deliverable and slice stands across all projects, by stage, in one view — locally and in the cloud?
+Deliverables: D-11, D-12
+Process steps completed: Board tab open · project filter · deliverable/slice toggle · card click → overlay
+Proves / de-risks: The companion serves as a true portfolio view, not just a per-project orientation tool.
+
+Explicitly out of scope:
+Framework skill changes (parallel pipeline mode, handoff.md Pipeline mode field, start soft prompt) — separate curator track. Done deliverables and slices. Real-time board updates (sync-on-open covers this). Drag-to-reorder or status changes from the board. Search and Capture in the cloud viewer sidebar — those features do not exist in the cloud viewer.
+
+Blocked by: none (Phase 5 complete, all infrastructure in place)
+Definition of done: Board tab renders correctly in both local app and cloud viewer. All active deliverables and slices appear in the correct columns. Project filter and view toggle both work. Card click opens the correct overlay.
+
+Acceptance criteria:
+  1. Board renders at /board (local) and in the cloud viewer with correct deliverables in correct columns for all active projects
+  2. Project filter narrows the board to the selected project; "All projects" restores the full view
+  3. Deliverables/Slices toggle switches card type across all columns; card click opens the correct overlay in both surfaces
+
+Self-verification checklist:
+  - Open the board locally and in the cloud viewer and confirm columns populate with correct deliverables
+  - Filter to a single project in each surface and confirm only that project's cards remain
+  - Toggle to slice view and confirm slice cards render with correct IDs, names, and status badges
+  - Click one deliverable card and one slice card and confirm the correct overlay opens in each case
+
+Builder confirmation:
+Pending build
+
+Notes: Plan approved 2026-05-05. Design sprint complete — sprint-04-board.html is the visual contract. Build sequence: SL-031 → SL-032 → SL-033 → SL-034 (local app), SL-035 → SL-036 → SL-037 (cloud viewer). SL-032 is the tracer bullet — column assignment query proves the hardest assumption.
 
 ---
 
@@ -587,6 +626,82 @@ Accepted 2026-04-29. All 6 slices Done. Events table populated; diff logic fires
 Slices: SL-025, SL-026, SL-027, SL-028, SL-029, SL-030
 Depends on: D-01 (sync layer), D-09 (review button pattern)
 Notes: SL-025 (events table + sync diff) must ship before all others. SL-026 (page shell) can build in parallel.
+
+---
+
+### D-11 · Board View — Local App
+
+Status: Defined
+Type: Screen
+Phase: 6
+
+Plain language description:
+The local companion app has a Board tab in the sidebar. Opening it shows every active deliverable across all registered projects, grouped into four kanban columns by build stage. Each deliverable appears as a card with its name, project dot, slice count, and a color-coded status breakdown. A toggle switches to slice-level cards. A single project dropdown narrows the view to one project. Clicking any card opens the full detail overlay already in the app.
+
+Technical description:
+New /board route in app.py returning a full _page() response. Column assignment: SQL query joining deliverables and slices, deriving each deliverable's column from its most-advanced slice status (status priority: In Test > In QA > In Build > In Review > Ready > Planning/Upcoming). Active-only filter excludes deliverables where all slices are Done or Cancelled. Deliverable card HTML renders name, project dot (color from _project_color()), slice count, and pip dots per status bucket. Slice card HTML renders slice_id, name, deliverable name, project dot, and status badge. Project dropdown matches activity feed pattern: single button + absolute-positioned popover, JS-wired. View toggle: client-side JS shows/hides card sets. Card onclick wires to existing openDeliverableOverlay() and openSliceOverlay() functions already defined in _page(). Sidebar includes Search and Capture links (same as all local routes).
+
+Screens:
+  - sprint-04-board.html (primary)
+
+Acceptance criteria:
+  1. /board loads with all active deliverables in correct columns for all registered projects
+  2. Project filter correctly narrows to a single project; "All projects" restores the full board
+  3. Deliverables/Slices toggle switches card type; clicking a card opens the correct overlay with correct data
+
+Self-verification checklist:
+  - Open /board and confirm each deliverable appears in the column matching its most-advanced slice status
+  - Filter to one project and confirm only that project's cards show across all columns
+  - Toggle to slices and confirm each active slice appears in the correct column
+  - Click a deliverable card and a slice card and confirm correct overlays open with correct data
+
+Builder confirmation:
+Pending build
+
+Slices: SL-031, SL-032, SL-033, SL-034
+References:
+  - sprint-04-board.html — visual contract for all board elements
+  - sprint-03-activity-feed.html — project dropdown pattern to match
+Depends on: D-10
+Notes: Column assignment logic derives from existing slices.status field — no schema changes. Overlay functions already in _page() — no additions needed.
+
+---
+
+### D-12 · Board View — Cloud Viewer
+
+Status: Defined
+Type: Screen
+Phase: 6
+
+Plain language description:
+The cloud viewer (Cloudflare) has a Board tab alongside Dashboard and Activity Feed. It shows the same kanban board as the local app — active deliverables grouped by stage, project filter, deliverable/slice toggle, card click to overlay. The sidebar does not include Search or Capture — those are local-only features that have never existed in the cloud viewer.
+
+Technical description:
+Board tab added to the sidebar nav rendered in the buildSidebar() / nl() section of index.js. New renderBoard() function reads deliverables and slices from the existing KV push payload (already includes both objects — no push.py changes). Column assignment implemented in JavaScript using the same most-advanced-status-per-deliverable logic as the local app. Deliverable and slice card HTML strings built inline in renderBoard(), matching sprint-04-board.html card structure. Project filter dropdown: same single-button + popover pattern, JS-wired. View toggle: same pill-chip JS pattern as type chips on the feed. Card onclick calls existing overlay functions already defined in index.js.
+
+Screens:
+  - sprint-04-board.html (primary — same visual contract)
+
+Acceptance criteria:
+  1. Board tab appears in cloud viewer sidebar and renders /board equivalent content from KV push data
+  2. Project filter and view toggle work correctly — same behavior as local app
+  3. Card click opens the correct overlay type with correct data from the push payload
+
+Self-verification checklist:
+  - Open the cloud viewer Board tab and confirm deliverables appear in correct columns
+  - Filter to one project and confirm narrowing works correctly
+  - Toggle to slices and confirm slice cards render
+  - Click a card and confirm the correct overlay opens
+
+Builder confirmation:
+Pending build
+
+Slices: SL-035, SL-036, SL-037
+References:
+  - sprint-04-board.html — visual contract
+  - solo-companion-cloud/src/index.js — existing routing, sidebar, overlay functions to extend
+Depends on: D-11
+Notes: No push.py changes needed — deliverables and slices already in the KV payload. Cloud viewer sidebar intentionally omits Search and Capture.
 
 ---
 
@@ -1874,6 +1989,243 @@ Notes: The existing overlay JS functions are already in _page() — no additions
 
 ---
 
+### SL-031 · /board Route Shell
+
+Status: Done
+Phase: 6
+Deliverable: D-11
+
+Plain language description:
+The /board route exists in the local app. Opening it shows the full board page — sidebar with Search and Capture, top bar with page title and refresh, filter bar with project dropdown and view toggle, and the four empty kanban column containers with their tinted backgrounds and labeled headers.
+
+Technical description:
+New @app.route('/board') in app.py. Page built with _page(padded=False). Sidebar via _sidebar_html() — same as all other routes, includes Search and Capture nav items. Top bar: "Board" title, active deliverable count pill, sync time, refresh button (POST /sync redirect). Filter bar: project dropdown (same _project_dropdown() helper as /feed, or inline equivalent), view toggle pill chips. Four column divs: Design Sprint (purple tint), Planning (blue tint), In Build (amber tint), In Test (teal tint) — each with header, accent bar, count badge, and empty card container. No data queries yet — columns render empty.
+
+Design anchor: sprint-04-board.html — full page shell, filter bar, column headers
+Data anchor: projects table — project list for dropdown options
+Process anchor: Board tab open → to-be Step 1 · main path
+
+References:
+  - sprint-04-board.html — shell structure, column tints, filter bar layout
+  - app.py /feed route — project dropdown pattern to replicate
+
+Done criteria:
+  - /board returns HTTP 200 with correct page shell
+  - Four column containers render with correct labels, accent colors, and tinted backgrounds
+  - Filter bar renders project dropdown and view toggle in correct positions
+  - Sidebar includes Search and Capture nav items
+
+Self-verification checklist:
+  - Confirm /board returns 200 with no Flask errors in companion.log
+  - Confirm four columns render with correct names and color tints matching sprint-04-board.html
+  - Confirm filter bar project dropdown opens and lists registered projects
+
+Architecture type: Core architecture — new route, establishes page pattern for SL-032+
+Depends on: none
+Notes: Column containers render empty — data queries added in SL-032.
+
+---
+
+### SL-032 · Column Assignment Query + Deliverable Cards
+
+Status: Ready
+Phase: 6
+Deliverable: D-11
+
+Plain language description:
+The board populates with real data. Each active deliverable appears as a card in the column matching its most-advanced slice status. Each card shows the deliverable name, project color dot and name, total slice count, and a row of colored pip dots showing how many slices are in each state.
+
+Technical description:
+SQL query joining deliverables and slices for all active projects. Column assignment: most-advanced slice status per deliverable using CASE priority order (In Test > In QA > In Build > In Review > Ready/Upcoming > Planning). Active-only filter: exclude deliverables where all slices have status Done or Cancelled. Deliverable card HTML: name (bold), project dot + name (monospace, subdued), slice count pill (top-right), status pip row (colored dots with counts per bucket). Card onclick="openDeliverableOverlay(project_id, deliverable_id)" — wires to existing overlay function. Cards distributed into the correct column container per assignment result.
+
+Design anchor: sprint-04-board.html — deliverable card, status pip breakdown, column population
+Data anchor: deliverables table, slices table — status, project_id, deliverable_id, name
+Process anchor: Board tab open → to-be Step 2 (board populates) · main path
+
+References:
+  - sprint-04-board.html — deliverable card structure and pip dot treatment
+  - app.py dashboard route — existing deliverable query patterns to reference
+
+Done criteria:
+  - All active deliverables appear in the board with no Done or Cancelled-only deliverables present
+  - Each deliverable lands in the column matching its most-advanced slice status — verified against SQLite directly
+  - Status pip row shows correct counts per status bucket for at least two deliverables
+
+Self-verification checklist:
+  - Query SQLite directly and confirm column assignment matches most-advanced-status logic for every deliverable
+  - Confirm Done deliverables do not appear on the board
+  - Click a deliverable card and confirm the correct deliverable overlay opens
+
+Architecture type: Core architecture — column assignment query is shared logic that slice view (SL-034) and cloud viewer (SL-036) both mirror
+Depends on: SL-031
+Notes: This is the tracer bullet — proves the hardest assumption in the phase. If column assignment logic needs adjustment, it surfaces here before any leaf work builds on top of it.
+
+---
+
+### SL-033 · Project Dropdown Filter
+
+Status: Ready
+Phase: 6
+Deliverable: D-11
+
+Plain language description:
+The project dropdown in the filter bar works. Clicking it opens a list of all registered projects. Selecting one narrows the board to show only that project's deliverables. Selecting "All projects" restores the full view. The button label and color dot update to reflect the active selection.
+
+Technical description:
+Client-side JS wired to project dropdown in SL-031 shell. On project option click: filter card visibility by data-project attribute across all four column containers. Update column count badges. Update dropdown button label and dot color. "All projects" restores all cards. Pattern matches activity feed project dropdown JS exactly — same toggleProjDropdown(), setProject(), outside-click-to-close behavior.
+
+Design anchor: sprint-04-board.html — project dropdown, active state, button label update
+Data anchor: data-project attribute on each card div (set at render time in SL-032)
+Process anchor: Project filter → to-be Step 3 · main path
+
+Done criteria:
+  - Selecting a project shows only that project's cards across all columns
+  - Column count badges update correctly after filtering
+  - Dropdown button label and dot update to the selected project
+  - Clicking outside the dropdown closes it
+
+Self-verification checklist:
+  - Select each project in turn and confirm only that project's cards are visible
+  - Confirm "All projects" restores the full board
+  - Confirm column counts update correctly on each filter change
+
+Architecture type: Leaf node
+Depends on: SL-032
+Notes: JS pattern is identical to /feed project dropdown — reuse directly.
+
+---
+
+### SL-034 · Slices Toggle + Slice Cards
+
+Status: Ready
+Phase: 6
+Deliverable: D-11
+
+Plain language description:
+The Deliverables/Slices toggle works. Clicking Slices switches every card in every column to a slice-level view — each active slice appears as its own card showing the slice ID, name, deliverable it belongs to, project dot and name, and a status badge. Clicking Deliverables switches back. The project filter continues to work in slice view.
+
+Technical description:
+Slice query: SELECT slices where status NOT IN ('Done','Cancelled') for all active projects. Slice cards rendered alongside deliverable cards in each column container, hidden by default (display:none). Column assignment for slices: same status-to-column mapping as deliverables but applied directly to slice.status. Toggle JS: on click, hide all .d-card and show all .s-card (or vice versa), update column count badges, update item count pill in top bar. Project filter JS already handles data-project filtering — no additional changes needed for slice view. Slice card onclick="openSliceOverlay(project_id, slice_id)".
+
+Design anchor: sprint-04-board.html — slice card, toggle active state, slice view column layout
+Data anchor: slices table — slice_id, name, deliverable_ref, project_id, status
+Process anchor: Deliverable/Slice toggle → to-be Step 4 · main path
+
+Done criteria:
+  - Toggling to Slices shows slice cards in correct columns and hides deliverable cards
+  - Each slice card shows correct ID, name, deliverable name, project, and status badge
+  - Project filter correctly narrows slice view to the selected project
+  - Toggling back to Deliverables restores the deliverable view correctly
+
+Self-verification checklist:
+  - Toggle to slice view and confirm each slice lands in the correct column
+  - Filter to one project in slice view and confirm narrowing works
+  - Toggle back to deliverable view and confirm board is correct
+  - Click a slice card and confirm the correct slice overlay opens
+
+Architecture type: Leaf node
+Depends on: SL-033
+Notes: Slice column assignment mirrors deliverable column assignment — same status priority, applied per slice directly.
+
+---
+
+### SL-035 · Cloud Viewer Board Tab Shell
+
+Status: Ready
+Phase: 6
+Deliverable: D-12
+
+Plain language description:
+The cloud viewer has a Board tab in the sidebar. Clicking it loads the board page shell — the same four tinted kanban column containers as the local app, with the filter bar and view toggle. No data yet — columns render empty.
+
+Technical description:
+In index.js: add 'Board' nav link to sidebar buildSidebar() (or inline nl() call) between Activity Feed and any remaining items. Add hash route handling: hash === '/board' → renderBoard(). New renderBoard() function: builds page HTML string with top bar, filter bar (project dropdown + view toggle), and four empty column containers with correct tints and labels. Sidebar omits Search and Capture — cloud viewer has never had those. Inject into setMain(). No data queries yet.
+
+Design anchor: sprint-04-board.html — shell, column headers, filter bar
+Data anchor: N/A — shell only
+Process anchor: Board tab open (cloud) → to-be Step 1 · cloud path
+
+Done criteria:
+  - Board tab appears in cloud viewer sidebar and is clickable
+  - Clicking Board renders the page shell with four column containers
+  - Sidebar does not include Search or Capture links
+  - Column headers, tints, and filter bar render correctly
+
+Self-verification checklist:
+  - Open the cloud viewer and confirm Board appears in sidebar nav
+  - Click Board and confirm four column containers render with correct labels and colors
+  - Confirm no Search or Capture links appear in the sidebar
+
+Architecture type: Core architecture — modifies routing and sidebar nav in index.js, which affects all pages
+Depends on: SL-034
+Notes: Cloud viewer sidebar intentionally omits Search and Capture. These are local-only features that have never been in the cloud viewer.
+
+---
+
+### SL-036 · Cloud Board Column Assignment + Deliverable Cards
+
+Status: Ready
+Phase: 6
+Deliverable: D-12
+
+Plain language description:
+The cloud viewer board populates with real data from the push payload. Deliverable cards appear in the correct columns using the same column assignment logic as the local app.
+
+Technical description:
+In renderBoard(): read window.__DATA__.deliverables and window.__DATA__.slices (or equivalent KV push payload paths). Implement column assignment in JS: group deliverables, find most-advanced slice status per deliverable using same priority order as SL-032. Filter out Done/Cancelled-only deliverables. Build deliverable card HTML strings matching sprint-04-board.html card structure. Distribute cards into column containers. Card onclick calls existing overlay functions in index.js. Column count badges populated from card counts.
+
+Design anchor: sprint-04-board.html — deliverable card, column population
+Data anchor: KV push payload — deliverables array, slices array (already present from push.py)
+Process anchor: Board tab open (cloud) → to-be Step 2 · cloud path
+
+Done criteria:
+  - Cloud viewer board shows all active deliverables in correct columns
+  - Column assignment matches local app behavior for the same data set
+  - Clicking a deliverable card opens the correct overlay with correct data
+
+Self-verification checklist:
+  - Open cloud viewer board and confirm deliverables populate in correct columns
+  - Compare column placement to local app for the same projects — must match
+  - Click a deliverable card and confirm correct overlay opens
+
+Architecture type: Leaf node
+Depends on: SL-035
+Notes: Column assignment JS mirrors SL-032's SQL logic exactly. If SL-032 required any logic adjustments, apply the same adjustments here.
+
+---
+
+### SL-037 · Cloud Board Project Filter + Toggle + Slice Cards
+
+Status: Ready
+Phase: 6
+Deliverable: D-12
+
+Plain language description:
+The project filter and view toggle work in the cloud viewer board. The behavior is identical to the local app — filter narrows by project, toggle switches between deliverable and slice card views.
+
+Technical description:
+Project dropdown: same single-button + popover JS pattern as local app, wired to filter card visibility by data-project attribute. Slice cards: read slices from KV payload, apply same column assignment by slice.status, render slice card HTML strings matching sprint-04-board.html slice card structure. Toggle JS: same show/hide pattern as SL-034. Card onclick for slices calls existing openSliceOverlay() or equivalent in index.js.
+
+Design anchor: sprint-04-board.html — project dropdown, view toggle, slice cards
+Data anchor: KV push payload — slices array
+Process anchor: Project filter + toggle → to-be Steps 3–4 · cloud path
+
+Done criteria:
+  - Project filter narrows the cloud board correctly; "All projects" restores full view
+  - Toggle switches to slice view showing all active slices in correct columns
+  - Slice card click opens the correct slice overlay in the cloud viewer
+
+Self-verification checklist:
+  - Filter to one project in the cloud viewer board and confirm narrowing works
+  - Toggle to slice view and confirm slice cards render in correct columns
+  - Click a slice card and confirm the correct overlay opens
+
+Architecture type: Leaf node
+Depends on: SL-036
+Notes: JS pattern mirrors SL-033 and SL-034 exactly — reuse directly from the local implementation pass.
+
+---
+
 ## Review Log
 
 ### Round 3 — 2026-04-29
@@ -1961,6 +2313,12 @@ Confirmed by: Solo
 Decision: Phase 5 Activity Feed plan locked. Build sequence: SL-025 (events table + sync diff) → SL-026 (feed page shell) → SL-027 (feed rendering) → SL-028/SL-029/SL-030 (filter bar, review buttons, overlay wiring). Risk order drives SL-025 first — everything reads from the events table.
 Reason: Tracer-bullet sequencing. SL-025 proves the riskiest assumption (schema + diff logic) before any UI renders. SL-026 confirms the route and layout independently. SL-027 proves real events read and render. SL-028/029/030 are peer slices with no dependencies between them.
 Impact: Phase 5 status → Planning. D-10 status → Defined.
+Confirmed by: Solo
+
+### 2026-05-05 — Phase 6 Board View plan approved
+Decision: Implementation plan approved. 1 phase (Phase 6), 2 deliverables (D-11, D-12), 7 slices (SL-031–SL-037).
+Reason: Plan sequenced by risk and process order. SL-032 as tracer bullet proves column assignment query before any UI renders. Local app (D-11) builds first; cloud viewer (D-12) follows confirmed logic.
+Impact: Phase 6 record, D-11 and D-12 deliverable records, and SL-031–037 slice records written to backlog. All slice phase and deliverable assignments set.
 Confirmed by: Solo
 
 ### 2026-04-28 — Build plan approved (4 phases, 9 deliverables, 24 slices)

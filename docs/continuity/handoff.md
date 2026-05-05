@@ -1,72 +1,63 @@
-# Project Handoff — 2026-04-29
+# Project Handoff — 2026-05-05
 
-**Current phase:** Phase 3 — Project Detail
-**Overall status:** Phase 1 (Foundation) and Phase 2 (Dashboard) complete. SL-001–SL-018 Done. Progress tab is fully built. Moving to SL-019 (Backlog Tab).
+**Current phase:** Phase 6 — Board View
+**Overall status:** Phases 1–5 complete. All 30 slices Done. Phase 5 (Activity Feed) accepted 2026-04-29. Phase 6 (Board View) — plan approved 2026-05-05. 7 slices Ready. Build starts at SL-031.
 
 ## Where we are
 
-Phase 1 (Foundation) and Phase 2 (Dashboard) are complete. Phase 3 (Project Detail) is underway — Action tab and full Progress tab built.
+Phases 1–5 are fully built and accepted. The companion runs locally (port 8710) and is mirrored to the cloud viewer (Cloudflare). The full feature set is live: sync layer, dashboard, project detail (all 5 tabs), review flow, and activity feed.
 
-**Phase 1 — Foundation (Done):** SL-001/002/003. Server, sync, SQLite fully populated.
-**Phase 2 — Dashboard (Done):** SL-004–SL-013. Sidebar, top bar, Needs Attention cards, three dashboard buckets, all three overlay types (Slice, Deliverable, Phase).
-**Phase 3 — Project Detail (In Progress):** SL-014–SL-018 Done. Routing, breadcrumb, phase pill, tab bar, Action tab, full Progress tab (phase summary card, deliverables, slice list).
+Phase 6 — Board View — is in build. Plan approved 2026-05-05. 7 slices Ready (SL-031–SL-037). Next: SL-031.
+
+**Phase 1 — Foundation (Done):** SL-001–003. Server, sync, SQLite.
+**Phase 2 — Dashboard (Done):** SL-004–013. Sidebar, top bar, Needs Attention, three buckets, all overlays.
+**Phase 3 — Project Detail (Done):** SL-014–022. All five tabs, all overlays.
+**Phase 4 — Review Flow (Done):** SL-023–024. Review button, Start & Review.
+**Phase 5 — Activity Feed (Done):** SL-025–030. Events table, sync diff, feed page, filters, overlays.
 
 ## What was just completed
 
-SL-018 — Progress Tab: Slice List:
-- All 9 Phase 3 slices render with ID, name, deliverable name, and status badge
-- Row click opens slice overlay (SL-011) with "Already on this project" footer
-- Review button logic in place — renders on Done slices with review_url (none populated yet, Phase 4)
-- Slice count badge in "All Slices" section header
-
-SL-017 — Progress Tab: Deliverables Section:
-- 5 deliverables render for Phase 3 (D-04 through D-08)
-- Status derived from slice completion at render time (not from raw deliverables.status field)
-- Slice count per deliverable via LEFT JOIN
-- Each row clickable → opens deliverable overlay (SL-012)
-- Phase statuses corrected in backlog.md: Phase 1/2 = Done, Phase 3 = In Progress so companion correctly identifies the current phase
-
-SL-016 — Progress Tab: Phase Summary Card:
-- Gate status derived live from slice completion
-- Progress bar + 4-bucket status counts
-- Card clickable → opens phase overlay
-
-SL-015 — Action Tab:
-- Blocked (red), Flagged (amber), Questions (blue) — absent when empty
-- Clean "No action items" empty state
+Phase 6 — Board View planning cycle (2026-05-05):
+- Brainstorm reviewed and confirmed (2026-05-03 doc)
+- Core behavior locked: All Projects default, filter to single project, toggle between deliverable and slice card views, active work only
+- Cloud viewer parity confirmed — Board tab ships in both local and Cloudflare
+- Column assignment rule: most-advanced slice status per deliverable
+- Process maps written: as-is-board-view.md, to-be-board-view.md
+- Discovery brief written: discovery-brief-board-view.md
+- Design sprint complete — sprint-04-board.html approved
+- Deferred-decisions.md Phase 6 section complete — all walk-through questions resolved
+- Plan approved — Phase 6, D-11 (local), D-12 (cloud), SL-031–SL-037 written to backlog
 
 ## Open right now
 
-Nothing blocked. SL-019 is next.
+Nothing blocked. Design sprint is next.
 
 ## Outstanding questions needing outside input
 
-None blocking. One open commitment: Phase 5 — Distribution (README, install script, plist templating, config.json setup) to be defined before Phase 4 wraps.
-
-**Framework curator review — player-evaluation legacy format:**
-player-evaluation is currently excluded from Solo Companion (`is_active=0`) because its backlog uses a legacy format that predates the records-spec. It doesn't have `plain_description`, `technical_description`, or other labeled fields the sync layer expects. Question for the curator: can the player-evaluation backlog be migrated to records-spec format so it can sync into the companion app? The overlay handles missing fields gracefully (sections are hidden, not crashed) — so a partial migration would still render. This needs a human to review the player-evaluation backlog and assess the migration cost.
+- **player-evaluation legacy format** — still excluded from companion (is_active=0). Migrating to records-spec format would allow it to sync. Migration cost needs human assessment. Not blocking Phase 6.
+- **Phase 5 QA** — Phase 5 was accepted via builder confirmation but has not had a formal solo-qa pass. Consider running solo-qa before or alongside Phase 6 build.
 
 ## Next session picks up at
 
-**SL-019 — Backlog Tab.** Spec:
-- Three sections: Phases (all phases, ordered by sequence), Deliverables (all phases, ordered by phase then name), Slices (all slices, ordered by slice_id)
-- Upcoming items (status Planning/Upcoming) rendered at 50% opacity
-- All rows clickable — opens appropriate overlay type
-- Design anchor: sprint-02-project-detail.html — Backlog tab, all three sections
-- Done criteria: all phases/deliverables/slices render; upcoming items dimmed; each overlay type opens correctly
+**solo-build — unit of work SL-032.**
+
+SL-031 Done 2026-05-05. `/board` route shell live on port 8710. Next: column assignment query (tracer bullet — populates deliverable cards into correct columns).
+
+Design artifact: `docs/design/sprint-04-board.html` — approved.
+Deferred decisions: `docs/design/deferred-decisions.md` — Phase 6 section added.
+Discovery brief: `docs/discovery-brief-board-view.md`
 
 ## Key context to carry
 
-- **The framework's slice schema is the spec.** 17 slice fields, 15 deliverable fields, 15 phase fields. All in SQLite. Overlays (SL-011/SL-012/SL-013) render every field — no subsets.
-- **Design files are the visual contract.** `sprint-01-dashboard.html` for dashboard/overlays. `sprint-02-project-detail.html` for all project detail content (tabs, overlays, everything). Read the file before writing any UI code.
-- **Build cadence:** slice by slice. Solo-build → code-review-and-quality → solo-qa with browser sign-off. Slice status updated in backlog.md immediately on sign-off.
-- **Player-evaluation is excluded.** Legacy backlog format, marked is_active=0 in SQLite. Not a bug — by design.
-- **Distribution is real and near-term.** Partner queued to install after Phase 4. Phase 5 — Distribution committed. No hardcoded paths in any code — config-driven framework path, gitignored user state.
-- **`_page(padded=False)` for project detail.** Dashboard uses `padded=True` (default). Project detail uses `padded=False` — the main wrapper is flex-column so the sticky top bar works.
-- **Derived status, not raw status.** Deliverable status is computed from slice completion at render time. Phase gate is computed from slice completion. The raw `deliverables.status` and `phases.status` fields hold acceptance/tracking values from backlog.md, not build state.
-- **Phase status matters for current phase detection.** The companion picks the current phase by querying `status IN ('Active','In Progress')` first, then falls back to non-Done/Cancelled. Phase statuses in backlog.md must be kept accurate — Phase 1/2 = Done, Phase 3 = In Progress.
+- **The framework's slice schema is the spec.** All board data comes from existing SQLite tables — no new data model at the framework level.
+- **Column assignment rule:** a deliverable lands in the column matching its most-advanced slice status.
+- **Active work only.** Done deliverables and slices do not appear on the board.
+- **Both surfaces.** Local companion (/board route) and cloud viewer (Board tab in index.js). Same parity model as all other tabs.
+- **Existing overlays reused.** No new overlay design — card click opens SL-011 (slice) or SL-012 (deliverable) overlay.
+- **Player-evaluation excluded.** Legacy backlog format, marked is_active=0 in SQLite. Not a bug — by design.
 - **Repo:** `scoots31/solo-companion` (private).
+- **`_page(padded=False)` for project detail.** Board view TBD — confirm during design sprint.
 
 ## Resume Prompt
 
-> "Resuming Solo Companion. Phase 1 and Phase 2 complete. Phase 3 (Project Detail) in progress. SL-001–SL-017 Done. Progress tab has phase summary card and deliverables list. Begin SL-018 (Progress Tab — Slice List). Read sprint-02-project-detail.html before writing any code. Slice-by-slice with browser sign-off. Player-evaluation excluded (legacy format). Phase 5 — Distribution committed."
+> "Resuming Solo Companion. Phases 1–5 complete, all 30 slices Done. Phase 6 (Board View) in Planning — discovery done. Design sprint is next. On-ramp: from scratch, extending existing dark theme. Hero screen is the Board tab — All Projects, deliverable cards, kanban columns. Read discovery-brief-board-view.md and to-be-board-view.md before building."

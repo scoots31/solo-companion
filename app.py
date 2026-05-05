@@ -139,6 +139,7 @@ def _sidebar_html(projects, active_name=None):
         "Views</div>"
         + nav_link("Dashboard", "/")
         + nav_link("Activity Feed", "/feed")
+        + nav_link("Board", "/board")
         + nav_link("Search", "/search")
         + nav_link("Capture", "/capture")
         + nav_link("Cloud Settings", "/settings")
@@ -2774,6 +2775,183 @@ def _render_feed_events(events, proj_meta=None):
 
     html += "</div>"
     return html
+
+
+@app.route("/board")
+def board():
+    conn = get_conn()
+    projects = _get_active_projects(conn)
+    conn.close()
+
+    last_synced = get_last_synced()
+    synced_label = _relative_synced(last_synced)
+
+    # ── Top bar ─────────────────────────────────────────────────────────
+    top_bar = (
+        "<div style='display:flex;align-items:center;justify-content:space-between;"
+        "padding:18px 40px;border-bottom:1px solid rgba(255,255,255,0.07);"
+        "background:rgba(0,0,0,0.2);position:sticky;top:0;z-index:5;flex-shrink:0;'>"
+        "<span style='font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.3px;'>Board</span>"
+        "<div style='display:flex;align-items:center;gap:12px;'>"
+        f"<span style='font-size:11px;color:rgba(255,255,255,0.3);"
+        f'font-family:"SF Mono","Fira Code",monospace;'
+        f"'>synced {synced_label}</span>"
+        "<form method='POST' action='/sync' style='margin:0;'>"
+        "<button type='submit' style='display:flex;align-items:center;gap:6px;"
+        "background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);"
+        "color:rgba(255,255,255,0.6);padding:6px 14px;border-radius:6px;font-size:12px;"
+        "font-weight:500;cursor:pointer;font-family:-apple-system,sans-serif;'>↻ Refresh</button>"
+        "</form>"
+        "</div>"
+        "</div>"
+    )
+
+    # ── Project dropdown ─────────────────────────────────────────────────
+    proj_options = (
+        "<div id='proj-dropdown' style='display:none;position:absolute;top:calc(100% + 4px);left:0;"
+        "min-width:180px;background:#1A2540;border:1px solid rgba(255,255,255,0.12);"
+        "border-radius:8px;padding:4px;z-index:50;box-shadow:0 8px 24px rgba(0,0,0,0.5);'>"
+        "<div class='proj-opt' data-project='all' data-color='' "
+        "style='display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;"
+        "font-size:12px;font-weight:500;color:rgba(255,255,255,0.8);cursor:pointer;transition:background 0.1s;' "
+        "onmouseover=\"this.style.background='rgba(255,255,255,0.07)'\" "
+        "onmouseout=\"this.style.background='transparent'\">"
+        "<span style='width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);display:inline-block;'></span>"
+        "All projects</div>"
+    )
+    for p in projects:
+        color = _project_color(p["name"])
+        name_esc = p["name"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+        proj_options += (
+            f"<div class='proj-opt' data-project='{name_esc}' data-color='{color}' "
+            "style='display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;"
+            "font-size:12px;font-weight:500;color:rgba(255,255,255,0.8);cursor:pointer;transition:background 0.1s;' "
+            "onmouseover=\"this.style.background='rgba(255,255,255,0.07)'\" "
+            f"onmouseout=\"this.style.background='transparent'\">"
+            f"<span style='width:6px;height:6px;border-radius:50%;background:{color};display:inline-block;'></span>"
+            f"{name_esc}</div>"
+        )
+    proj_options += "</div>"
+
+    project_dropdown = (
+        "<div style='position:relative;' id='proj-dd-wrap'>"
+        "<button id='proj-dd-btn' onclick='toggleProjDropdown()' "
+        "style='display:flex;align-items:center;gap:8px;"
+        "background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);"
+        "border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;"
+        "color:rgba(255,255,255,0.7);cursor:pointer;transition:all 0.15s;font-family:-apple-system,sans-serif;'>"
+        "<span id='proj-dd-dot' style='width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,0.3);display:inline-block;'></span>"
+        "<span id='proj-dd-label'>All projects</span>"
+        " ▾</button>"
+        + proj_options
+        + "</div>"
+    )
+
+    # ── View toggle ──────────────────────────────────────────────────────
+    chip_base = (
+        "font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;"
+        "background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);"
+        "color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.15s;"
+    )
+    chip_active = (
+        "font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;"
+        "background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.3);"
+        "color:#93C5FD;cursor:pointer;transition:all 0.15s;"
+    )
+    view_toggle = (
+        "<div style='display:flex;align-items:center;gap:6px;' id='view-chips'>"
+        f"<span id='chip-del' style='{chip_active}' class='view-chip' data-view='deliverables'>Deliverables</span>"
+        f"<span id='chip-sl' style='{chip_base}' class='view-chip' data-view='slices'>Slices</span>"
+        "</div>"
+    )
+
+    # ── Filter bar ───────────────────────────────────────────────────────
+    filter_bar = (
+        "<div style='display:flex;align-items:center;gap:12px;"
+        "padding:12px 40px;border-bottom:1px solid rgba(255,255,255,0.06);"
+        "background:rgba(0,0,0,0.1);flex-shrink:0;'>"
+        + project_dropdown
+        + "<div style='width:1px;height:20px;background:rgba(255,255,255,0.1);'></div>"
+        + view_toggle
+        + "</div>"
+    )
+
+    # ── Kanban columns ───────────────────────────────────────────────────
+    COLUMNS = [
+        ("design",    "Design Sprint", "#7C3AED", "rgba(124,58,237,0.07)"),
+        ("planning",  "Planning",      "#2563EB", "rgba(37,99,235,0.07)"),
+        ("build",     "In Build",      "#B45309", "rgba(180,83,9,0.07)"),
+        ("test",      "In Test",       "#0D9488", "rgba(13,148,136,0.07)"),
+    ]
+
+    cols_html = "<div style='display:flex;gap:16px;padding:24px 40px;flex:1;min-height:0;overflow-x:auto;align-items:flex-start;'>"
+    for col_id, col_label, accent, tint in COLUMNS:
+        cols_html += (
+            f"<div id='col-{col_id}' style='flex:1;min-width:220px;background:{tint};"
+            f"border:1px solid rgba(255,255,255,0.06);border-radius:10px;"
+            "display:flex;flex-direction:column;overflow:hidden;'>"
+            # accent bar
+            f"<div style='height:3px;background:{accent};'></div>"
+            # header
+            "<div style='display:flex;align-items:center;justify-content:space-between;"
+            "padding:14px 16px 10px;'>"
+            f"<span style='font-size:12px;font-weight:700;color:rgba(255,255,255,0.7);"
+            f"letter-spacing:0.04em;text-transform:uppercase;'>{col_label}</span>"
+            f"<span class='col-count' id='col-{col_id}-count' "
+            "style='font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;"
+            f"background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.4);'>0</span>"
+            "</div>"
+            # card container
+            f"<div id='col-{col_id}-cards' class='card-container' "
+            "style='padding:0 10px 14px;display:flex;flex-direction:column;gap:0;'>"
+            "</div>"
+            "</div>"
+        )
+    cols_html += "</div>"
+
+    # ── Board JS ─────────────────────────────────────────────────────────
+    board_js = (
+        "<script>"
+        # project dropdown
+        "function toggleProjDropdown(){"
+        "  var d=document.getElementById('proj-dropdown');"
+        "  d.style.display=d.style.display==='none'?'block':'none';}"
+        "document.addEventListener('click',function(e){"
+        "  if(!document.getElementById('proj-dd-wrap').contains(e.target)){"
+        "    document.getElementById('proj-dropdown').style.display='none';}});"
+        "document.querySelectorAll('.proj-opt').forEach(function(opt){"
+        "  opt.addEventListener('click',function(){"
+        "    var proj=this.dataset.project;"
+        "    var color=this.dataset.color;"
+        "    document.getElementById('proj-dd-label').textContent=proj==='all'?'All projects':proj;"
+        "    var dot=document.getElementById('proj-dd-dot');"
+        "    dot.style.background=color||'rgba(255,255,255,0.3)';"
+        "    document.getElementById('proj-dropdown').style.display='none';"
+        "    filterCards(proj);});});"
+        # view toggle
+        "document.querySelectorAll('.view-chip').forEach(function(chip){"
+        "  chip.addEventListener('click',function(){"
+        "    document.querySelectorAll('.view-chip').forEach(function(c){"
+        "      c.style.cssText='" + chip_base.replace("'", "\\'") + "';});"
+        "    this.style.cssText='" + chip_active.replace("'", "\\'") + "';"
+        "    currentView=this.dataset.view;"
+        "    renderCards();});});"
+        # state
+        "var currentView='deliverables';"
+        "var currentProject='all';"
+        # filter
+        "function filterCards(proj){"
+        "  currentProject=proj;"
+        "  renderCards();}"
+        # render (no-op shell — data wired in SL-032)
+        "function renderCards(){}"
+        "</script>"
+    )
+
+    main_html = top_bar + filter_bar + cols_html + board_js
+
+    sidebar = _sidebar_html(projects)
+    return _page(sidebar, main_html, title="Board — Solo Companion", padded=False)
 
 
 @app.route("/feed")

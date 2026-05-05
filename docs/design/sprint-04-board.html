@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solo Companion — Board</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:        #0F1729;
+    --navy-mid:    #1E3A5F;
+    --blue:        #2563EB;
+    --blue-light:  #DBEAFE;
+    --teal:        #0D9488;
+    --teal-light:  #CCFBF1;
+    --green:       #15803D;
+    --green-light: #DCFCE7;
+    --rose:        #BE123C;
+    --rose-light:  #FFE4E6;
+    --amber:       #B45309;
+    --amber-light: #FEF3C7;
+    --purple:      #7C3AED;
+    --purple-light:#EDE9FE;
+    --gray-50:     #F8FAFC;
+    --gray-100:    #F1F5F9;
+    --gray-200:    #E2E8F0;
+    --gray-300:    #CBD5E1;
+    --gray-500:    #64748B;
+    --gray-700:    #334155;
+    --gray-900:    #0F172A;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    background: var(--navy);
+    color: #fff;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    width: 240px;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.3);
+    border-right: 1px solid rgba(255,255,255,0.07);
+    position: fixed;
+    top: 0; left: 0; bottom: 0;
+    overflow-y: auto;
+    padding: 24px 0 40px;
+    z-index: 10;
+  }
+  .sidebar-header {
+    padding: 0 20px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    margin-bottom: 20px;
+  }
+  .sidebar-logo {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 6px;
+  }
+  .sidebar-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+  .nav-section { margin-bottom: 24px; }
+  .nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: rgba(255,255,255,0.25);
+    padding: 0 20px 8px;
+    display: block;
+  }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.5);
+    text-decoration: none;
+    border-left: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .nav-item:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.05); }
+  .nav-item.active { color: #fff; border-left-color: var(--blue); background: rgba(37,99,235,0.12); }
+  .nav-icon { width: 16px; text-align: center; font-size: 13px; flex-shrink: 0; }
+  .project-entry {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 20px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.45);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+  .project-entry:hover { color: rgba(255,255,255,0.8); background: rgba(255,255,255,0.04); }
+  .project-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .project-recency { font-size: 10px; color: rgba(255,255,255,0.2); }
+
+  /* ── MAIN ── */
+  .main {
+    margin-left: 240px;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* ── TOP BAR ── */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    background: rgba(0,0,0,0.2);
+    flex-shrink: 0;
+    z-index: 5;
+  }
+  .top-bar-left { display: flex; align-items: center; gap: 14px; }
+  .page-title { font-size: 16px; font-weight: 700; color: #fff; }
+  .item-count {
+    font-size: 12px;
+    color: rgba(255,255,255,0.35);
+    background: rgba(255,255,255,0.07);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .sync-area { display: flex; align-items: center; gap: 12px; }
+  .sync-time { font-size: 11px; color: rgba(255,255,255,0.3); font-family: 'SF Mono','Fira Code',monospace; }
+  .refresh-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.6);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+
+  /* ── FILTER BAR ── */
+  .filter-bar {
+    display: flex;
+    align-items: center;
+    padding: 12px 32px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: rgba(0,0,0,0.1);
+    flex-shrink: 0;
+    gap: 8px;
+  }
+  .filter-divider {
+    width: 1px; height: 18px;
+    background: rgba(255,255,255,0.1);
+    margin: 0 4px;
+    flex-shrink: 0;
+  }
+  /* Project dropdown — single button + popover */
+  #proj-dd-wrap { position: relative; }
+  #proj-dd-btn {
+    display: flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 7px;
+    padding: 6px 12px;
+    font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.7);
+    cursor: pointer; transition: all 0.15s; font-family: inherit;
+    white-space: nowrap;
+  }
+  #proj-dd-btn:hover { background: rgba(255,255,255,0.09); color: #fff; }
+  #proj-dropdown {
+    display: none;
+    position: absolute;
+    top: calc(100% + 4px); left: 0;
+    min-width: 180px;
+    background: #1A2540;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 8px;
+    padding: 4px;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+  }
+  .proj-opt {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px; border-radius: 5px;
+    font-size: 12px; font-weight: 500; color: rgba(255,255,255,0.8);
+    cursor: pointer; transition: background 0.1s;
+  }
+  .proj-opt:hover { background: rgba(255,255,255,0.07); }
+  .proj-dot-sm { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+
+  /* View toggle — pill chips matching type-chip style */
+  .view-toggle { display: flex; align-items: center; gap: 6px; }
+  .toggle-btn {
+    font-size: 11px; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.4);
+    cursor: pointer; transition: all 0.15s;
+  }
+  .toggle-btn:hover { color: rgba(255,255,255,0.75); background: rgba(255,255,255,0.09); }
+  .toggle-btn.active { background: rgba(37,99,235,0.15); border-color: rgba(37,99,235,0.3); color: #93C5FD; }
+
+  /* ── BOARD ── */
+  .board-scroll {
+    flex: 1;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 24px 32px 32px;
+  }
+  .board {
+    display: flex;
+    gap: 16px;
+    height: 100%;
+    min-width: max-content;
+  }
+
+  /* ── COLUMN ── */
+  .column {
+    width: 290px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .column.col-design  { background: rgba(124,58,237,0.07);  border-color: rgba(124,58,237,0.15); }
+  .column.col-planning{ background: rgba(37,99,235,0.07);   border-color: rgba(37,99,235,0.15);  }
+  .column.col-build   { background: rgba(180,83,9,0.07);    border-color: rgba(180,83,9,0.15);   }
+  .column.col-test    { background: rgba(13,148,136,0.07);  border-color: rgba(13,148,136,0.15); }
+  .col-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+  .col-header-left { display: flex; align-items: center; gap: 9px; }
+  .col-accent {
+    width: 3px;
+    height: 16px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+  .col-name {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: rgba(255,255,255,0.55);
+  }
+  .col-count {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.07);
+    padding: 2px 8px;
+    border-radius: 10px;
+  }
+  .col-cards {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .col-empty {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 16px;
+    font-size: 12px;
+    color: rgba(255,255,255,0.15);
+    font-style: italic;
+  }
+
+  /* ── DELIVERABLE CARD ── */
+  .d-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 12px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .d-card:nth-child(even) {
+    background: rgba(255,255,255,0.03);
+    border-color: rgba(255,255,255,0.06);
+  }
+  .d-card:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.14);
+    transform: translateY(-1px);
+  }
+  .d-card-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.35;
+    margin-bottom: 8px;
+  }
+  .d-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .d-card-project {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.4);
+    font-family: 'SF Mono','Fira Code',monospace;
+  }
+  .d-card-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .d-card-slices {
+    font-size: 10px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.3);
+    background: rgba(255,255,255,0.07);
+    padding: 2px 7px;
+    border-radius: 10px;
+    margin-left: auto;
+  }
+  /* Status bar */
+  .d-status-bar {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+  .status-pip {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+  }
+  .pip-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .pip-dot.done     { background: #15803D; }
+  .pip-dot.inbuild  { background: #B45309; }
+  .pip-dot.inqa     { background: #0D9488; }
+  .pip-dot.intest   { background: #7C3AED; }
+  .pip-dot.ready    { background: #2563EB; }
+  .pip-dot.planning { background: rgba(255,255,255,0.2); }
+  .pip-sep { color: rgba(255,255,255,0.1); margin: 0 1px; }
+
+  /* ── SLICE CARD ── */
+  .s-card {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 10px 14px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: none; /* hidden in deliverable view */
+  }
+  .s-card:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: rgba(255,255,255,0.14);
+    transform: translateY(-1px);
+  }
+  .s-card-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 6px;
+  }
+  .s-card-id {
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.3);
+    font-family: 'SF Mono','Fira Code',monospace;
+    letter-spacing: 0.5px;
+  }
+  .s-status-badge {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 2px 7px;
+    border-radius: 4px;
+  }
+  .badge-inbuild  { background: rgba(180,83,9,0.25);  color: #FCD34D; }
+  .badge-inqa     { background: rgba(13,148,136,0.25); color: #5EEAD4; }
+  .badge-intest   { background: rgba(124,58,237,0.25); color: #C4B5FD; }
+  .badge-planning { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
+  .badge-ready    { background: rgba(37,99,235,0.25); color: #93C5FD; }
+  .badge-review   { background: rgba(124,58,237,0.2); color: #C4B5FD; }
+
+  .s-card-name {
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff;
+    line-height: 1.35;
+    margin-bottom: 6px;
+  }
+  .s-card-deliverable {
+    font-size: 11px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .s-card-project {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.35);
+    font-family: 'SF Mono','Fira Code',monospace;
+  }
+
+  /* ── OVERLAY ── */
+  .overlay-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(2px);
+    z-index: 100;
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .overlay-panel {
+    background: #152035;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 14px;
+    width: 600px;
+    max-width: 90vw;
+    max-height: 88vh;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+  }
+  .overlay-panel.visible { display: flex; }
+  .overlay-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 20px 24px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    flex-shrink: 0;
+  }
+  .overlay-header-left { display: flex; align-items: center; gap: 10px; }
+  .overlay-type-badge { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; padding: 3px 8px; border-radius: 4px; background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .overlay-type-badge.deliverable { background: rgba(124,58,237,0.2); color: #C4B5FD; }
+  .overlay-title { font-size: 15px; font-weight: 700; color: #fff; }
+  .overlay-close {
+    width: 28px; height: 28px; border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.05);
+    color: rgba(255,255,255,0.5);
+    font-size: 14px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+  }
+  .overlay-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
+  .overlay-body { padding: 24px; overflow-y: auto; flex: 1; }
+  .overlay-project-row { display: flex; align-items: center; gap: 8px; margin-bottom: 20px; }
+  .overlay-project-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .overlay-project-name { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.5); font-family: 'SF Mono','Fira Code',monospace; }
+  .overlay-status-pill { margin-left: auto; font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 20px; }
+  .status-in-progress { background: rgba(37,99,235,0.2); color: #93C5FD; }
+  .status-in-build    { background: rgba(180,83,9,0.2);  color: #FCD34D; }
+  .status-in-test     { background: rgba(124,58,237,0.2);color: #C4B5FD; }
+  .status-planning    { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.4); }
+  .overlay-section { margin-bottom: 18px; }
+  .overlay-section-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.2px; color: rgba(255,255,255,0.25); margin-bottom: 8px; }
+  .overlay-field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .overlay-field { background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 8px; padding: 10px 12px; }
+  .overlay-field-label { font-size: 10px; color: rgba(255,255,255,0.3); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  .overlay-field-value { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 500; line-height: 1.4; }
+  .overlay-list-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 12px; }
+  .overlay-list-item:last-child { border-bottom: none; }
+  .overlay-list-id { color: rgba(255,255,255,0.3); font-family: 'SF Mono','Fira Code',monospace; font-size: 10px; width: 44px; flex-shrink: 0; }
+  .overlay-list-name { flex: 1; color: rgba(255,255,255,0.75); }
+  .slice-status { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; padding: 2px 8px; border-radius: 4px; }
+  .status-done { background: rgba(21,128,61,0.25); color: #86EFAC; }
+  .status-in-qa { background: rgba(13,148,136,0.25); color: #5EEAD4; }
+  .overlay-footer { padding: 16px 24px; border-top: 1px solid rgba(255,255,255,0.08); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .overlay-meta { font-size: 11px; color: rgba(255,255,255,0.25); }
+  .go-to-project-btn { display: flex; align-items: center; gap: 8px; background: var(--blue); color: #fff; border: none; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .go-to-project-btn:hover { background: #1D4ED8; }
+  .go-to-project-btn.disabled { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); cursor: default; pointer-events: none; }
+
+  /* scrollbar */
+  .col-cards::-webkit-scrollbar { width: 4px; }
+  .col-cards::-webkit-scrollbar-track { background: transparent; }
+  .col-cards::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+  .board-scroll::-webkit-scrollbar { height: 6px; }
+  .board-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.03); }
+  .board-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <div class="sidebar-logo">Solo Builder</div>
+    <div class="sidebar-title">Companion</div>
+  </div>
+  <div class="nav-section">
+    <span class="nav-label">Views</span>
+    <a class="nav-item"><span class="nav-icon">▦</span> Dashboard</a>
+    <a class="nav-item active"><span class="nav-icon">⊞</span> Board</a>
+    <a class="nav-item"><span class="nav-icon">◎</span> Activity Feed</a>
+    <a class="nav-item"><span class="nav-icon">⌕</span> Search</a>
+    <a class="nav-item"><span class="nav-icon">+</span> Capture</a>
+  </div>
+  <div class="nav-section">
+    <span class="nav-label">Projects</span>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#2563EB"></div>solo-companion
+      </div>
+      <span class="project-recency">today</span>
+    </div>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#0D9488"></div>chase-the-light
+      </div>
+      <span class="project-recency">2d</span>
+    </div>
+    <div class="project-entry">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="project-dot" style="background:#7C3AED"></div>player-eval
+      </div>
+      <span class="project-recency">4d</span>
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- TOP BAR -->
+  <div class="top-bar">
+    <div class="top-bar-left">
+      <span class="page-title">Board</span>
+      <span class="item-count" id="item-count">9 deliverables</span>
+    </div>
+    <div class="sync-area">
+      <span class="sync-time">Last synced 6 min ago</span>
+      <button class="refresh-btn">↻ Refresh</button>
+    </div>
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+
+    <!-- Single project dropdown -->
+    <div id="proj-dd-wrap">
+      <button id="proj-dd-btn" onclick="toggleProjDropdown()">
+        <span id="proj-dd-dot" class="proj-dot-sm" style="background:rgba(255,255,255,0.3)"></span>
+        <span id="proj-dd-label">All projects</span>
+        ▾
+      </button>
+      <div id="proj-dropdown">
+        <div class="proj-opt" onclick="setProject('all','','rgba(255,255,255,0.3)')">
+          <span class="proj-dot-sm" style="background:rgba(255,255,255,0.3)"></span>All projects
+        </div>
+        <div class="proj-opt" onclick="setProject('solo-companion','solo-companion','#2563EB')">
+          <span class="proj-dot-sm" style="background:#2563EB"></span>solo-companion
+        </div>
+        <div class="proj-opt" onclick="setProject('chase-the-light','chase-the-light','#0D9488')">
+          <span class="proj-dot-sm" style="background:#0D9488"></span>chase-the-light
+        </div>
+        <div class="proj-opt" onclick="setProject('player-eval','player-eval','#7C3AED')">
+          <span class="proj-dot-sm" style="background:#7C3AED"></span>player-eval
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="filter-divider"></div>
+
+    <!-- View toggle -->
+    <div class="view-toggle">
+      <span class="toggle-btn active" id="toggle-del" onclick="setView('deliverable')">Deliverables</span>
+      <span class="toggle-btn" id="toggle-sl" onclick="setView('slice')">Slices</span>
+    </div>
+
+  </div>
+
+  <!-- BOARD -->
+  <div class="board-scroll">
+    <div class="board">
+
+      <!-- ── DESIGN SPRINT ── -->
+      <div class="column col-design">
+        <div class="col-header">
+          <div class="col-header-left">
+            <div class="col-accent" style="background:#7C3AED"></div>
+            <span class="col-name">Design Sprint</span>
+          </div>
+          <span class="col-count" id="cnt-design">2</span>
+        </div>
+        <div class="col-cards" id="col-design">
+
+          <!-- Deliverable card -->
+          <div class="d-card" data-project="chase-the-light" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">Location Detail Screen</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#0D9488"></div>
+                chase-the-light
+              </div>
+              <span class="d-card-slices">4 slices</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot review"></span> 2 In Review</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot planning"></span> 2 Planning</span>
+            </div>
+          </div>
+
+          <!-- Deliverable card -->
+          <div class="d-card" data-project="player-eval" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">Trade Analyzer UI</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#7C3AED"></div>
+                player-eval
+              </div>
+              <span class="d-card-slices">3 slices</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot review"></span> 1 In Review</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot planning"></span> 2 Planning</span>
+            </div>
+          </div>
+
+          <!-- Slice cards (hidden by default) -->
+          <div class="s-card" data-project="chase-the-light" onclick="openOverlay('slice')">
+            <div class="s-card-top">
+              <span class="s-card-id">SL-041</span>
+              <span class="s-status-badge badge-review">In Review</span>
+            </div>
+            <div class="s-card-name">Location header layout</div>
+            <div class="s-card-deliverable">D-12 · Location Detail Screen</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#0D9488"></div> chase-the-light</div>
+          </div>
+
+          <div class="s-card" data-project="chase-the-light" onclick="openOverlay('slice')">
+            <div class="s-card-top">
+              <span class="s-card-id">SL-042</span>
+              <span class="s-status-badge badge-review">In Review</span>
+            </div>
+            <div class="s-card-name">Photo gallery component</div>
+            <div class="s-card-deliverable">D-12 · Location Detail Screen</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#0D9488"></div> chase-the-light</div>
+          </div>
+
+          <div class="s-card" data-project="player-eval" onclick="openOverlay('slice')">
+            <div class="s-card-top">
+              <span class="s-card-id">SL-022</span>
+              <span class="s-status-badge badge-review">In Review</span>
+            </div>
+            <div class="s-card-name">Trade comparison layout</div>
+            <div class="s-card-deliverable">D-08 · Trade Analyzer UI</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#7C3AED"></div> player-eval</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── PLANNING ── -->
+      <div class="column col-planning">
+        <div class="col-header">
+          <div class="col-header-left">
+            <div class="col-accent" style="background:#2563EB"></div>
+            <span class="col-name">Planning</span>
+          </div>
+          <span class="col-count" id="cnt-planning">3</span>
+        </div>
+        <div class="col-cards" id="col-planning">
+
+          <div class="d-card" data-project="solo-companion" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">Board View</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#2563EB"></div>
+                solo-companion
+              </div>
+              <span class="d-card-slices">TBD</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot planning"></span> Design sprint next</span>
+            </div>
+          </div>
+
+          <div class="d-card" data-project="chase-the-light" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">Trip Export Flow</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#0D9488"></div>
+                chase-the-light
+              </div>
+              <span class="d-card-slices">5 slices</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot ready"></span> 2 Ready</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot planning"></span> 3 Planning</span>
+            </div>
+          </div>
+
+          <div class="d-card" data-project="player-eval" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">Draft Board View</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#7C3AED"></div>
+                player-eval
+              </div>
+              <span class="d-card-slices">6 slices</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot ready"></span> 3 Ready</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot planning"></span> 3 Planning</span>
+            </div>
+          </div>
+
+          <!-- Slice cards -->
+          <div class="s-card" data-project="solo-companion" onclick="openOverlay('slice')">
+            <div class="s-card-top"><span class="s-card-id">SL-031</span><span class="s-status-badge badge-planning">Planning</span></div>
+            <div class="s-card-name">Board route + column layout</div>
+            <div class="s-card-deliverable">D-11 · Board View</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#2563EB"></div> solo-companion</div>
+          </div>
+          <div class="s-card" data-project="chase-the-light" onclick="openOverlay('slice')">
+            <div class="s-card-top"><span class="s-card-id">SL-038</span><span class="s-status-badge badge-ready">Ready</span></div>
+            <div class="s-card-name">Export format selection</div>
+            <div class="s-card-deliverable">D-09 · Trip Export Flow</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#0D9488"></div> chase-the-light</div>
+          </div>
+          <div class="s-card" data-project="player-eval" onclick="openOverlay('slice')">
+            <div class="s-card-top"><span class="s-card-id">SL-019</span><span class="s-status-badge badge-ready">Ready</span></div>
+            <div class="s-card-name">Draft board grid layout</div>
+            <div class="s-card-deliverable">D-06 · Draft Board View</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#7C3AED"></div> player-eval</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── IN BUILD ── -->
+      <div class="column col-build">
+        <div class="col-header">
+          <div class="col-header-left">
+            <div class="col-accent" style="background:#B45309"></div>
+            <span class="col-name">In Build</span>
+          </div>
+          <span class="col-count" id="cnt-build">3</span>
+        </div>
+        <div class="col-cards" id="col-build">
+
+          <div class="d-card" data-project="chase-the-light" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">Map Filters</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#0D9488"></div>
+                chase-the-light
+              </div>
+              <span class="d-card-slices">5 slices</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot done"></span> 2 Done</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot inbuild"></span> 2 In Build</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot inqa"></span> 1 In QA</span>
+            </div>
+          </div>
+
+          <div class="d-card" data-project="player-eval" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">Consistency Score Engine</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#7C3AED"></div>
+                player-eval
+              </div>
+              <span class="d-card-slices">4 slices</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot done"></span> 1 Done</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot inbuild"></span> 2 In Build</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot planning"></span> 1 Planning</span>
+            </div>
+          </div>
+
+          <div class="d-card" data-project="player-eval" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">Player Search Screen</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#7C3AED"></div>
+                player-eval
+              </div>
+              <span class="d-card-slices">3 slices</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot done"></span> 2 Done</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot inqa"></span> 1 In QA</span>
+            </div>
+          </div>
+
+          <!-- Slice cards -->
+          <div class="s-card" data-project="chase-the-light" onclick="openOverlay('slice')">
+            <div class="s-card-top"><span class="s-card-id">SL-035</span><span class="s-status-badge badge-inbuild">In Build</span></div>
+            <div class="s-card-name">Season filter chip</div>
+            <div class="s-card-deliverable">D-10 · Map Filters</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#0D9488"></div> chase-the-light</div>
+          </div>
+          <div class="s-card" data-project="chase-the-light" onclick="openOverlay('slice')">
+            <div class="s-card-top"><span class="s-card-id">SL-036</span><span class="s-status-badge badge-inbuild">In Build</span></div>
+            <div class="s-card-name">Time-of-day filter</div>
+            <div class="s-card-deliverable">D-10 · Map Filters</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#0D9488"></div> chase-the-light</div>
+          </div>
+          <div class="s-card" data-project="chase-the-light" onclick="openOverlay('slice')">
+            <div class="s-card-top"><span class="s-card-id">SL-037</span><span class="s-status-badge badge-inqa">In QA</span></div>
+            <div class="s-card-name">Filter apply and reset</div>
+            <div class="s-card-deliverable">D-10 · Map Filters</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#0D9488"></div> chase-the-light</div>
+          </div>
+          <div class="s-card" data-project="player-eval" onclick="openOverlay('slice')">
+            <div class="s-card-top"><span class="s-card-id">SL-015</span><span class="s-status-badge badge-inbuild">In Build</span></div>
+            <div class="s-card-name">Score calculation logic</div>
+            <div class="s-card-deliverable">D-07 · Consistency Score Engine</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#7C3AED"></div> player-eval</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── IN TEST ── -->
+      <div class="column col-test">
+        <div class="col-header">
+          <div class="col-header-left">
+            <div class="col-accent" style="background:#0D9488"></div>
+            <span class="col-name">In Test</span>
+          </div>
+          <span class="col-count" id="cnt-test">1</span>
+        </div>
+        <div class="col-cards" id="col-test">
+
+          <div class="d-card" data-project="player-eval" onclick="openOverlay('deliverable')">
+            <div class="d-card-name">MFL Data Sync</div>
+            <div class="d-card-meta">
+              <div class="d-card-project">
+                <div class="d-card-dot" style="background:#7C3AED"></div>
+                player-eval
+              </div>
+              <span class="d-card-slices">4 slices</span>
+            </div>
+            <div class="d-status-bar">
+              <span class="status-pip"><span class="pip-dot done"></span> 3 Done</span>
+              <span class="pip-sep">·</span>
+              <span class="status-pip"><span class="pip-dot intest"></span> 1 In Test</span>
+            </div>
+          </div>
+
+          <!-- Slice card -->
+          <div class="s-card" data-project="player-eval" onclick="openOverlay('slice')">
+            <div class="s-card-top"><span class="s-card-id">SL-012</span><span class="s-status-badge badge-intest">In Test</span></div>
+            <div class="s-card-name">Live sync validation</div>
+            <div class="s-card-deliverable">D-04 · MFL Data Sync</div>
+            <div class="s-card-project"><div class="d-card-dot" style="background:#7C3AED"></div> player-eval</div>
+          </div>
+
+        </div>
+      </div>
+
+    </div><!-- /board -->
+  </div><!-- /board-scroll -->
+
+</div><!-- /main -->
+
+<!-- OVERLAYS -->
+<div id="overlay-backdrop" class="overlay-backdrop" onclick="closeOverlay(event)">
+
+  <!-- SLICE OVERLAY -->
+  <div id="overlay-slice" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge">Slice</span>
+        <span class="overlay-title">SL-035 · Season filter chip</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">chase-the-light</span>
+        <span class="overlay-status-pill status-in-build">In Build</span>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Deliverable</div><div class="overlay-field-value">Map Filters</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Phase</div><div class="overlay-field-value">Phase 2 · Feature Expansion</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Slice position</div><div class="overlay-field-value">3 of 5 in deliverable</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Last updated</div><div class="overlay-field-value">2026-05-04</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Adds a season chip to the map filter bar. Tapping it filters visible locations to those marked for that season — spring, summer, fall, winter. Multiple seasons can be selected simultaneously.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Reads season tags from the locations SQLite table. Renders chip row in the filter bar component. Applies filter to the map annotation layer — locations with non-matching season tags are hidden from the map view.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Acceptance criteria</div>
+        <div class="overlay-field"><div class="overlay-field-value">Selecting a season chip filters the map correctly. Multiple selections show the union. Deselecting all seasons returns all locations. Chip state persists across map pans and zooms.</div></div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">unit of work SL-035 · chase-the-light</span>
+      <button class="go-to-project-btn">Go to project →</button>
+    </div>
+  </div>
+
+  <!-- DELIVERABLE OVERLAY -->
+  <div id="overlay-deliverable" class="overlay-panel">
+    <div class="overlay-header">
+      <div class="overlay-header-left">
+        <span class="overlay-type-badge deliverable">Deliverable</span>
+        <span class="overlay-title">Map Filters</span>
+      </div>
+      <button class="overlay-close" onclick="closeOverlay()">✕</button>
+    </div>
+    <div class="overlay-body">
+      <div class="overlay-project-row">
+        <div class="overlay-project-dot" style="background:#0D9488"></div>
+        <span class="overlay-project-name">chase-the-light</span>
+        <span class="overlay-status-pill status-in-build">In Build</span>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Details</div>
+        <div class="overlay-field-grid">
+          <div class="overlay-field"><div class="overlay-field-label">Type</div><div class="overlay-field-value">Feature</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Phase</div><div class="overlay-field-value">Phase 2 · Feature Expansion</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Slices</div><div class="overlay-field-value">5 total · 2 Done · 2 In Build · 1 In QA</div></div>
+          <div class="overlay-field"><div class="overlay-field-label">Gate status</div><div class="overlay-field-value" style="color:rgba(255,255,255,0.4)">Not yet cleared</div></div>
+        </div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Plain language description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Lets the solo filter map locations by season, time of day, and location type. The solo can narrow a busy map down to exactly the locations relevant to their current planning context.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Technical description</div>
+        <div class="overlay-field"><div class="overlay-field-value">Filter bar component added above the map view. Filter state held in local state, applied to the map annotation layer on change. Reads season, time_of_day, and type fields from the locations table. No server round-trip on filter change.</div></div>
+      </div>
+      <div class="overlay-section">
+        <div class="overlay-section-label">Slices</div>
+        <div class="overlay-field" style="padding:4px 0;background:none;border:none;">
+          <div class="overlay-list-item"><span class="overlay-list-id">SL-033</span><span class="overlay-list-name">Filter bar shell</span><span class="slice-status status-done">Done</span></div>
+          <div class="overlay-list-item"><span class="overlay-list-id">SL-034</span><span class="overlay-list-name">Location type chip</span><span class="slice-status status-done">Done</span></div>
+          <div class="overlay-list-item"><span class="overlay-list-id">SL-035</span><span class="overlay-list-name">Season filter chip</span><span class="slice-status status-in-build">In Build</span></div>
+          <div class="overlay-list-item"><span class="overlay-list-id">SL-036</span><span class="overlay-list-name">Time-of-day filter</span><span class="slice-status status-in-build">In Build</span></div>
+          <div class="overlay-list-item"><span class="overlay-list-id">SL-037</span><span class="overlay-list-name">Filter apply and reset</span><span class="slice-status status-in-qa">In QA</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="overlay-footer">
+      <span class="overlay-meta">Deliverable · chase-the-light</span>
+      <button class="go-to-project-btn">Go to project →</button>
+    </div>
+  </div>
+
+</div><!-- /overlay-backdrop -->
+
+<script>
+  let currentView = 'deliverable';
+  let currentProject = 'all';
+
+  function setView(view) {
+    currentView = view;
+    document.getElementById('toggle-del').classList.toggle('active', view === 'deliverable');
+    document.getElementById('toggle-sl').classList.toggle('active', view === 'slice');
+    document.querySelectorAll('.d-card').forEach(function(el) {
+      el.style.display = (view === 'deliverable') ? '' : 'none';
+    });
+    document.querySelectorAll('.s-card').forEach(function(el) {
+      el.style.display = (view === 'slice') ? '' : 'none';
+    });
+    updateCount();
+    applyProjectFilter();
+  }
+
+  function toggleProjDropdown() {
+    var dd = document.getElementById('proj-dropdown');
+    dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
+  }
+
+  function setProject(project, label, color) {
+    currentProject = project;
+    document.getElementById('proj-dd-label').textContent = label || 'All projects';
+    document.getElementById('proj-dd-dot').style.background = color || 'rgba(255,255,255,0.3)';
+    document.getElementById('proj-dropdown').style.display = 'none';
+    applyProjectFilter();
+    updateCount();
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!document.getElementById('proj-dd-wrap').contains(e.target)) {
+      document.getElementById('proj-dropdown').style.display = 'none';
+    }
+  });
+
+  function applyProjectFilter() {
+    document.querySelectorAll('.d-card, .s-card').forEach(function(card) {
+      var projectMatch = currentProject === 'all' || card.dataset.project === currentProject;
+      var viewClass = currentView === 'deliverable' ? 'd-card' : 's-card';
+      var viewMatch = card.classList.contains(viewClass);
+      card.style.display = (projectMatch && viewMatch) ? '' : 'none';
+    });
+    ['design', 'planning', 'build', 'test'].forEach(function(colId) {
+      var col = document.getElementById('col-' + colId);
+      var viewClass = currentView === 'deliverable' ? 'd-card' : 's-card';
+      var visible = col.querySelectorAll('.' + viewClass + ':not([style*="none"])').length;
+      document.getElementById('cnt-' + colId).textContent = visible;
+    });
+  }
+
+  function updateCount() {
+    var viewClass = currentView === 'deliverable' ? 'd-card' : 's-card';
+    var label = currentView === 'deliverable' ? 'deliverables' : 'slices';
+    var count = 0;
+    document.querySelectorAll('.' + viewClass).forEach(function(el) {
+      if (currentProject === 'all' || el.dataset.project === currentProject) count++;
+    });
+    document.getElementById('item-count').textContent = count + ' ' + label;
+  }
+
+  function openOverlay(type) {
+    document.getElementById('overlay-backdrop').style.display = 'flex';
+    document.querySelectorAll('.overlay-panel').forEach(function(p) { p.classList.remove('visible'); });
+    var panel = document.getElementById('overlay-' + type);
+    if (panel) panel.classList.add('visible');
+  }
+
+  function closeOverlay(e) {
+    if (!e || e.target === document.getElementById('overlay-backdrop')) {
+      document.getElementById('overlay-backdrop').style.display = 'none';
+      document.querySelectorAll('.overlay-panel').forEach(function(p) { p.classList.remove('visible'); });
+    }
+  }
+
+  // Init
+  document.querySelectorAll('.s-card').forEach(function(el) { el.style.display = 'none'; });
+</script>
+
+</body>
+</html>
