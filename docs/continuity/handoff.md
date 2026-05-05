@@ -1,7 +1,7 @@
 # Project Handoff — 2026-05-05
 
-**Current phase:** Phase 6 — Board View
-**Overall status:** Phases 1–5 complete. All 30 slices Done. Phase 5 (Activity Feed) accepted 2026-04-29. Phase 6 (Board View) — plan approved 2026-05-05. 7 slices Ready. Build starts at SL-031.
+**Current phase:** Phase 6 — Board View (Done)
+**Overall status:** Phases 1–6 complete. All 37 slices Done. Phase 6 (Board View) accepted 2026-05-05. No active build phase — next cycle TBD.
 
 ## Where we are
 
@@ -39,9 +39,9 @@ Nothing blocked. Design sprint is next.
 
 ## Next session picks up at
 
-**solo-build — unit of work SL-035.**
+**Phase 6 — Board View complete.**
 
-SL-031–034 Done 2026-05-05. Local app board complete: column assignment query, deliverable cards, slice cards, project filter, view toggle, overlay wiring. Next: cloud viewer board shell in index.js.
+All 7 slices Done 2026-05-05. Local app (/board route) and cloud viewer (renderBoard() + Board tab) both live. No next slice — next cycle TBD.
 
 Design artifact: `docs/design/sprint-04-board.html` — approved.
 Deferred decisions: `docs/design/deferred-decisions.md` — Phase 6 section added.

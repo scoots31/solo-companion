@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 3 |
+| ✅ Ready | 0 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 34 |
+| ✓ Done | 37 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up** | SL-035 — cloud viewer board shell |
+| **Next up** | — |
 | **Blocked — waiting on** | — |
 | **Open spikes** | — |
 
@@ -226,7 +226,7 @@ Notes: Event timestamp uses file mtime (last_modified already in SQLite) — not
 
 ### Phase 6 · Board View
 
-Status: Planning
+Status: Done
 
 Plain language description:
 The solo can open a Board tab in the companion — local and in the cloud viewer — and see every active deliverable across all their projects at once, grouped into kanban columns by build stage: Design Sprint, Planning, In Build, In Test. They can switch to a slice-level view with one click, or narrow the board to a single project with the project filter. Clicking any card opens the full detail overlay. The board replaces the need to navigate project by project to understand where everything stands.
@@ -2131,7 +2131,7 @@ Notes: Slice column assignment mirrors deliverable column assignment — same st
 
 ### SL-035 · Cloud Viewer Board Tab Shell
 
-Status: Ready
+Status: Done
 Phase: 6
 Deliverable: D-12
 
@@ -2164,7 +2164,7 @@ Notes: Cloud viewer sidebar intentionally omits Search and Capture. These are lo
 
 ### SL-036 · Cloud Board Column Assignment + Deliverable Cards
 
-Status: Ready
+Status: Done
 Phase: 6
 Deliverable: D-12
 
@@ -2196,7 +2196,7 @@ Notes: Column assignment JS mirrors SL-032's SQL logic exactly. If SL-032 requir
 
 ### SL-037 · Cloud Board Project Filter + Toggle + Slice Cards
 
-Status: Ready
+Status: Done
 Phase: 6
 Deliverable: D-12
 
