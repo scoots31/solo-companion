@@ -39,9 +39,9 @@ Nothing blocked. Design sprint is next.
 
 ## Next session picks up at
 
-**solo-build — unit of work SL-032.**
+**solo-build — unit of work SL-035.**
 
-SL-031 Done 2026-05-05. `/board` route shell live on port 8710. Next: column assignment query (tracer bullet — populates deliverable cards into correct columns).
+SL-031–034 Done 2026-05-05. Local app board complete: column assignment query, deliverable cards, slice cards, project filter, view toggle, overlay wiring. Next: cloud viewer board shell in index.js.
 
 Design artifact: `docs/design/sprint-04-board.html` — approved.
 Deferred decisions: `docs/design/deferred-decisions.md` — Phase 6 section added.

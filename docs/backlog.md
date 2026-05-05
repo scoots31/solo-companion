@@ -10,19 +10,19 @@
 | Status | Count |
 |--------|-------|
 | 🔄 In Review | 0 |
-| ✅ Ready | 6 |
+| ✅ Ready | 3 |
 | 🔬 Blocked | 0 |
 | ⏸ Deferred | 0 |
 | 🔨 In Build | 0 |
 | 🔍 In QA | 0 |
 | 🧪 In Test | 0 |
-| ✓ Done | 31 |
+| ✓ Done | 34 |
 
 ### Traffic
 | | |
 |---|---|
 | **Currently in build** | — |
-| **Next up** | SL-032 — column assignment query |
+| **Next up** | SL-035 — cloud viewer board shell |
 | **Blocked — waiting on** | — |
 | **Open spikes** | — |
 
@@ -2028,7 +2028,7 @@ Notes: Column containers render empty — data queries added in SL-032.
 
 ### SL-032 · Column Assignment Query + Deliverable Cards
 
-Status: Ready
+Status: Done
 Phase: 6
 Deliverable: D-11
 
@@ -2064,7 +2064,7 @@ Notes: This is the tracer bullet — proves the hardest assumption in the phase.
 
 ### SL-033 · Project Dropdown Filter
 
-Status: Ready
+Status: Done
 Phase: 6
 Deliverable: D-11
 
@@ -2097,7 +2097,7 @@ Notes: JS pattern is identical to /feed project dropdown — reuse directly.
 
 ### SL-034 · Slices Toggle + Slice Cards
 
-Status: Ready
+Status: Done
 Phase: 6
 Deliverable: D-11
 

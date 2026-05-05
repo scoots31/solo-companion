@@ -2781,17 +2781,184 @@ def _render_feed_events(events, proj_meta=None):
 def board():
     conn = get_conn()
     projects = _get_active_projects(conn)
+
+    # ── Column assignment: most-advanced slice status per active deliverable ──
+    # Priority: In Test > In QA > In Build > Ready/Upcoming > In Review > Planning
+    del_rows = conn.execute(
+        "SELECT d.id as db_id, d.project_id, d.deliverable_id, d.name,"
+        " p.name as project_name,"
+        " CASE"
+        "   WHEN SUM(CASE WHEN s.status='In Test' THEN 1 ELSE 0 END)>0 THEN 'In Test'"
+        "   WHEN SUM(CASE WHEN s.status='In QA' THEN 1 ELSE 0 END)>0 THEN 'In QA'"
+        "   WHEN SUM(CASE WHEN s.status='In Build' THEN 1 ELSE 0 END)>0 THEN 'In Build'"
+        "   WHEN SUM(CASE WHEN s.status IN ('Ready','Upcoming') THEN 1 ELSE 0 END)>0 THEN 'Ready'"
+        "   WHEN SUM(CASE WHEN s.status='In Review' THEN 1 ELSE 0 END)>0 THEN 'In Review'"
+        "   ELSE 'Planning'"
+        " END as col_status,"
+        " SUM(CASE WHEN s.status='In Test' THEN 1 ELSE 0 END) as cnt_test,"
+        " SUM(CASE WHEN s.status='In QA' THEN 1 ELSE 0 END) as cnt_qa,"
+        " SUM(CASE WHEN s.status='In Build' THEN 1 ELSE 0 END) as cnt_build,"
+        " SUM(CASE WHEN s.status IN ('Ready','Upcoming') THEN 1 ELSE 0 END) as cnt_ready,"
+        " SUM(CASE WHEN s.status='In Review' THEN 1 ELSE 0 END) as cnt_review,"
+        " SUM(CASE WHEN s.status='Planning' THEN 1 ELSE 0 END) as cnt_planning,"
+        " SUM(CASE WHEN s.status='Done' THEN 1 ELSE 0 END) as cnt_done,"
+        " COUNT(s.id) as total_slices"
+        " FROM deliverables d"
+        " JOIN projects p ON d.project_id=p.id"
+        " JOIN slices s ON s.project_id=d.project_id AND s.deliverable_ref=d.deliverable_id"
+        " WHERE p.is_active=1"
+        " GROUP BY d.id,d.project_id,d.deliverable_id,d.name,p.name"
+        " HAVING SUM(CASE WHEN s.status NOT IN ('Done','Cancelled') THEN 1 ELSE 0 END)>0"
+        " ORDER BY p.name,d.deliverable_id"
+    ).fetchall()
+
+    # Active slices (not Done, not Cancelled)
+    slice_rows = conn.execute(
+        "SELECT s.project_id, s.slice_id, s.name, s.status, s.deliverable_ref,"
+        " d.name as deliverable_name, p.name as project_name"
+        " FROM slices s"
+        " JOIN projects p ON s.project_id=p.id"
+        " LEFT JOIN deliverables d ON d.project_id=s.project_id AND d.deliverable_id=s.deliverable_ref"
+        " WHERE p.is_active=1 AND s.status NOT IN ('Done','Cancelled')"
+        " ORDER BY p.name, s.slice_id"
+    ).fetchall()
+
     conn.close()
 
     last_synced = get_last_synced()
     synced_label = _relative_synced(last_synced)
 
-    # ── Top bar ─────────────────────────────────────────────────────────
+    # ── Column assignment map ────────────────────────────────────────────
+    COL_MAP = {
+        'In Test': 'test', 'In QA': 'test',
+        'In Build': 'build',
+        'Ready': 'planning', 'Upcoming': 'planning',
+        'In Review': 'design', 'Planning': 'design',
+    }
+
+    # ── Build deliverable cards by column ────────────────────────────────
+    col_dcards = {'design': [], 'planning': [], 'build': [], 'test': []}
+    PIP_DATA = [
+        ('cnt_test', 'intest', 'In Test'),
+        ('cnt_qa', 'inqa', 'In QA'),
+        ('cnt_build', 'inbuild', 'In Build'),
+        ('cnt_ready', 'ready', 'Ready'),
+        ('cnt_review', 'review', 'In Review'),
+        ('cnt_planning', 'planning', 'Planning'),
+        ('cnt_done', 'done', 'Done'),
+    ]
+    for row in del_rows:
+        color = _project_color(row['project_name'])
+        col_id = COL_MAP.get(row['col_status'], 'design')
+        pn = html_mod.escape(row['project_name'])
+        dn = html_mod.escape(row['name'])
+        pid = row['project_id']
+        did = row['deliverable_id']
+        pips = []
+        for field, cls, label in PIP_DATA:
+            cnt = row[field]
+            if cnt:
+                pips.append(f"<span class='status-pip'><span class='pip-dot {cls}'></span> {cnt} {label}</span>")
+        pip_html = "<span class='pip-sep'>·</span>".join(pips)
+        card = (
+            f"<div class='d-card' data-project='{pn}' onclick='openDeliverableOverlay({pid},\"{did}\")'>"
+            f"<div class='d-card-name'>{dn}</div>"
+            "<div class='d-card-meta'>"
+            f"<div class='d-card-project'><div class='d-card-dot' style='background:{color};'></div>{pn}</div>"
+            f"<span class='d-card-slices'>{row['total_slices']} slices</span>"
+            "</div>"
+            f"<div class='d-status-bar'>{pip_html}</div>"
+            "</div>"
+        )
+        col_dcards[col_id].append(card)
+
+    # ── Build slice cards by column ──────────────────────────────────────
+    col_scards = {'design': [], 'planning': [], 'build': [], 'test': []}
+    BADGE_CLS = {
+        'In Test': 'badge-intest', 'In QA': 'badge-inqa', 'In Build': 'badge-inbuild',
+        'Ready': 'badge-ready', 'Upcoming': 'badge-ready',
+        'In Review': 'badge-review', 'Planning': 'badge-planning', 'Blocked': 'badge-planning',
+    }
+    for row in slice_rows:
+        color = _project_color(row['project_name'])
+        status = row['status'] or 'Planning'
+        col_id = COL_MAP.get(status, 'design')
+        pn = html_mod.escape(row['project_name'])
+        sn = html_mod.escape(row['name'])
+        sid = html_mod.escape(row['slice_id'])
+        del_name = html_mod.escape(row['deliverable_name'] or '')
+        del_ref = html_mod.escape(row['deliverable_ref'] or '')
+        badge = BADGE_CLS.get(status, 'badge-planning')
+        card = (
+            f"<div class='s-card' data-project='{pn}' onclick='openSliceOverlay({row['project_id']},\"{row['slice_id']}\")'>"
+            "<div class='s-card-top'>"
+            f"<span class='s-card-id'>{sid}</span>"
+            f"<span class='s-status-badge {badge}'>{html_mod.escape(status)}</span>"
+            "</div>"
+            f"<div class='s-card-name'>{sn}</div>"
+            f"<div class='s-card-deliverable'>{del_ref} · {del_name}</div>"
+            f"<div class='s-card-project'><div class='d-card-dot' style='background:{color};'></div>{pn}</div>"
+            "</div>"
+        )
+        col_scards[col_id].append(card)
+
+    # ── Card CSS ─────────────────────────────────────────────────────────
+    card_css = (
+        "<style>"
+        ".d-card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);"
+        "border-radius:8px;padding:12px 14px;cursor:pointer;transition:all 0.15s;margin-bottom:8px;}"
+        ".d-card:nth-child(even){background:rgba(255,255,255,0.03);border-color:rgba(255,255,255,0.06);}"
+        ".d-card:hover{background:rgba(255,255,255,0.09);border-color:rgba(255,255,255,0.14);transform:translateY(-1px);}"
+        ".d-card-name{font-size:13px;font-weight:600;color:#fff;line-height:1.35;margin-bottom:8px;}"
+        ".d-card-meta{display:flex;align-items:center;gap:8px;margin-bottom:10px;}"
+        ".d-card-project{display:flex;align-items:center;gap:5px;font-size:11px;"
+        'color:rgba(255,255,255,0.4);font-family:"SF Mono","Fira Code",monospace;}'
+        ".d-card-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;}"
+        ".d-card-slices{font-size:10px;font-weight:600;color:rgba(255,255,255,0.3);"
+        "background:rgba(255,255,255,0.07);padding:2px 7px;border-radius:10px;margin-left:auto;}"
+        ".d-status-bar{display:flex;gap:4px;align-items:center;flex-wrap:wrap;}"
+        ".status-pip{display:flex;align-items:center;gap:4px;font-size:10px;color:rgba(255,255,255,0.3);}"
+        ".pip-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}"
+        ".pip-dot.done{background:#15803D;}.pip-dot.inbuild{background:#B45309;}"
+        ".pip-dot.inqa{background:#0D9488;}.pip-dot.intest{background:#7C3AED;}"
+        ".pip-dot.ready{background:#2563EB;}.pip-dot.review{background:#9333EA;}"
+        ".pip-dot.planning{background:rgba(255,255,255,0.2);}"
+        ".pip-sep{color:rgba(255,255,255,0.1);margin:0 1px;}"
+        ".s-card{background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);"
+        "border-radius:8px;padding:10px 14px;cursor:pointer;transition:all 0.15s;"
+        "margin-bottom:8px;display:none;}"
+        ".s-card:hover{background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.14);transform:translateY(-1px);}"
+        ".s-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}"
+        '.s-card-id{font-size:10px;font-weight:700;color:rgba(255,255,255,0.3);font-family:"SF Mono","Fira Code",monospace;letter-spacing:0.5px;}'
+        ".s-status-badge{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.8px;padding:2px 7px;border-radius:4px;}"
+        ".badge-inbuild{background:rgba(180,83,9,0.25);color:#FCD34D;}"
+        ".badge-inqa{background:rgba(13,148,136,0.25);color:#5EEAD4;}"
+        ".badge-intest{background:rgba(124,58,237,0.25);color:#C4B5FD;}"
+        ".badge-planning{background:rgba(255,255,255,0.08);color:rgba(255,255,255,0.4);}"
+        ".badge-ready{background:rgba(37,99,235,0.25);color:#93C5FD;}"
+        ".badge-review{background:rgba(124,58,237,0.2);color:#C4B5FD;}"
+        ".s-card-name{font-size:12px;font-weight:600;color:#fff;line-height:1.35;margin-bottom:6px;}"
+        ".s-card-deliverable{font-size:11px;color:rgba(255,255,255,0.3);margin-bottom:6px;"
+        "white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}"
+        '.s-card-project{display:flex;align-items:center;gap:5px;font-size:11px;color:rgba(255,255,255,0.35);font-family:"SF Mono","Fira Code",monospace;}'
+        ".view-chip{font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;"
+        "background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);"
+        "color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.15s;}"
+        ".view-chip.chip-active{background:rgba(37,99,235,0.15);border-color:rgba(37,99,235,0.3);color:#93C5FD;}"
+        ".col-empty{padding:24px 16px;font-size:12px;color:rgba(255,255,255,0.15);font-style:italic;text-align:center;}"
+        "</style>"
+    )
+
+    # ── Top bar ──────────────────────────────────────────────────────────
     top_bar = (
         "<div style='display:flex;align-items:center;justify-content:space-between;"
         "padding:18px 40px;border-bottom:1px solid rgba(255,255,255,0.07);"
         "background:rgba(0,0,0,0.2);position:sticky;top:0;z-index:5;flex-shrink:0;'>"
+        "<div style='display:flex;align-items:center;gap:12px;'>"
         "<span style='font-size:17px;font-weight:700;color:#fff;letter-spacing:-0.3px;'>Board</span>"
+        "<span id='board-count-pill' style='font-size:11px;font-weight:600;padding:2px 10px;border-radius:10px;"
+        "background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.4);'></span>"
+        "</div>"
         "<div style='display:flex;align-items:center;gap:12px;'>"
         f"<span style='font-size:11px;color:rgba(255,255,255,0.3);"
         f'font-family:"SF Mono","Fira Code",monospace;'
@@ -2848,20 +3015,10 @@ def board():
     )
 
     # ── View toggle ──────────────────────────────────────────────────────
-    chip_base = (
-        "font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;"
-        "background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);"
-        "color:rgba(255,255,255,0.4);cursor:pointer;transition:all 0.15s;"
-    )
-    chip_active = (
-        "font-size:11px;font-weight:600;padding:4px 14px;border-radius:20px;"
-        "background:rgba(37,99,235,0.15);border:1px solid rgba(37,99,235,0.3);"
-        "color:#93C5FD;cursor:pointer;transition:all 0.15s;"
-    )
     view_toggle = (
-        "<div style='display:flex;align-items:center;gap:6px;' id='view-chips'>"
-        f"<span id='chip-del' style='{chip_active}' class='view-chip' data-view='deliverables'>Deliverables</span>"
-        f"<span id='chip-sl' style='{chip_base}' class='view-chip' data-view='slices'>Slices</span>"
+        "<div style='display:flex;align-items:center;gap:6px;'>"
+        "<span class='view-chip chip-active' data-view='deliverables'>Deliverables</span>"
+        "<span class='view-chip' data-view='slices'>Slices</span>"
         "</div>"
     )
 
@@ -2878,77 +3035,90 @@ def board():
 
     # ── Kanban columns ───────────────────────────────────────────────────
     COLUMNS = [
-        ("design",    "Design Sprint", "#7C3AED", "rgba(124,58,237,0.07)"),
-        ("planning",  "Planning",      "#2563EB", "rgba(37,99,235,0.07)"),
-        ("build",     "In Build",      "#B45309", "rgba(180,83,9,0.07)"),
-        ("test",      "In Test",       "#0D9488", "rgba(13,148,136,0.07)"),
+        ("design",   "Design Sprint", "#7C3AED", "rgba(124,58,237,0.07)"),
+        ("planning", "Planning",      "#2563EB", "rgba(37,99,235,0.07)"),
+        ("build",    "In Build",      "#B45309", "rgba(180,83,9,0.07)"),
+        ("test",     "In Test",       "#0D9488", "rgba(13,148,136,0.07)"),
     ]
 
-    cols_html = "<div style='display:flex;gap:16px;padding:24px 40px;flex:1;min-height:0;overflow-x:auto;align-items:flex-start;'>"
+    cols_html = (
+        "<div style='display:flex;gap:16px;padding:24px 40px;flex:1;"
+        "min-height:0;overflow-x:auto;align-items:flex-start;'>"
+    )
     for col_id, col_label, accent, tint in COLUMNS:
+        cards = "".join(col_dcards[col_id]) + "".join(col_scards[col_id])
+        if not cards:
+            cards = "<div class='col-empty'>No active work</div>"
         cols_html += (
-            f"<div id='col-{col_id}' style='flex:1;min-width:220px;background:{tint};"
-            f"border:1px solid rgba(255,255,255,0.06);border-radius:10px;"
+            f"<div style='flex:1;min-width:220px;background:{tint};"
+            "border:1px solid rgba(255,255,255,0.06);border-radius:10px;"
             "display:flex;flex-direction:column;overflow:hidden;'>"
-            # accent bar
             f"<div style='height:3px;background:{accent};'></div>"
-            # header
             "<div style='display:flex;align-items:center;justify-content:space-between;"
             "padding:14px 16px 10px;'>"
             f"<span style='font-size:12px;font-weight:700;color:rgba(255,255,255,0.7);"
             f"letter-spacing:0.04em;text-transform:uppercase;'>{col_label}</span>"
-            f"<span class='col-count' id='col-{col_id}-count' "
+            f"<span id='col-{col_id}-count' "
             "style='font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px;"
-            f"background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.4);'>0</span>"
+            "background:rgba(255,255,255,0.07);color:rgba(255,255,255,0.4);'>0</span>"
             "</div>"
-            # card container
-            f"<div id='col-{col_id}-cards' class='card-container' "
-            "style='padding:0 10px 14px;display:flex;flex-direction:column;gap:0;'>"
-            "</div>"
+            f"<div id='col-{col_id}-cards' "
+            "style='padding:0 10px 14px;display:flex;flex-direction:column;overflow-y:auto;'>"
+            + cards
+            + "</div>"
             "</div>"
         )
     cols_html += "</div>"
 
-    # ── Board JS ─────────────────────────────────────────────────────────
+    # ── Board JS (SL-032 filter + SL-034 toggle) ─────────────────────────
     board_js = (
         "<script>"
-        # project dropdown
+        "var currentView='deliverables';"
+        "var currentProject='all';"
         "function toggleProjDropdown(){"
         "  var d=document.getElementById('proj-dropdown');"
         "  d.style.display=d.style.display==='none'?'block':'none';}"
         "document.addEventListener('click',function(e){"
-        "  if(!document.getElementById('proj-dd-wrap').contains(e.target)){"
-        "    document.getElementById('proj-dropdown').style.display='none';}});"
+        "  var w=document.getElementById('proj-dd-wrap');"
+        "  if(w&&!w.contains(e.target))document.getElementById('proj-dropdown').style.display='none';});"
         "document.querySelectorAll('.proj-opt').forEach(function(opt){"
         "  opt.addEventListener('click',function(){"
-        "    var proj=this.dataset.project;"
-        "    var color=this.dataset.color;"
-        "    document.getElementById('proj-dd-label').textContent=proj==='all'?'All projects':proj;"
-        "    var dot=document.getElementById('proj-dd-dot');"
-        "    dot.style.background=color||'rgba(255,255,255,0.3)';"
+        "    currentProject=this.dataset.project;"
+        "    document.getElementById('proj-dd-label').textContent=currentProject==='all'?'All projects':currentProject;"
+        "    document.getElementById('proj-dd-dot').style.background=this.dataset.color||'rgba(255,255,255,0.3)';"
         "    document.getElementById('proj-dropdown').style.display='none';"
-        "    filterCards(proj);});});"
-        # view toggle
+        "    applyFilters();});});"
         "document.querySelectorAll('.view-chip').forEach(function(chip){"
         "  chip.addEventListener('click',function(){"
-        "    document.querySelectorAll('.view-chip').forEach(function(c){"
-        "      c.style.cssText='" + chip_base.replace("'", "\\'") + "';});"
-        "    this.style.cssText='" + chip_active.replace("'", "\\'") + "';"
+        "    document.querySelectorAll('.view-chip').forEach(function(c){c.classList.remove('chip-active');});"
+        "    this.classList.add('chip-active');"
         "    currentView=this.dataset.view;"
-        "    renderCards();});});"
-        # state
-        "var currentView='deliverables';"
-        "var currentProject='all';"
-        # filter
-        "function filterCards(proj){"
-        "  currentProject=proj;"
-        "  renderCards();}"
-        # render (no-op shell — data wired in SL-032)
-        "function renderCards(){}"
+        "    applyFilters();});});"
+        "function applyFilters(){"
+        "  var cols=['design','planning','build','test'];"
+        "  var total=0;"
+        "  cols.forEach(function(col){"
+        "    var box=document.getElementById('col-'+col+'-cards');"
+        "    if(!box)return;"
+        "    var vis=0;"
+        "    box.querySelectorAll('.d-card').forEach(function(c){"
+        "      var show=currentView==='deliverables'&&(currentProject==='all'||c.dataset.project===currentProject);"
+        "      c.style.display=show?'':'none'; if(show)vis++;});"
+        "    box.querySelectorAll('.s-card').forEach(function(c){"
+        "      var show=currentView==='slices'&&(currentProject==='all'||c.dataset.project===currentProject);"
+        "      c.style.display=show?'':'none'; if(show)vis++;});"
+        "    var emp=box.querySelector('.col-empty');"
+        "    if(emp)emp.style.display=vis===0?'':'none';"
+        "    document.getElementById('col-'+col+'-count').textContent=vis;"
+        "    total+=vis;});"
+        "  var pill=document.getElementById('board-count-pill');"
+        "  if(pill){var u=currentView==='deliverables'?'deliverable':'slice';"
+        "    pill.textContent=total+' '+u+(total===1?'':'s');}}"
+        "document.addEventListener('DOMContentLoaded',applyFilters);"
         "</script>"
     )
 
-    main_html = top_bar + filter_bar + cols_html + board_js
+    main_html = card_css + top_bar + filter_bar + cols_html + board_js
 
     sidebar = _sidebar_html(projects)
     return _page(sidebar, main_html, title="Board — Solo Companion", padded=False)
